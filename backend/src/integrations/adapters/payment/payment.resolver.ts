@@ -11,6 +11,7 @@
  */
 
 import { PlatformPaymentProvider } from "@core/contracts/payment.provider";
+import { WebhookAdapter } from "@core/contracts/webhook.adapter";
 import { StripeAdapter } from "./stripe.adapter";
 import { WompiAdapter } from "./wompi.adapter";
 import { MercadoPagoAdapter } from "./mercadopago.adapter";
@@ -20,8 +21,11 @@ type TenantConfig = {
   preferredPaymentProvider?: string | null;
 };
 
+// Tipo combinado para adapters que soportan webhooks
+type PaymentAdapterWithWebhook = PlatformPaymentProvider & WebhookAdapter;
+
 export class PaymentProviderResolver {
-  private providers: Map<string, PlatformPaymentProvider> = new Map();
+  private providers: Map<string, PaymentAdapterWithWebhook> = new Map();
 
   // Configuración de países por proveedor
   private readonly WOMPI_COUNTRIES = ["CO"]; // Colombia
@@ -86,7 +90,7 @@ export class PaymentProviderResolver {
   /**
    * Resuelve el provider adecuado para un tenant
    */
-  resolveProvider(tenantConfig: TenantConfig): PlatformPaymentProvider {
+  resolveProvider(tenantConfig: TenantConfig): PaymentAdapterWithWebhook {
     // 1. Si tiene proveedor preferido, usar ese
     if (tenantConfig.preferredPaymentProvider) {
       const provider = this.providers.get(
@@ -129,7 +133,7 @@ export class PaymentProviderResolver {
    */
   getProviderByName(
     name: "stripe" | "wompi" | "mercadopago",
-  ): PlatformPaymentProvider {
+  ): PaymentAdapterWithWebhook {
     const provider = this.providers.get(name);
     if (!provider) {
       throw new Error(`Payment provider not configured: ${name}`);

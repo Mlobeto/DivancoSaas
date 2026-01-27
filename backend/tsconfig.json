@@ -18,7 +18,7 @@
     "paths": {
       "@core/*": ["core/*"],
       "@modules/*": ["modules/*"],
-      "@adapters/*": ["adapters/*"],
+      "@integrations/*": ["integrations/*"],
       "@shared/*": ["shared/*"],
       "@config/*": ["config/*"]
     }

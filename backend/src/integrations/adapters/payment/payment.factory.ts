@@ -8,7 +8,7 @@
  * - Resto del mundo → Stripe
  */
 
-import { PaymentProvider } from "@core/contracts/providers.contract";
+import { PlatformPaymentProvider } from "@core/contracts/payment.provider";
 import { StripeAdapter } from "./stripe.adapter";
 import { WompiAdapter } from "./wompi.adapter";
 import { MercadoPagoAdapter } from "./mercadopago.adapter";
@@ -34,7 +34,7 @@ type PaymentProviderConfig = {
 export class PaymentProviderFactory {
   private static instance: PaymentProviderFactory;
   private config: PaymentProviderConfig;
-  private providers: Map<string, PaymentProvider> = new Map();
+  private providers: Map<string, PlatformPaymentProvider> = new Map();
 
   // Países soportados por cada proveedor
   private readonly WOMPI_COUNTRIES = ["CO"]; // Colombia
@@ -108,7 +108,7 @@ export class PaymentProviderFactory {
    * Obtiene el proveedor adecuado según el país del tenant
    * @param countryCode Código ISO 3166-1 alpha-2 del país (ej: 'CO', 'MX', 'US')
    */
-  getProviderForCountry(countryCode: string): PaymentProvider {
+  getProviderForCountry(countryCode: string): PlatformPaymentProvider {
     const country = countryCode.toUpperCase();
 
     // 1. Colombia → Wompi (mejor para mercado colombiano con 3DS)
@@ -139,7 +139,7 @@ export class PaymentProviderFactory {
    */
   getProvider(
     providerName: "stripe" | "wompi" | "mercadopago",
-  ): PaymentProvider {
+  ): PlatformPaymentProvider {
     const provider = this.providers.get(providerName);
     if (!provider) {
       throw new Error(`Payment provider not configured: ${providerName}`);
