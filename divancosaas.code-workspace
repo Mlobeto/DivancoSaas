@@ -1,0 +1,52 @@
+{
+  "folders": [
+    {
+      "name": "📦 DivancoSaaS (Root)",
+      "path": ".",
+    },
+    {
+      "name": "🔧 Backend",
+      "path": "./backend",
+    },
+    {
+      "name": "🌐 Web",
+      "path": "./web",
+    },
+    {
+      "name": "📱 Mobile",
+      "path": "./mobile",
+    },
+    {
+      "name": "📘 Shared",
+      "path": "./shared",
+    },
+  ],
+  "settings": {
+    "typescript.tsdk": "backend/node_modules/typescript/lib",
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.codeActionsOnSave": {
+      "source.fixAll.eslint": "explicit",
+    },
+    "files.exclude": {
+      "**/node_modules": true,
+      "**/dist": true,
+      "**/.expo": true,
+      "**/.expo-shared": true,
+    },
+    "search.exclude": {
+      "**/node_modules": true,
+      "**/dist": true,
+      "**/.expo": true,
+    },
+  },
+  "extensions": {
+    "recommendations": [
+      "dbaeumer.vscode-eslint",
+      "esbenp.prettier-vscode",
+      "prisma.prisma",
+      "bradlc.vscode-tailwindcss",
+      "ms-vscode.vscode-typescript-next",
+    ],
+  },
+}
