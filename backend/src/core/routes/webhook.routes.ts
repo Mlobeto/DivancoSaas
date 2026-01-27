@@ -9,9 +9,17 @@
  */
 
 import { Router, Request, Response } from "express";
-import { paymentProviderResolver } from "@integrations/adapters/payment/payment.resolver";
 import { PaymentEvent } from "@core/contracts/payment.provider";
 import { PrismaClient } from "@prisma/client";
+import type { PaymentProviderResolver } from "@integrations/adapters/payment/payment.resolver";
+
+// El resolver se inyecta desde app.ts (bootstrap)
+// El core NO importa adapters directamente
+let paymentProviderResolver: PaymentProviderResolver;
+
+export function setPaymentProviderResolver(resolver: PaymentProviderResolver) {
+  paymentProviderResolver = resolver;
+}
 
 const router = Router();
 const prisma = new PrismaClient();

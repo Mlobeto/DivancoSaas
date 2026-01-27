@@ -13,7 +13,15 @@ import {
   requireBusinessUnit,
 } from "@core/middlewares/auth.middleware";
 import { PrismaClient } from "@prisma/client";
-import { paymentProviderResolver } from "@integrations/adapters/payment/payment.resolver";
+import type { PaymentProviderResolver } from "@integrations/adapters/payment/payment.resolver";
+
+// El resolver se inyecta desde app.ts (bootstrap)
+// El core NO importa adapters directamente
+let paymentProviderResolver: PaymentProviderResolver;
+
+export function setPaymentProviderResolver(resolver: PaymentProviderResolver) {
+  paymentProviderResolver = resolver;
+}
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -25,7 +33,7 @@ const prisma = new PrismaClient();
 router.post("/subscribe", authenticate, async (req: Request, res: Response) => {
   try {
     const { plan } = req.body;
-    const tenantId = req.context?.user.tenantId;
+    const tenantId = req.context?.tenantId;
 
     if (!tenantId) {
       return res.status(400).json({ error: "Tenant not found" });
@@ -150,7 +158,7 @@ router.get(
   authenticate,
   async (req: Request, res: Response) => {
     try {
-      const tenantId = req.context?.user.tenantId;
+      const tenantId = req.context?.tenantId;
 
       if (!tenantId) {
         return res.status(400).json({ error: "Tenant not found" });

@@ -10,18 +10,31 @@ import {
 } from "@core/middlewares/error.middleware";
 import { auditLogger } from "@core/middlewares/audit.middleware";
 
-// Routers
+// Bootstrap / Dependency Injection
+// AQUÍ es donde se instancian los adapters (NO en el core)
+import { paymentProviderResolver } from "./bootstrap/payment-resolver.bootstrap";
+import billingRouter, {
+  setPaymentProviderResolver as setBillingResolver,
+} from "@core/routes/billing.routes";
+import webhookRouter, {
+  setPaymentProviderResolver as setWebhookResolver,
+} from "@core/routes/webhook.routes";
+
+// Core Routers
 import authRouter from "@core/routes/auth.routes";
 import tenantRouter from "@core/routes/tenant.routes";
 import userRouter from "@core/routes/user.routes";
 import businessUnitRouter from "@core/routes/business-unit.routes";
 import moduleRouter from "@core/routes/module.routes";
 import workflowRouter from "@core/routes/workflow.routes";
-import billingRouter from "@core/routes/billing.routes";
-import webhookRouter from "@core/routes/webhook.routes";
 
 export function createApp(): Application {
   const app = express();
+
+  // DEPENDENCY INJECTION: Inyectar resolvers en las rutas del core
+  // El core nunca importa adapters, recibe las dependencias desde aquí
+  setBillingResolver(paymentProviderResolver);
+  setWebhookResolver(paymentProviderResolver);
 
   // Security
   app.use(helmet());
