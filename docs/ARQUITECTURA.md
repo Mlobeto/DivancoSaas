@@ -94,6 +94,95 @@ integrations/adapters/mercadopago/mercadopago.adapter.ts
 
 ---
 
+## 🧪 DOCUMENTACIÓN Y PRUEBAS DE API
+
+La plataforma utiliza **OpenAPI (Swagger)** como estándar obligatorio para documentar y probar la API.
+
+### Objetivos
+
+- Facilitar pruebas manuales y automáticas
+- Documentar contratos entre frontend, mobile y backend
+- Servir como fuente única de verdad para los endpoints
+- Facilitar integraciones externas futuras
+
+---
+
+### Principios
+
+- ✅ **Todo endpoint público debe estar documentado**
+- ✅ Los contratos reflejan la arquitectura real (tenants, businessUnits, módulos)
+- ❌ Swagger NO contiene lógica de negocio
+- ❌ Swagger NO define permisos hardcodeados
+
+---
+
+### Alcance de la documentación
+
+Cada endpoint debe incluir:
+
+- Método y ruta
+- Descripción clara
+- Requisitos de autenticación
+- Parámetros obligatorios:
+  - `tenantId`
+  - `businessUnitId` (cuando aplique)
+- Body con schemas tipados
+- Ejemplos de request y response
+- Códigos de error esperados
+
+---
+
+### Seguridad en Swagger
+
+- Autenticación vía **Bearer Token (JWT)**
+- Swagger debe permitir:
+  - Login
+  - Setear token
+  - Probar endpoints autenticados
+
+⚠️ **Nunca exponer secretos ni claves reales en Swagger**
+
+---
+
+### Separación por Contexto
+
+- Endpoints del CORE documentados como:
+  - Auth
+  - Tenants
+  - Business Units
+  - Users
+  - Roles / Permissions
+  - Billing Plataforma
+  - Modules
+  - Workflows
+
+- Endpoints de módulos se documentan:
+  - Dentro del módulo
+  - Con su propio tag OpenAPI
+  - Sin contaminar el core
+
+---
+
+### Integraciones y Webhooks
+
+- Webhooks entrantes y salientes deben estar documentados
+- Cada adapter define:
+  - Payload esperado
+  - Firma / validación
+  - Ejemplo real del proveedor
+
+---
+
+### Uso esperado
+
+Swagger es una **herramienta de desarrollo y validación**, no un producto final para el cliente.
+
+- Frontend y mobile se desarrollan contra el contrato OpenAPI
+- Los tests pueden generarse a partir del schema
+- Los cambios en endpoints requieren actualizar Swagger
+
+---
+
 ## 💻 FRONTEND WEB
 
 ### Stack tecnológico:

@@ -47,7 +47,11 @@ export class BillingService {
           tenantId,
           plan,
           status: "ACTIVE",
-          currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 días
+          amount: 0,
+          currency: "USD",
+          billingCycle: "monthly",
+          startDate: new Date(),
+          endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 días
         },
       });
     }
@@ -75,8 +79,13 @@ export class BillingService {
         tenantId,
         plan,
         status: "PENDING",
-        externalSubscriptionId: paymentIntent.id,
-        currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 días
+        amount,
+        currency,
+        billingCycle: "monthly",
+        startDate: new Date(),
+        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 días
+        paymentProvider: this.paymentProvider.name,
+        externalId: paymentIntent.id, // ID en el proveedor de pago
       },
     });
 
@@ -142,9 +151,9 @@ export class BillingService {
 
     let refundResult = null;
 
-    if (refund && subscription.externalSubscriptionId) {
+    if (refund && subscription.externalId) {
       refundResult = await this.paymentProvider.refundSubscriptionPayment(
-        subscription.externalSubscriptionId,
+        subscription.externalId,
       );
     }
 
@@ -207,4 +216,3 @@ export class BillingService {
 
 // NO exportar instancia singleton
 // El servicio debe ser instanciado con el provider correspondiente
-export { BillingService };

@@ -1,28 +1,53 @@
 {
   "compilerOptions": {
+    /* ======================================================
+     * TARGET & MODULE
+     * ====================================================== */
     "target": "ES2022",
     "module": "commonjs",
     "lib": ["ES2022"],
-    "outDir": "./dist",
+    "moduleResolution": "bundler",
+
+    /* ======================================================
+     * PROJECT STRUCTURE
+     * ====================================================== */
     "rootDir": "./src",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
-    "moduleResolution": "node",
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
+    "outDir": "./dist",
     "baseUrl": "./src",
+    "ignoreDeprecations": "6.0",
     "paths": {
       "@core/*": ["core/*"],
       "@modules/*": ["modules/*"],
       "@integrations/*": ["integrations/*"],
       "@shared/*": ["shared/*"],
       "@config/*": ["config/*"]
-    }
+    },
+
+    /* ======================================================
+     * TYPE SAFETY (arquitectura first)
+     * ====================================================== */
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "forceConsistentCasingInFileNames": true,
+
+    /* ======================================================
+     * INTEROP & DX
+     * ====================================================== */
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+
+    /* ======================================================
+     * OUTPUT & DEBUGGING
+     * ====================================================== */
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true
   },
+
+  /* ======================================================
+   * FILES
+   * ====================================================== */
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "**/*.test.ts"]
 }

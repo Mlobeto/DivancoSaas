@@ -43,6 +43,11 @@ export interface PlatformPaymentProvider {
   ): Promise<PlatformRefundResult>;
 
   /**
+   * Verificar firma de webhook para validar autenticidad
+   */
+  verifyWebhookSignature(payload: any, signature: string): boolean;
+
+  /**
    * Obtener URL de checkout (para redirección)
    */
   getCheckoutUrl?(paymentIntentId: string): Promise<string>;

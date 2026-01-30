@@ -3,6 +3,9 @@ import cors from "cors";
 import helmet from "helmet";
 import "express-async-errors";
 
+import swaggerUi from 'swagger-ui-express';
+import { swaggerSpec } from '@config/swagger';
+
 import { config } from "@config/index";
 import {
   errorHandler,
@@ -46,6 +49,9 @@ export function createApp(): Application {
 
   // Auditoría
   app.use(auditLogger);
+  
+  // swagger
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
   // Health check
   app.get("/health", (req, res) => {

@@ -10,6 +10,7 @@
 ### 1. Sistema MULTITENANT ✅ CUMPLE
 
 **Schema Prisma:**
+
 ```prisma
 model Tenant {
   id        String   @id @default(uuid())
@@ -30,6 +31,7 @@ model Tenant {
 ### 2. Business Units ✅ CUMPLE
 
 **Schema Prisma:**
+
 ```prisma
 model BusinessUnit {
   id       String @id @default(uuid())
@@ -57,6 +59,7 @@ model UserBusinessUnit {
 ### 3. Módulos Independientes ✅ CUMPLE
 
 **Core NO depende de módulos:**
+
 ```typescript
 // core/contracts/module.contract.ts
 export interface ModuleContract {
@@ -80,6 +83,7 @@ export interface ModuleContract {
 ### Contenido del Core ✅ CORRECTO
 
 **Archivos en `/core`:**
+
 ```
 core/
 ├── contracts/        ✅ Solo interfaces
@@ -109,6 +113,7 @@ core/
 ```
 
 **✅ NO hay:**
+
 - ❌ Lógica de rubros específicos
 - ❌ Integraciones concretas
 - ❌ Módulos de negocio
@@ -145,6 +150,7 @@ export function setPaymentProviderResolver(resolver: PaymentProviderResolver) {
 ```
 
 **Inyección desde bootstrap:**
+
 ```typescript
 // app.ts
 import { paymentProviderResolver } from "./bootstrap/payment-resolver.bootstrap";
@@ -152,6 +158,7 @@ setBillingResolver(paymentProviderResolver);
 ```
 
 **EVALUACIÓN:**
+
 - ✅ `import type` NO importa código ejecutable en TypeScript
 - ✅ Dependencia se inyecta desde `app.ts`
 - ✅ Core no instancia adapters
@@ -163,7 +170,9 @@ setBillingResolver(paymentProviderResolver);
 ```typescript
 // core/contracts/payment-resolver.contract.ts
 export interface IPaymentProviderResolver {
-  resolveProvider(config: TenantConfig): PlatformPaymentProvider & WebhookAdapter;
+  resolveProvider(
+    config: TenantConfig,
+  ): PlatformPaymentProvider & WebhookAdapter;
   getProviderByName(name: string): PlatformPaymentProvider & WebhookAdapter;
 }
 
@@ -180,6 +189,7 @@ import type { IPaymentProviderResolver } from "@core/contracts/payment-resolver.
 ### 3. No hardcodear estados ni roles ✅ CUMPLE
 
 **Schema Prisma:**
+
 ```prisma
 model Role {
   id          String   @id @default(uuid())
@@ -211,6 +221,7 @@ model Permission {
 **Problema:** Parece ser un error de escritura o movimiento incompleto.
 
 **Acción:** Eliminar carpeta fantasma:
+
 ```bash
 rm -rf backend/src/integrationsadapterspayment/
 ```
@@ -222,12 +233,14 @@ rm -rf backend/src/integrationsadapterspayment/
 **Detectado:** `core/contracts/providers.contract.ts`
 
 **Problema:** Ya no se usa, fue reemplazado por archivos específicos:
+
 - `payment.provider.ts`
 - `email.provider.ts`
 - `file-storage.provider.ts`
 - `sms.provider.ts`
 
 **Acción:** Verificar que no haya imports y eliminar:
+
 ```bash
 rm backend/src/core/contracts/providers.contract.ts
 ```
@@ -237,11 +250,13 @@ rm backend/src/core/contracts/providers.contract.ts
 ### 3. ✅ Import type en core/routes (ACEPTABLE pero mejorable)
 
 **Actual:**
+
 ```typescript
 import type { PaymentProviderResolver } from "@integrations/adapters/payment/payment.resolver";
 ```
 
 **Mejor:**
+
 ```typescript
 import type { IPaymentProviderResolver } from "@core/contracts/payment-resolver.contract";
 ```
@@ -255,6 +270,7 @@ import type { IPaymentProviderResolver } from "@core/contracts/payment-resolver.
 ### CRÍTICAS (Hacer ahora):
 
 1. ✅ **Eliminar carpeta fantasma**
+
    ```bash
    rm -rf backend/src/integrationsadapterspayment/
    ```
@@ -276,21 +292,22 @@ import type { IPaymentProviderResolver } from "@core/contracts/payment-resolver.
 
 ## ✅ RESUMEN EJECUTIVO
 
-| Principio | Estado | Nota |
-|-----------|--------|------|
-| Multitenant | ✅ | Perfecto |
-| Business Units | ✅ | Perfecto |
-| Módulos independientes | ✅ | Perfecto |
-| Core solo transversal | ✅ | Correcto |
-| No hardcodear roles | ✅ | Roles dinámicos en DB |
-| Core no importa adapters | ⚠️ | Usa `import type` (válido pero mejorable) |
-| Billing SaaS separado | ✅ | billing.service.ts solo plataforma |
+| Principio                | Estado | Nota                                      |
+| ------------------------ | ------ | ----------------------------------------- |
+| Multitenant              | ✅     | Perfecto                                  |
+| Business Units           | ✅     | Perfecto                                  |
+| Módulos independientes   | ✅     | Perfecto                                  |
+| Core solo transversal    | ✅     | Correcto                                  |
+| No hardcodear roles      | ✅     | Roles dinámicos en DB                     |
+| Core no importa adapters | ⚠️     | Usa `import type` (válido pero mejorable) |
+| Billing SaaS separado    | ✅     | billing.service.ts solo plataforma        |
 
 **APROBACIÓN:** ✅ **Proyecto cumple con ARQUITECTURA.md con 2 limpiezas menores**
 
 ---
 
 **Próximos pasos:**
+
 1. Ejecutar acciones críticas (eliminar archivos legacy)
 2. Opcional: Crear interfaz de resolver en contracts
 3. Continuar desarrollo con confianza 🚀

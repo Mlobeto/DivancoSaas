@@ -148,6 +148,33 @@ export class MercadoPagoAdapter
   }
 
   /**
+   * Verifica la firma del webhook de MercadoPago
+   */
+  verifyWebhookSignature(payload: any, signature: string): boolean {
+    try {
+      // MercadoPago usa un formato específico para firmar webhooks
+      // Firma: ts=timestamp,v1=hash
+      // TODO: Implementar verificación real con crypto
+      // const crypto = require('crypto');
+      // const parts = signature.split(',');
+      // const ts = parts.find(p => p.startsWith('ts='))?.split('=')[1];
+      // const hash = parts.find(p => p.startsWith('v1='))?.split('=')[1];
+      // const manifest = `id:${payload.id};request-id:${payload.request_id};ts:${ts};`;
+      // const hmac = crypto.createHmac('sha256', this.webhookSecret).update(manifest).digest('hex');
+      // return hmac === hash;
+
+      // Mock para desarrollo - en producción SIEMPRE verificar firma
+      console.warn(
+        "MercadoPago webhook signature verification not implemented",
+      );
+      return true;
+    } catch (error) {
+      console.error("MercadoPago signature verification failed:", error);
+      return false;
+    }
+  }
+
+  /**
    * Parsea webhook de MercadoPago y devuelve evento normalizado
    */
   async parseWebhook(
@@ -156,14 +183,10 @@ export class MercadoPagoAdapter
   ): Promise<PaymentEvent | null> {
     try {
       // 1. Verificar firma
-      // TODO: Verificar firma con webhookSecret
-      // const crypto = require('crypto');
-      // const parts = signature.split(',');
-      // const ts = parts.find(p => p.startsWith('ts='))?.split('=')[1];
-      // const hash = parts.find(p => p.startsWith('v1='))?.split('=')[1];
-      // const manifest = `id:${rawPayload.id};request-id:${rawPayload.request_id};ts:${ts};`;
-      // const hmac = crypto.createHmac('sha256', this.webhookSecret).update(manifest).digest('hex');
-      // if (hmac !== hash) return null;
+      if (!this.verifyWebhookSignature(rawPayload, signature)) {
+        console.error("Invalid MercadoPago webhook signature");
+        return null;
+      }
 
       // 2. Parsear y normalizar evento
       const event: PaymentEvent = {

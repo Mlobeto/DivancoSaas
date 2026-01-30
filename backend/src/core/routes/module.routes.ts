@@ -1,26 +1,231 @@
-import { Router } from 'express';
-import { authenticate } from '@core/middlewares/auth.middleware';
+import { Router } from "express";
+import { authenticate } from "@core/middlewares/auth.middleware";
 
 const router = Router();
 
 router.use(authenticate);
 
 /**
- * GET /api/v1/modules
- * Listar módulos disponibles
+ * @openapi
+ * /modules:
+ *   get:
+ *     tags: [Modules]
+ *     summary: Listar módulos disponibles en la plataforma
+ *     description: Devuelve todos los módulos que ofrece DivancoSaas (ej. projects, clients, invoicing). Los módulos se activan por Business Unit.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lista de módulos disponibles
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id: { type: string, format: uuid }
+ *                       name: { type: string, example: "projects" }
+ *                       displayName: { type: string, example: "Gestión de Proyectos" }
+ *                       description: { type: string, example: "Administra tus proyectos y tareas" }
+ *                       icon: { type: string, example: "📁" }
+ *                       category: { type: string, example: "core" }
+ *                       isAvailable: { type: boolean, example: true }
+ *       401:
+ *         description: No autenticado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
-router.get('/', async (req, res) => {
+router.get("/", async (req, res) => {
   // TODO: Implementar
   res.json({ success: true, data: [] });
 });
 
 /**
- * POST /api/v1/modules/:moduleId/enable
- * Activar módulo en una business unit
+ * @openapi
+ * /modules/{businessUnitId}:
+ *   get:
+ *     tags: [Modules]
+ *     summary: Módulos activos en una Business Unit
+ *     description: Devuelve los módulos que están activados/habilitados en una Business Unit específica.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: businessUnitId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID de la Business Unit
+ *     responses:
+ *       200:
+ *         description: Módulos activos en la Business Unit
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       moduleId: { type: string, format: uuid }
+ *                       moduleName: { type: string, example: "projects" }
+ *                       displayName: { type: string, example: "Gestión de Proyectos" }
+ *                       activatedAt: { type: string, format: date-time }
+ *                       configuration: { type: object, description: "Configuración específica del módulo" }
+ *       401:
+ *         description: No autenticado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Business Unit no encontrada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
-router.post('/:moduleId/enable', async (req, res) => {
+router.get("/:businessUnitId", async (req, res) => {
   // TODO: Implementar
-  res.json({ success: true, data: { message: 'Not implemented yet' } });
+  res.json({ success: true, data: [] });
+});
+
+/**
+ * @openapi
+ * /modules/{businessUnitId}/{moduleId}/enable:
+ *   post:
+ *     tags: [Modules]
+ *     summary: Activar módulo en una Business Unit
+ *     description: Habilita un módulo para su uso en una Business Unit. Una vez activado, el módulo estará disponible para los usuarios de esa BU.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: businessUnitId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - in: path
+ *         name: moduleId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               configuration:
+ *                 type: object
+ *                 description: Configuración inicial del módulo (opcional)
+ *     responses:
+ *       200:
+ *         description: Módulo activado exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 message: { type: string, example: "Module enabled successfully" }
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     moduleId: { type: string, format: uuid }
+ *                     businessUnitId: { type: string, format: uuid }
+ *                     activatedAt: { type: string, format: date-time }
+ *       400:
+ *         description: Módulo ya está activado o no disponible
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: No autenticado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Business Unit o módulo no encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.post("/:businessUnitId/:moduleId/enable", async (req, res) => {
+  // TODO: Implementar
+  res.json({ success: true, data: { message: "Not implemented yet" } });
+});
+
+/**
+ * @openapi
+ * /modules/{businessUnitId}/{moduleId}/disable:
+ *   post:
+ *     tags: [Modules]
+ *     summary: Desactivar módulo en una Business Unit
+ *     description: Deshabilita un módulo en una Business Unit. CUIDADO - Los datos del módulo se mantienen pero la funcionalidad no estará disponible.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: businessUnitId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - in: path
+ *         name: moduleId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Módulo desactivado exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 message: { type: string, example: "Module disabled successfully" }
+ *       400:
+ *         description: Módulo no está activado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: No autenticado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Business Unit o módulo no encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.post("/:businessUnitId/:moduleId/disable", async (req, res) => {
+  // TODO: Implementar
+  res.json({ success: true, message: "Not implemented yet" });
 });
 
 export default router;

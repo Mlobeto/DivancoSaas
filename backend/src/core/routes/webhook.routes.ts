@@ -141,9 +141,9 @@ async function processPaymentEvent(event: PaymentEvent): Promise<void> {
     provider: event.provider,
   });
 
-  // Buscar suscripción por externalSubscriptionId
+  // Buscar suscripción por externalId (ID en el proveedor de pago)
   const subscription = await prisma.platformSubscription.findFirst({
-    where: { externalSubscriptionId: event.paymentIntentId },
+    where: { externalId: event.paymentIntentId },
   });
 
   if (subscription) {

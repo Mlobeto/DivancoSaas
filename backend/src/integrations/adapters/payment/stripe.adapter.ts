@@ -113,6 +113,30 @@ export class StripeAdapter implements PlatformPaymentProvider, WebhookAdapter {
   }
 
   /**
+   * Verifica la firma del webhook de Stripe
+   */
+  verifyWebhookSignature(payload: any, signature: string): boolean {
+    try {
+      // Stripe usa el header 'Stripe-Signature' con formato específico
+      // TODO: Implementar verificación real con Stripe SDK
+      // const stripe = require('stripe')(this.secretKey);
+      // try {
+      //   stripe.webhooks.constructEvent(payload, signature, this.webhookSecret);
+      //   return true;
+      // } catch (err) {
+      //   return false;
+      // }
+
+      // Mock para desarrollo - en producción SIEMPRE verificar firma
+      console.warn("Stripe webhook signature verification not implemented");
+      return true;
+    } catch (error) {
+      console.error("Stripe signature verification failed:", error);
+      return false;
+    }
+  }
+
+  /**
    * Parsea webhook de Stripe y devuelve evento normalizado
    * El CORE solo recibe eventos normalizados, nunca payloads crudos
    */
@@ -122,13 +146,10 @@ export class StripeAdapter implements PlatformPaymentProvider, WebhookAdapter {
   ): Promise<PaymentEvent | null> {
     try {
       // 1. Verificar firma
-      // TODO: Integrar con Stripe SDK
-      // const stripe = require('stripe')(this.secretKey);
-      // const event = stripe.webhooks.constructEvent(
-      //   rawPayload,
-      //   signature,
-      //   this.webhookSecret
-      // );
+      if (!this.verifyWebhookSignature(rawPayload, signature)) {
+        console.error("Invalid Stripe webhook signature");
+        return null;
+      }
 
       // 2. Parsear y normalizar evento
       // const stripeEvent = event as Stripe.Event;

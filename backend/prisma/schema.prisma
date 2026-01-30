@@ -15,28 +15,28 @@ datasource db {
 // ============================================
 
 model Tenant {
-  id        String   @id @default(uuid())
-  name      String
-  slug      String   @unique
-  status    TenantStatus @default(ACTIVE)
-  
+  id     String       @id @default(uuid())
+  name   String
+  slug   String       @unique
+  status TenantStatus @default(ACTIVE)
+
   // SaaS Billing (subscription to the platform)
-  plan      String   @default("free") // free, pro, enterprise
+  plan         String  @default("free") // free, pro, enterprise
   billingEmail String?
-  
+
   // Payment Provider Selection
-  country   String?  // ISO 3166-1 alpha-2 (CO, MX, US, etc.)
+  country                  String? // ISO 3166-1 alpha-2 (CO, MX, US, etc.)
   preferredPaymentProvider String? // stripe, wompi, mercadopago
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   // Relations
   businessUnits BusinessUnit[]
   users         User[]
   subscriptions PlatformSubscription[]
   auditLogs     AuditLog[]
-  
+
   @@index([slug])
   @@index([country])
   @@map("tenants")
@@ -49,24 +49,24 @@ enum TenantStatus {
 }
 
 model BusinessUnit {
-  id          String   @id @default(uuid())
+  id          String  @id @default(uuid())
   tenantId    String
   name        String
   description String?
   slug        String
-  
+
   // Configuración
-  settings    Json     @default("{}")
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  settings Json @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relations
-  tenant            Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant            Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   enabledModules    BusinessUnitModule[]
   workflows         Workflow[]
   userBusinessUnits UserBusinessUnit[]
-  
+
   @@unique([tenantId, slug])
   @@index([tenantId])
   @@map("business_units")
@@ -77,7 +77,7 @@ model BusinessUnit {
 // ============================================
 
 model User {
-  id        String   @id @default(uuid())
+  id        String     @id @default(uuid())
   tenantId  String
   email     String
   password  String
@@ -85,17 +85,17 @@ model User {
   lastName  String
   avatar    String?
   status    UserStatus @default(ACTIVE)
-  
+
   // Sistema
   lastLoginAt DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
-  
+
   // Relations
-  tenant            Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  businessUnits     UserBusinessUnit[]
-  auditLogs         AuditLog[]
-  
+  tenant        Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  businessUnits UserBusinessUnit[]
+  auditLogs     AuditLog[]
+
   @@unique([tenantId, email])
   @@index([tenantId])
   @@index([email])
@@ -110,19 +110,19 @@ enum UserStatus {
 
 // Relación many-to-many con roles por BU
 model UserBusinessUnit {
-  id             String   @id @default(uuid())
+  id             String @id @default(uuid())
   userId         String
   businessUnitId String
   roleId         String
-  
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relations
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   businessUnit BusinessUnit @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
   role         Role         @relation(fields: [roleId], references: [id])
-  
+
   @@unique([userId, businessUnitId])
   @@index([userId])
   @@index([businessUnitId])
@@ -134,56 +134,56 @@ model UserBusinessUnit {
 // ============================================
 
 model Role {
-  id          String   @id @default(uuid())
+  id          String  @id @default(uuid())
   name        String
   description String?
-  isSystem    Boolean  @default(false) // true = no se puede eliminar
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  isSystem    Boolean @default(false) // true = no se puede eliminar
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relations
   permissions       RolePermission[]
   userBusinessUnits UserBusinessUnit[]
-  
+
   @@map("roles")
 }
 
 model Permission {
-  id          String   @id @default(uuid())
-  resource    String   // "projects", "users", "settings"
-  action      String   // "create", "read", "update", "delete"
-  scope       PermissionScope @default(BUSINESS_UNIT)
-  
+  id       String          @id @default(uuid())
+  resource String // "projects", "users", "settings"
+  action   String // "create", "read", "update", "delete"
+  scope    PermissionScope @default(BUSINESS_UNIT)
+
   description String?
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relations
   roles RolePermission[]
-  
+
   @@unique([resource, action])
   @@map("permissions")
 }
 
 enum PermissionScope {
-  TENANT        // Acceso a nivel tenant
+  TENANT // Acceso a nivel tenant
   BUSINESS_UNIT // Acceso a nivel business unit (default)
-  OWN           // Solo datos propios
+  OWN // Solo datos propios
 }
 
 model RolePermission {
-  id           String   @id @default(uuid())
+  id           String @id @default(uuid())
   roleId       String
   permissionId String
-  
-  createdAt    DateTime @default(now())
-  
+
+  createdAt DateTime @default(now())
+
   // Relations
   role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
   permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
-  
+
   @@unique([roleId, permissionId])
   @@map("role_permissions")
 }
@@ -193,43 +193,43 @@ model RolePermission {
 // ============================================
 
 model Module {
-  id          String   @id @default(uuid())
-  name        String   @unique
+  id          String  @id @default(uuid())
+  name        String  @unique
   displayName String
   description String?
-  version     String   @default("1.0.0")
-  category    String?  // "commerce", "projects", "livestock", "logistics"
-  
-  isActive    Boolean  @default(true)
-  
+  version     String  @default("1.0.0")
+  category    String? // "commerce", "projects", "livestock", "logistics"
+
+  isActive Boolean @default(true)
+
   // Configuración por defecto
-  defaultConfig Json   @default("{}")
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  defaultConfig Json @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relations
   businessUnits BusinessUnitModule[]
   workflows     Workflow[]
-  
+
   @@map("modules")
 }
 
 model BusinessUnitModule {
-  id             String   @id @default(uuid())
+  id             String @id @default(uuid())
   businessUnitId String
   moduleId       String
-  
-  isEnabled      Boolean  @default(true)
-  config         Json     @default("{}")
-  
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  
+
+  isEnabled Boolean @default(true)
+  config    Json    @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relations
   businessUnit BusinessUnit @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
   module       Module       @relation(fields: [moduleId], references: [id])
-  
+
   @@unique([businessUnitId, moduleId])
   @@index([businessUnitId])
   @@map("business_unit_modules")
@@ -240,27 +240,27 @@ model BusinessUnitModule {
 // ============================================
 
 model Workflow {
-  id             String   @id @default(uuid())
+  id             String  @id @default(uuid())
   businessUnitId String
   moduleId       String
   name           String
   description    String?
-  
+
   // Estados del workflow (JSON array)
-  states         Json     // [{ id, name, color, order, isInitial, isFinal }]
-  
+  states Json // [{ id, name, color, order, isInitial, isFinal }]
+
   // Transiciones permitidas (JSON array)
-  transitions    Json     // [{ from, to, label, requiredRole }]
-  
-  isActive       Boolean  @default(true)
-  
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  
+  transitions Json // [{ from, to, label, requiredRole }]
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relations
   businessUnit BusinessUnit @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
   module       Module       @relation(fields: [moduleId], references: [id])
-  
+
   @@unique([businessUnitId, moduleId, name])
   @@map("workflows")
 }
@@ -270,41 +270,42 @@ model Workflow {
 // ============================================
 
 model PlatformSubscription {
-  id        String   @id @default(uuid())
-  tenantId  String
-  plan      String   // free, pro, enterprise
-  status    SubscriptionStatus @default(ACTIVE)
-  
+  id       String             @id @default(uuid())
+  tenantId String
+  plan     String // free, pro, enterprise
+  status   SubscriptionStatus @default(ACTIVE)
+
   // Facturación
-  amount         Float
-  currency       String  @default("USD")
-  billingCycle   String  @default("monthly") // monthly, yearly
-  
+  amount       Float
+  currency     String @default("USD")
+  billingCycle String @default("monthly") // monthly, yearly
+
   // Fechas
-  startDate      DateTime
-  endDate        DateTime?
+  startDate       DateTime
+  endDate         DateTime?
   nextBillingDate DateTime?
-  cancelledAt    DateTime?
-  
+  cancelledAt     DateTime?
+
   // Proveedor de pago
   paymentProvider String? // stripe, mercadopago, etc
   externalId      String? // ID en el proveedor externo
-  
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relations
-  tenant  Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
   @@index([tenantId])
   @@map("platform_subscriptions")
 }
 
 enum SubscriptionStatus {
-  ACTIVE
-  PAST_DUE
-  CANCELLED
-  EXPIRED
+  PENDING // Esperando confirmación de pago
+  ACTIVE // Suscripción activa
+  PAST_DUE // Pago vencido
+  CANCELLED // Cancelada por el usuario
+  EXPIRED // Expirada por falta de pago
 }
 
 // ============================================
@@ -312,28 +313,28 @@ enum SubscriptionStatus {
 // ============================================
 
 model AuditLog {
-  id        String   @id @default(uuid())
-  tenantId  String
-  userId    String?
-  
-  entity    String   // "user", "project", "invoice"
-  entityId  String?
-  action    String   // "create", "update", "delete"
-  
+  id       String  @id @default(uuid())
+  tenantId String
+  userId   String?
+
+  entity   String // "user", "project", "invoice"
+  entityId String?
+  action   String // "create", "update", "delete"
+
   // Datos antes y después (opcional)
-  oldData   Json?
-  newData   Json?
-  
-  metadata  Json     @default("{}")
+  oldData Json?
+  newData Json?
+
+  metadata  Json    @default("{}")
   ipAddress String?
   userAgent String?
-  
+
   createdAt DateTime @default(now())
-  
+
   // Relations
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
-  
+
   @@index([tenantId])
   @@index([entity, entityId])
   @@index([createdAt])
