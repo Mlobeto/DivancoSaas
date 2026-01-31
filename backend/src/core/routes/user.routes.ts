@@ -1,7 +1,10 @@
 import { Router } from "express";
 import { authenticate } from "@core/middlewares/auth.middleware";
+import { UserService } from "@core/services/user.service";
+import { z } from "zod";
 
 const router = Router();
+const userService = new UserService();
 
 router.use(authenticate);
 
@@ -27,9 +30,26 @@ router.use(authenticate);
  *           type: string
  *           enum: [ACTIVE, INACTIVE, SUSPENDED]
  *         description: Filtrar por estado del usuario
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Búsqueda por nombre o email
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Página actual
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Registros por página
  *     responses:
  *       200:
- *         description: Lista de usuarios
+ *         description: Lista de usuarios paginada
  *         content:
  *           application/json:
  *             schema:
@@ -50,6 +70,13 @@ router.use(authenticate);
  *                       status: { type: string, enum: [ACTIVE, INACTIVE, SUSPENDED] }
  *                       tenantId: { type: string, format: uuid }
  *                       createdAt: { type: string, format: date-time }
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     total: { type: integer }
+ *                     page: { type: integer }
+ *                     limit: { type: integer }
+ *                     totalPages: { type: integer }
  *       401:
  *         description: No autenticado
  *         content:
@@ -60,7 +87,7 @@ router.use(authenticate);
  *   post:
  *     tags: [Users]
  *     summary: Crear nuevo usuario
- *     description: Crea un usuario en el tenant y lo asigna a una o más Business Units con roles específicos. Un usuario puede tener roles diferentes en cada BU.
+ *     description: Crea un usuario en el tenant y lo asigna a una Business Unit con un rol específico.
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -69,17 +96,12 @@ router.use(authenticate);
  *         application/json:
  *           schema:
  *             type: object
- *             required: [email, password, firstName, lastName, businessUnits]
+ *             required: [email, firstName, lastName, businessUnitId, roleId]
  *             properties:
  *               email:
  *                 type: string
  *                 format: email
  *                 example: "usuario@empresa.com"
- *               password:
- *                 type: string
- *                 format: password
- *                 minLength: 8
- *                 example: "Password123!"
  *               firstName:
  *                 type: string
  *                 minLength: 2
@@ -88,19 +110,14 @@ router.use(authenticate);
  *                 type: string
  *                 minLength: 2
  *                 example: "González"
- *               businessUnits:
- *                 type: array
- *                 description: Business Units y roles del usuario
- *                 items:
- *                   type: object
- *                   required: [businessUnitId, roleId]
- *                   properties:
- *                     businessUnitId:
- *                       type: string
- *                       format: uuid
- *                     roleId:
- *                       type: string
- *                       format: uuid
+ *               businessUnitId:
+ *                 type: string
+ *                 format: uuid
+ *                 description: ID de la Business Unit
+ *               roleId:
+ *                 type: string
+ *                 format: uuid
+ *                 description: ID del rol a asignar
  *     responses:
  *       201:
  *         description: Usuario creado exitosamente
@@ -118,14 +135,6 @@ router.use(authenticate);
  *                     firstName: { type: string }
  *                     lastName: { type: string }
  *                     status: { type: string, example: "ACTIVE" }
- *                     businessUnits:
- *                       type: array
- *                       items:
- *                         type: object
- *                         properties:
- *                           businessUnitId: { type: string, format: uuid }
- *                           businessUnitName: { type: string }
- *                           roleName: { type: string }
  *       400:
  *         description: Datos inválidos
  *         content:
@@ -140,22 +149,44 @@ router.use(authenticate);
  *               $ref: '#/components/schemas/Error'
  */
 
-/**
- * GET /api/v1/users
- * Listar usuarios del tenant
- */
-router.get("/", async (req, res) => {
-  // TODO: Implementar
-  res.json({ success: true, data: [] });
+const listQuerySchema = z.object({
+  businessUnitId: z.string().uuid().optional(),
+  status: z.enum(["ACTIVE", "INACTIVE", "SUSPENDED"]).optional(),
+  search: z.string().optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(10),
 });
 
-/**
- * POST /api/v1/users
- * Crear nuevo usuario
- */
-router.post("/", async (req, res) => {
-  // TODO: Implementar
-  res.json({ success: true, data: { message: "Not implemented yet" } });
+router.get("/", async (req, res, next) => {
+  try {
+    const tenantId = (req as any).context.tenantId;
+    const options = listQuerySchema.parse(req.query);
+
+    const result = await userService.listUsers(tenantId, options);
+    res.json({ success: true, ...result });
+  } catch (error) {
+    next(error);
+  }
+});
+
+const createUserSchema = z.object({
+  email: z.string().email(),
+  firstName: z.string().min(2),
+  lastName: z.string().min(2),
+  businessUnitId: z.string().uuid(),
+  roleId: z.string().uuid(),
+});
+
+router.post("/", async (req, res, next) => {
+  try {
+    const tenantId = (req as any).context.tenantId;
+    const data = createUserSchema.parse(req.body);
+
+    const user = await userService.createUser(data, tenantId);
+    res.status(201).json({ success: true, data: user });
+  } catch (error) {
+    next(error);
+  }
 });
 /**
  * @openapi
@@ -307,19 +338,49 @@ router.post("/", async (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get("/:id", async (req, res) => {
-  // TODO: Implementar
-  res.json({ success: true, data: { message: "Not implemented yet" } });
+
+router.get("/:id", async (req, res, next) => {
+  try {
+    const tenantId = (req as any).context.tenantId;
+    const { id } = req.params;
+
+    const user = await userService.getUserById(id, tenantId);
+    res.json({ success: true, data: user });
+  } catch (error) {
+    next(error);
+  }
 });
 
-router.put("/:id", async (req, res) => {
-  // TODO: Implementar
-  res.json({ success: true, data: { message: "Not implemented yet" } });
+const updateUserSchema = z.object({
+  firstName: z.string().min(2).optional(),
+  lastName: z.string().min(2).optional(),
+  avatar: z.string().url().optional(),
+  status: z.enum(["ACTIVE", "INACTIVE", "SUSPENDED"]).optional(),
 });
 
-router.delete("/:id", async (req, res) => {
-  // TODO: Implementar
-  res.json({ success: true, message: "Not implemented yet" });
+router.put("/:id", async (req, res, next) => {
+  try {
+    const tenantId = (req as any).context.tenantId;
+    const { id } = req.params;
+    const data = updateUserSchema.parse(req.body);
+
+    const user = await userService.updateUser(id, data, tenantId);
+    res.json({ success: true, data: user });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete("/:id", async (req, res, next) => {
+  try {
+    const tenantId = (req as any).context.tenantId;
+    const { id } = req.params;
+
+    await userService.deleteUser(id, tenantId);
+    res.json({ success: true, message: "User deleted successfully" });
+  } catch (error) {
+    next(error);
+  }
 });
 
 /**
@@ -391,8 +452,152 @@ router.delete("/:id", async (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post("/:id/business-units", async (req, res) => {
-  // TODO: Implementar
-  res.json({ success: true, data: { message: "Not implemented yet" } });
+
+const assignRoleSchema = z.object({
+  businessUnitId: z.string().uuid(),
+  roleId: z.string().uuid(),
 });
+
+router.post("/:id/business-units", async (req, res, next) => {
+  try {
+    const tenantId = (req as any).context.tenantId;
+    const { id: userId } = req.params;
+    const data = assignRoleSchema.parse(req.body);
+
+    const result = await userService.assignRole(
+      {
+        userId,
+        businessUnitId: data.businessUnitId,
+        roleId: data.roleId,
+      },
+      tenantId,
+    );
+
+    res.status(201).json({ success: true, data: result });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * @openapi
+ * /users/{id}/business-units/{businessUnitId}:
+ *   delete:
+ *     tags: [Users]
+ *     summary: Remover usuario de Business Unit
+ *     description: Remueve un usuario de una Business Unit específica. El usuario debe tener al menos una BU asignada.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID del usuario
+ *       - in: path
+ *         name: businessUnitId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID de la Business Unit
+ *     responses:
+ *       200:
+ *         description: Usuario removido de la BU exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 message: { type: string, example: "User removed from Business Unit" }
+ *       400:
+ *         description: No se puede remover la última BU del usuario
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: No autenticado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Usuario o Business Unit no encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.delete("/:id/business-units/:businessUnitId", async (req, res, next) => {
+  try {
+    const tenantId = (req as any).context.tenantId;
+    const { id: userId, businessUnitId } = req.params;
+
+    await userService.removeFromBusinessUnit(userId, businessUnitId, tenantId);
+    res.json({ success: true, message: "User removed from Business Unit" });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * @openapi
+ * /users/{id}/deactivate:
+ *   post:
+ *     tags: [Users]
+ *     summary: Desactivar usuario
+ *     description: Desactiva un usuario (soft delete). El usuario no podrá acceder al sistema pero su información se conserva.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID del usuario
+ *     responses:
+ *       200:
+ *         description: Usuario desactivado exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id: { type: string, format: uuid }
+ *                     status: { type: string, example: "INACTIVE" }
+ *       401:
+ *         description: No autenticado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Usuario no encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.post("/:id/deactivate", async (req, res, next) => {
+  try {
+    const tenantId = (req as any).context.tenantId;
+    const { id } = req.params;
+
+    const user = await userService.deactivateUser(id, tenantId);
+    res.json({ success: true, data: user });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;

@@ -27,7 +27,14 @@ export const config = {
     webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
   },
 
-  // Email
+  // SendGrid Email
+  sendgrid: {
+    apiKey: process.env.SENDGRID_API_KEY,
+    fromEmail: process.env.SENDGRID_FROM_EMAIL || "noreply@divancosaas.com",
+    fromName: process.env.SENDGRID_FROM_NAME || "DivancoSaas",
+  },
+
+  // Email (legacy SMTP - optional)
   email: {
     host: process.env.SMTP_HOST,
     port: parseInt(process.env.SMTP_PORT || "587"),

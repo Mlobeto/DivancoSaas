@@ -1,20 +1,28 @@
 import { Router } from "express";
-import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
 import { z } from "zod";
-import prisma from "@config/database";
-import { config } from "@config/index";
-import { AppError } from "@core/middlewares/error.middleware";
+import { authService } from "@core/services/auth.service";
+import { authenticate } from "@core/middlewares/auth.middleware";
 
 const router = Router();
 
-// Schemas de validación
+// ============================================
+// SCHEMAS DE VALIDACIÓN
+// ============================================
+
 const registerSchema = z.object({
-  tenantName: z.string().min(2),
-  email: z.string().email(),
-  password: z.string().min(8),
+  tenantName: z.string().min(2, "Tenant name must be at least 2 characters"),
+  email: z.string().email("Invalid email format"),
+  password: z
+    .string()
+    .min(8, "Password must be at least 8 characters")
+    .regex(
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+      "Password must contain uppercase, lowercase and number",
+    ),
   firstName: z.string().min(2),
   lastName: z.string().min(2),
+  country: z.string().length(2).optional(), // ISO 3166-1 alpha-2
+  businessUnitName: z.string().optional(),
 });
 
 const loginSchema = z.object({
@@ -23,13 +31,44 @@ const loginSchema = z.object({
   tenantSlug: z.string().optional(),
 });
 
+const forgotPasswordSchema = z.object({
+  email: z.string().email(),
+  tenantSlug: z.string().optional(),
+});
+
+const resetPasswordSchema = z.object({
+  token: z.string().min(1),
+  newPassword: z
+    .string()
+    .min(8)
+    .regex(
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+      "Password must contain uppercase, lowercase and number",
+    ),
+});
+
+const changePasswordSchema = z.object({
+  currentPassword: z.string(),
+  newPassword: z
+    .string()
+    .min(8)
+    .regex(
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+      "Password must contain uppercase, lowercase and number",
+    ),
+});
+
+// ============================================
+// ENDPOINTS
+// ============================================
+
 /**
  * @openapi
  * /auth/register:
  *   post:
  *     tags: [Auth]
  *     summary: Registrar nuevo tenant con usuario admin
- *     description: Crea un nuevo tenant en la plataforma y un usuario administrador. Este es el primer paso para usar el SaaS.
+ *     description: Crea un nuevo tenant en la plataforma, primera Business Unit y usuario administrador. Este es el primer paso para usar el SaaS.
  *     requestBody:
  *       required: true
  *       content:
@@ -52,6 +91,7 @@ const loginSchema = z.object({
  *                 format: password
  *                 minLength: 8
  *                 example: "SecurePass123!"
+ *                 description: Debe contener mayúsculas, minúsculas y números
  *               firstName:
  *                 type: string
  *                 minLength: 2
@@ -60,6 +100,14 @@ const loginSchema = z.object({
  *                 type: string
  *                 minLength: 2
  *                 example: "Pérez"
+ *               country:
+ *                 type: string
+ *                 example: "CO"
+ *                 description: "Código ISO del país (CO=Colombia, AR=Argentina, etc.) - Determina el payment provider"
+ *               businessUnitName:
+ *                 type: string
+ *                 example: "Obras Civiles"
+ *                 description: "Nombre de la primera Business Unit (opcional, default: 'Principal')"
  *     responses:
  *       201:
  *         description: Tenant y usuario creados exitosamente
@@ -86,8 +134,16 @@ const loginSchema = z.object({
  *                     name: { type: string }
  *                     slug: { type: string }
  *                     plan: { type: string, example: "free" }
+ *                 businessUnits:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id: { type: string, format: uuid }
+ *                       name: { type: string }
+ *                       slug: { type: string }
  *       400:
- *         description: Datos inválidos o tenant ya existe
+ *         description: Datos inválidos o email ya registrado
  *         content:
  *           application/json:
  *             schema:
@@ -95,119 +151,11 @@ const loginSchema = z.object({
  */
 router.post("/register", async (req, res) => {
   const data = registerSchema.parse(req.body);
-
-  // Generar slug único para el tenant
-  const slug = generateSlug(data.tenantName);
-
-  // Verificar que no exista
-  const existingTenant = await prisma.tenant.findUnique({
-    where: { slug },
-  });
-
-  if (existingTenant) {
-    throw new AppError(400, "TENANT_EXISTS", "Tenant already exists");
-  }
-
-  // Hash password
-  const hashedPassword = await bcrypt.hash(data.password, 10);
-
-  // Crear tenant, usuario admin y rol en una transacción
-  const result = await prisma.$transaction(async (tx) => {
-    // 1. Crear tenant
-    const tenant = await tx.tenant.create({
-      data: {
-        name: data.tenantName,
-        slug,
-        status: "ACTIVE",
-        plan: "free",
-      },
-    });
-
-    // 2. Crear rol admin
-    const adminRole = await tx.role.create({
-      data: {
-        name: "Admin",
-        description: "Administrator with full access",
-        isSystem: true,
-      },
-    });
-
-    // 3. Crear permisos básicos
-    const permissions = await createBasicPermissions(tx);
-
-    // 4. Asignar todos los permisos al admin
-    await tx.rolePermission.createMany({
-      data: permissions.map((p) => ({
-        roleId: adminRole.id,
-        permissionId: p.id,
-      })),
-    });
-
-    // 5. Crear usuario admin
-    const user = await tx.user.create({
-      data: {
-        tenantId: tenant.id,
-        email: data.email,
-        password: hashedPassword,
-        firstName: data.firstName,
-        lastName: data.lastName,
-        status: "ACTIVE",
-      },
-    });
-
-    // 6. Crear business unit por defecto
-    const businessUnit = await tx.businessUnit.create({
-      data: {
-        tenantId: tenant.id,
-        name: "Default",
-        slug: "default",
-        description: "Default business unit",
-      },
-    });
-
-    // 7. Asignar usuario a la BU con rol admin
-    await tx.userBusinessUnit.create({
-      data: {
-        userId: user.id,
-        businessUnitId: businessUnit.id,
-        roleId: adminRole.id,
-      },
-    });
-
-    return { tenant, user, businessUnit };
-  });
-
-  // Generar token
-  const token = jwt.sign(
-    {
-      userId: result.user.id,
-      tenantId: result.tenant.id,
-      businessUnitId: result.businessUnit.id,
-    },
-    config.jwt.secret,
-    { expiresIn: config.jwt.expiresIn } as any,
-  );
+  const result = await authService.register(data);
 
   res.status(201).json({
     success: true,
-    data: {
-      token,
-      user: {
-        id: result.user.id,
-        email: result.user.email,
-        firstName: result.user.firstName,
-        lastName: result.user.lastName,
-      },
-      tenant: {
-        id: result.tenant.id,
-        name: result.tenant.name,
-        slug: result.tenant.slug,
-      },
-      businessUnit: {
-        id: result.businessUnit.id,
-        name: result.businessUnit.name,
-      },
-    },
+    data: result,
   });
 });
 
@@ -217,7 +165,7 @@ router.post("/register", async (req, res) => {
  *   post:
  *     tags: [Auth]
  *     summary: Login de usuario existente
- *     description: Autenticación de usuario con email y password. Devuelve JWT para usar en requests posteriores.
+ *     description: Autenticación de usuario con email y password. Devuelve JWT para usar en requests posteriores. Si el usuario pertenece a múltiples tenants, debe especificar tenantSlug.
  *     requestBody:
  *       required: true
  *       content:
@@ -255,6 +203,8 @@ router.post("/register", async (req, res) => {
  *                   properties:
  *                     id: { type: string, format: uuid }
  *                     email: { type: string }
+ *                     firstName: { type: string }
+ *                     lastName: { type: string }
  *                     tenantId: { type: string, format: uuid }
  *                 tenant:
  *                   type: object
@@ -262,14 +212,36 @@ router.post("/register", async (req, res) => {
  *                     id: { type: string }
  *                     name: { type: string }
  *                     slug: { type: string }
- *       401:
- *         description: Credenciales inválidas
+ *                     plan: { type: string }
+ *                 businessUnits:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id: { type: string, format: uuid }
+ *                       name: { type: string }
+ *                       slug: { type: string }
+ *       400:
+ *         description: Múltiples tenants encontrados - debe especificar tenantSlug
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
- *       404:
- *         description: Usuario o tenant no encontrado
+ *               type: object
+ *               properties:
+ *                 error: { type: string }
+ *                 details:
+ *                   type: object
+ *                   properties:
+ *                     tenants:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           tenantId: { type: string }
+ *                           tenantName: { type: string }
+ *                           tenantSlug: { type: string }
+ *       401:
+ *         description: Credenciales inválidas
  *         content:
  *           application/json:
  *             schema:
@@ -277,207 +249,174 @@ router.post("/register", async (req, res) => {
  */
 router.post("/login", async (req, res) => {
   const data = loginSchema.parse(req.body);
-
-  // Buscar usuario por email
-  let user = await prisma.user.findFirst({
-    where: {
-      email: data.email,
-      status: "ACTIVE",
-    },
-    include: {
-      tenant: true,
-      businessUnits: {
-        include: {
-          businessUnit: true,
-          role: true,
-        },
-      },
-    },
-  });
-
-  // Si se especificó tenantSlug, filtrar por él
-  if (data.tenantSlug && user) {
-    if (user.tenant.slug !== data.tenantSlug) {
-      user = null as any;
-    }
-  }
-
-  if (!user) {
-    throw new AppError(401, "INVALID_CREDENTIALS", "Invalid email or password");
-  }
-
-  // Verificar password
-  const isPasswordValid = await bcrypt.compare(data.password, user.password);
-
-  if (!isPasswordValid) {
-    throw new AppError(401, "INVALID_CREDENTIALS", "Invalid email or password");
-  }
-
-  // Actualizar último login
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { lastLoginAt: new Date() },
-  });
-
-  // Si tiene múltiples business units, retornar lista para que elija
-  if (user.businessUnits.length > 1) {
-    return res.json({
-      success: true,
-      data: {
-        requiresBusinessUnitSelection: true,
-        businessUnits: user.businessUnits.map((bu) => ({
-          id: bu.businessUnit.id,
-          name: bu.businessUnit.name,
-          role: bu.role.name,
-        })),
-        userId: user.id,
-        tenantId: user.tenantId,
-      },
-    });
-  }
-
-  // Usuario debe tener al menos una business unit
-  if (user.businessUnits.length === 0) {
-    throw new AppError(
-      500,
-      "NO_BUSINESS_UNIT",
-      "User has no business unit assigned",
-    );
-  }
-
-  // Generar token con la primera BU (ya validamos que existe)
-  const businessUnit = user.businessUnits[0]!;
-  const token = jwt.sign(
-    {
-      userId: user.id,
-      tenantId: user.tenantId,
-      businessUnitId: businessUnit.businessUnit.id,
-    },
-    config.jwt.secret,
-    { expiresIn: config.jwt.expiresIn } as any,
-  );
+  const result = await authService.login(data);
 
   res.json({
     success: true,
-    data: {
-      token,
-      user: {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-      },
-      tenant: {
-        id: user.tenant.id,
-        name: user.tenant.name,
-        slug: user.tenant.slug,
-      },
-      businessUnit: {
-        id: businessUnit.businessUnit.id,
-        name: businessUnit.businessUnit.name,
-      },
-      role: businessUnit.role.name,
-    },
+    data: result,
   });
 });
 
 /**
- * POST /api/v1/auth/login/business-unit
- * Generar token para una business unit específica
+ * @openapi
+ * /auth/forgot-password:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Solicitar recuperación de contraseña
+ *     description: Envía un email con un link para resetear la contraseña. El link expira en 1 hora.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email]
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: "admin@constructora-abc.com"
+ *               tenantSlug:
+ *                 type: string
+ *                 example: "constructora-abc"
+ *                 description: Opcional - si el usuario existe en múltiples tenants
+ *     responses:
+ *       200:
+ *         description: Email enviado (siempre retorna 200 aunque el usuario no exista por seguridad)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 message: { type: string, example: "If the email exists, a password reset link has been sent" }
+ *       400:
+ *         description: Múltiples cuentas - debe especificar tenantSlug
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
-router.post("/login/business-unit", async (req, res) => {
-  const { userId, tenantId, businessUnitId } = z
-    .object({
-      userId: z.string().uuid(),
-      tenantId: z.string().uuid(),
-      businessUnitId: z.string().uuid(),
-    })
-    .parse(req.body);
+router.post("/forgot-password", async (req, res) => {
+  const data = forgotPasswordSchema.parse(req.body);
+  await authService.forgotPassword(data.email, data.tenantSlug);
 
-  // Verificar acceso
-  const userBU = await prisma.userBusinessUnit.findFirst({
-    where: {
-      userId,
-      businessUnitId,
-      user: { tenantId },
-    },
-    include: {
-      user: true,
-      businessUnit: true,
-      role: true,
-    },
+  // Siempre retornar éxito por seguridad
+  res.json({
+    success: true,
+    message: "If the email exists, a password reset link has been sent",
   });
+});
 
-  if (!userBU) {
-    throw new AppError(403, "FORBIDDEN", "Access denied to this business unit");
-  }
+/**
+ * @openapi
+ * /auth/reset-password:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Resetear contraseña con token
+ *     description: Cambia la contraseña usando el token recibido por email. El token expira en 1 hora.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [token, newPassword]
+ *             properties:
+ *               token:
+ *                 type: string
+ *                 example: "a1b2c3d4e5f6..."
+ *                 description: Token recibido en el email
+ *               newPassword:
+ *                 type: string
+ *                 format: password
+ *                 minLength: 8
+ *                 example: "NewSecurePass123!"
+ *                 description: Nueva contraseña (debe contener mayúsculas, minúsculas y números)
+ *     responses:
+ *       200:
+ *         description: Contraseña cambiada exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 message: { type: string, example: "Password reset successfully" }
+ *       400:
+ *         description: Token inválido o expirado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.post("/reset-password", async (req, res) => {
+  const data = resetPasswordSchema.parse(req.body);
+  await authService.resetPassword(data.token, data.newPassword);
 
-  // Generar token
-  const token = jwt.sign(
-    { userId, tenantId, businessUnitId },
-    config.jwt.secret,
-    { expiresIn: config.jwt.expiresIn } as any,
+  res.json({
+    success: true,
+    message: "Password reset successfully",
+  });
+});
+
+/**
+ * @openapi
+ * /auth/change-password:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Cambiar contraseña del usuario autenticado
+ *     description: Permite al usuario cambiar su contraseña proporcionando la actual y la nueva.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [currentPassword, newPassword]
+ *             properties:
+ *               currentPassword:
+ *                 type: string
+ *                 format: password
+ *                 example: "OldPass123!"
+ *               newPassword:
+ *                 type: string
+ *                 format: password
+ *                 minLength: 8
+ *                 example: "NewSecurePass456!"
+ *     responses:
+ *       200:
+ *         description: Contraseña cambiada exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 message: { type: string, example: "Password changed successfully" }
+ *       401:
+ *         description: Contraseña actual incorrecta o no autenticado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.post("/change-password", authenticate, async (req, res) => {
+  const data = changePasswordSchema.parse(req.body);
+  const userId = (req as any).context.userId;
+
+  await authService.changePassword(
+    userId,
+    data.currentPassword,
+    data.newPassword,
   );
 
   res.json({
     success: true,
-    data: {
-      token,
-      user: {
-        id: userBU.user.id,
-        email: userBU.user.email,
-        firstName: userBU.user.firstName,
-        lastName: userBU.user.lastName,
-      },
-      businessUnit: {
-        id: userBU.businessUnit.id,
-        name: userBU.businessUnit.name,
-      },
-      role: userBU.role.name,
-    },
+    message: "Password changed successfully",
   });
 });
-
-// ============================================
-// HELPERS
-// ============================================
-
-function generateSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/\s+/g, "-")
-    .replace(/[^\w-]+/g, "")
-    .substring(0, 50);
-}
-
-async function createBasicPermissions(tx: any) {
-  const resources = [
-    "users",
-    "roles",
-    "business-units",
-    "modules",
-    "workflows",
-    "settings",
-  ];
-  const actions = ["create", "read", "update", "delete"];
-
-  const permissions = [];
-
-  for (const resource of resources) {
-    for (const action of actions) {
-      const permission = await tx.permission.create({
-        data: {
-          resource,
-          action,
-          scope: "BUSINESS_UNIT",
-          description: `${action} ${resource}`,
-        },
-      });
-      permissions.push(permission);
-    }
-  }
-
-  return permissions;
-}
 
 export default router;

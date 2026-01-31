@@ -86,6 +86,10 @@ model User {
   avatar    String?
   status    UserStatus @default(ACTIVE)
 
+  // Password Reset
+  resetPasswordToken   String?
+  resetPasswordExpires DateTime?
+
   // Sistema
   lastLoginAt DateTime?
   createdAt   DateTime  @default(now())
@@ -99,6 +103,7 @@ model User {
   @@unique([tenantId, email])
   @@index([tenantId])
   @@index([email])
+  @@index([resetPasswordToken])
   @@map("users")
 }
 
