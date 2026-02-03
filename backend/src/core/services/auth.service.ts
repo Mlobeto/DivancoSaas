@@ -1,6 +1,7 @@
 /**
  * AUTH SERVICE
  * Servicio centralizado para autenticación y gestión de usuarios
+ * v2.0 - Railway cache fix
  */
 
 import bcrypt from "bcrypt";
