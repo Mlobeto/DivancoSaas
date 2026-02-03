@@ -538,16 +538,14 @@ export class AuthService {
     const userWithRelations = user as any;
 
     // Mapear business units con sus roles
-    const businessUnits = userWithRelations.businessUnits.map(
-      (ubu: any) => ({
-        id: ubu.businessUnit.id,
-        name: ubu.businessUnit.name,
-        slug: ubu.businessUnit.slug,
-        description: ubu.businessUnit.description,
-        roleId: ubu.role.id,
-        roleName: ubu.role.name,
-      }),
-    );
+    const businessUnits = userWithRelations.businessUnits.map((ubu: any) => ({
+      id: ubu.businessUnit.id,
+      name: ubu.businessUnit.name,
+      slug: ubu.businessUnit.slug,
+      description: ubu.businessUnit.description,
+      roleId: ubu.role.id,
+      roleName: ubu.role.name,
+    }));
 
     // Extraer roles únicos
     const rolesMap = new Map();
