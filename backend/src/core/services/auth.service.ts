@@ -513,7 +513,7 @@ export class AuthService {
       where: { id: userId },
       include: {
         tenant: true,
-        userBusinessUnits: {
+        businessUnits: {
           include: {
             businessUnit: true,
             role: {

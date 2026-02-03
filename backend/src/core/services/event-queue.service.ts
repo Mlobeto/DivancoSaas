@@ -172,7 +172,7 @@ class EventQueueService {
             where: { id: event.id },
             data: {
               status: "COMPLETED",
-              result: result.data as any,
+              processedAt: new Date(),
             },
           });
 
