@@ -38,6 +38,7 @@ model Tenant {
   auditLogs     AuditLog[]
   eventQueue    EventQueue[]
   equipment     Equipment[]
+  assets        Asset[]
 
   @@index([slug])
   @@index([country])
@@ -75,6 +76,7 @@ model BusinessUnit {
   userChannelIdentities  UserChannelIdentity[]
   eventQueue             EventQueue[]
   equipment              Equipment[]
+  assets                 Asset[]
 
   @@unique([tenantId, slug])
   @@index([tenantId])
@@ -110,6 +112,7 @@ model User {
   auditLogs         AuditLog[]
   channelIdentities UserChannelIdentity[]
   eventQueue        EventQueue[]
+  assetUsages       AssetUsage[]
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -659,4 +662,119 @@ enum EquipmentCondition {
   GOOD // Buena
   FAIR // Regular
   POOR // Mala
+}
+
+// ============================================
+// ASSETS MODULE - Rental Equipment Management
+// ============================================
+
+model Asset {
+  id             String @id @default(uuid())
+  tenantId       String
+  businessUnitId String
+
+  name            String
+  assetType       String // String libre: machine, implement, vehicle, etc
+  acquisitionCost Decimal?
+  origin          String?
+
+  requiresOperator Boolean @default(false)
+  requiresTracking Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  businessUnit       BusinessUnit        @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
+  state              AssetState?
+  maintenanceRecords MaintenanceRecord[]
+  usages             AssetUsage[]
+  events             AssetEvent[]
+  attachments        AssetAttachment[]
+
+  @@index([tenantId, businessUnitId])
+  @@index([assetType])
+  @@map("assets")
+}
+
+model AssetState {
+  id           String @id @default(uuid())
+  assetId      String @unique
+  workflowId   String
+  currentState String // String libre, workflow-driven
+
+  updatedAt DateTime @updatedAt
+
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId])
+  @@map("asset_states")
+}
+
+model AssetEvent {
+  id             String @id @default(uuid())
+  tenantId       String
+  businessUnitId String
+  assetId        String
+
+  eventType String // String libre: created, rented, returned, maintenance_started, etc
+  payload   Json
+  source    String // String libre: web, mobile, whatsapp, system
+
+  createdAt DateTime @default(now())
+  asset     Asset    @relation(fields: [assetId], references: [id])
+
+  @@index([tenantId, businessUnitId, assetId])
+  @@index([assetId, createdAt])
+  @@index([eventType])
+  @@map("asset_events")
+}
+
+model MaintenanceRecord {
+  id          String    @id @default(uuid())
+  assetId     String
+  description String?
+  startedAt   DateTime
+  endedAt     DateTime?
+
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([assetId])
+  @@index([startedAt])
+  @@map("maintenance_records")
+}
+
+model AssetUsage {
+  id               String   @id @default(uuid())
+  assetId          String
+  date             DateTime
+  hoursUsed        Decimal
+  standbyHours     Decimal?
+  reportedByUserId String?
+  source           String // String libre: APP, WHATSAPP, API, SYSTEM
+  notes            String?
+  createdAt        DateTime @default(now())
+
+  asset      Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  reportedBy User? @relation(fields: [reportedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([assetId, date])
+  @@index([reportedByUserId])
+  @@map("asset_usages")
+}
+
+model AssetAttachment {
+  id        String   @id @default(uuid())
+  assetId   String
+  type      String // String libre: PHOTO, PDF, VIDEO, etc
+  url       String
+  source    String // String libre: WHATSAPP, APP, SYSTEM
+  createdAt DateTime @default(now())
+
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([assetId])
+  @@index([type])
+  @@map("asset_attachments")
 }

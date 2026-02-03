@@ -60,8 +60,15 @@ import shippingRouter from "@core/routes/shipping.routes";
 import dashboardRouter from "@core/routes/dashboard.routes";
 import equipmentRouter from "@core/routes/equipment.routes";
 
+// Business Modules
+import { AssetsModule } from "./modules/assets/assets.module";
+
 export function createApp(): Application {
   const app = express();
+
+  // Initialize business modules
+  const assetsModule = new AssetsModule();
+  assetsModule.initialize();
 
   // DEPENDENCY INJECTION: Inyectar resolvers/factories en el core
   // El core nunca importa adapters, recibe las dependencias desde aquí
@@ -133,6 +140,9 @@ export function createApp(): Application {
   app.use("/api/v1/invoices", invoiceRouter);
   app.use("/api/v1/shipping", shippingRouter);
   app.use("/api/v1/dashboard", dashboardRouter);
+
+  // Business Module routes
+  app.use("/api/v1/modules/assets", assetsModule.getRoutes());
 
   // TODO: Cargar rutas de módulos dinámicamente
   // loadModuleRoutes(app);

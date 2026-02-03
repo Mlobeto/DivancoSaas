@@ -1,39 +1,42 @@
-import swaggerJsdoc from 'swagger-jsdoc';
+import swaggerJsdoc from "swagger-jsdoc";
 
 export const swaggerSpec = swaggerJsdoc({
   definition: {
-    openapi: '3.0.0',
+    openapi: "3.0.0",
     info: {
-      title: 'DivancoSaaS API',
-      version: '1.0.0',
-      description: 'API multitenant con Business Units y módulos dinámicos'
+      title: "DivancoSaaS API",
+      version: "1.0.0",
+      description: "API multitenant con Business Units y módulos dinámicos",
     },
-    servers: [{ url: '/api/v1' }],
+    servers: [{ url: "/api/v1" }],
     components: {
       securitySchemes: {
         bearerAuth: {
-          type: 'http',
-          scheme: 'bearer',
-          bearerFormat: 'JWT'
-        }
+          type: "http",
+          scheme: "bearer",
+          bearerFormat: "JWT",
+        },
       },
       schemas: {
         Error: {
-          type: 'object',
+          type: "object",
           properties: {
-            success: { type: 'boolean', example: false },
+            success: { type: "boolean", example: false },
             error: {
-              type: 'object',
+              type: "object",
               properties: {
-                code: { type: 'string' },
-                message: { type: 'string' }
-              }
-            }
-          }
-        }
-      }
+                code: { type: "string" },
+                message: { type: "string" },
+              },
+            },
+          },
+        },
+      },
     },
-    security: [{ bearerAuth: [] }]
+    security: [{ bearerAuth: [] }],
   },
-  apis: ['./src/core/routes/*.ts'] // Escanea JSDoc en routes
+  apis: [
+    "./src/core/routes/*.ts",
+    "./src/modules/*/*.swagger.ts", // Include module swagger docs
+  ],
 });
