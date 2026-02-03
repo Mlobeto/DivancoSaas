@@ -1,0 +1,14 @@
+# Railway ignore - solo desplegar backend
+
+# Directorios del monorepo que no son backend
+
+/docs
+/mobile
+/web
+/scripts
+/shared
+
+# Archivos raíz innecesarios
+
+/divancosaas.code-workspace
+/README.md
