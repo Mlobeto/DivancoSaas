@@ -6,15 +6,15 @@
     "target": "ES2022",
     "module": "commonjs",
     "lib": ["ES2022"],
-    "moduleResolution": "bundler",
+    "types": ["node", "jest"],
+    "moduleResolution": "node",
+    "ignoreDeprecations": "6.0",
 
     /* ======================================================
      * PROJECT STRUCTURE
      * ====================================================== */
-    "rootDir": "./src",
     "outDir": "./dist",
     "baseUrl": "./src",
-    "ignoreDeprecations": "6.0",
     "paths": {
       "@core/*": ["core/*"],
       "@modules/*": ["modules/*"],
@@ -48,6 +48,6 @@
   /* ======================================================
    * FILES
    * ====================================================== */
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "**/*.test.ts"]
+  "include": ["src/**/*", "prisma/**/*"],
+  "exclude": ["node_modules", "dist"]
 }

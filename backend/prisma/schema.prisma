@@ -36,6 +36,8 @@ model Tenant {
   users         User[]
   subscriptions PlatformSubscription[]
   auditLogs     AuditLog[]
+  eventQueue    EventQueue[]
+  equipment     Equipment[]
 
   @@index([slug])
   @@index([country])
@@ -62,10 +64,17 @@ model BusinessUnit {
   updatedAt DateTime @updatedAt
 
   // Relations
-  tenant            Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  enabledModules    BusinessUnitModule[]
-  workflows         Workflow[]
-  userBusinessUnits UserBusinessUnit[]
+  tenant                 Tenant                      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  enabledModules         BusinessUnitModule[]
+  workflows              Workflow[]
+  userBusinessUnits      UserBusinessUnit[]
+  integrationCredentials IntegrationCredential[]
+  integrations           BusinessUnitIntegration[]
+  channelConfigs         BusinessUnitChannelConfig[]
+  businessUnitIntents    BusinessUnitIntent[]
+  userChannelIdentities  UserChannelIdentity[]
+  eventQueue             EventQueue[]
+  equipment              Equipment[]
 
   @@unique([tenantId, slug])
   @@index([tenantId])
@@ -96,9 +105,11 @@ model User {
   updatedAt   DateTime  @updatedAt
 
   // Relations
-  tenant        Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  businessUnits UserBusinessUnit[]
-  auditLogs     AuditLog[]
+  tenant            Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  businessUnits     UserBusinessUnit[]
+  auditLogs         AuditLog[]
+  channelIdentities UserChannelIdentity[]
+  eventQueue        EventQueue[]
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -344,4 +355,308 @@ model AuditLog {
   @@index([entity, entityId])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+// ============================================
+// CORE: INTEGRACIONES EXTERNAS
+// ============================================
+
+// Credenciales de integraciones por BusinessUnit
+// Cada BU puede tener sus propias configuraciones de proveedores externos
+model IntegrationCredential {
+  id             String          @id @default(uuid())
+  businessUnitId String
+  provider       IntegrationType
+
+  // Credenciales encriptadas (JSON flexible según proveedor)
+  credentials Json
+
+  // Estado
+  isActive      Boolean   @default(true)
+  lastValidated DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  businessUnit BusinessUnit @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
+
+  @@unique([businessUnitId, provider])
+  @@index([businessUnitId])
+  @@map("integration_credentials")
+}
+
+// Configuración de integraciones de terceros (facturación, envíos, etc.)
+model BusinessUnitIntegration {
+  id             String @id @default(uuid())
+  businessUnitId String
+  type           String // "invoice", "shipping", "sms", "email"
+  provider       String // "taxxa", "divanco", "fedex", "manual", etc.
+
+  // Credenciales y configuración
+  credentials Json // { apiKey, apiSecret, accountNumber, etc. }
+  config      Json // { environment, defaultOrigin, metadata, etc. }
+
+  // Estado
+  isActive      Boolean   @default(true)
+  lastValidated DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  businessUnit BusinessUnit @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
+
+  @@unique([businessUnitId, type, provider])
+  @@index([businessUnitId])
+  @@index([type])
+  @@map("business_unit_integrations")
+}
+
+enum IntegrationType {
+  // Comunicaciones
+  SENDGRID // Email transaccional y marketing
+  META_WHATSAPP // WhatsApp Business Cloud API
+  TWILIO_SMS // SMS transaccional
+
+  // Pagos
+  STRIPE // Pagos internacionales
+  MERCADOPAGO // Pagos LATAM
+  WOMPI // Pagos Colombia
+
+  // Storage
+  AZURE_BLOB_STORAGE // Azure Blob Storage con Sharp
+  AWS_S3 // Almacenamiento de archivos (legacy)
+  CLOUDINARY // Imágenes y multimedia (legacy)
+
+  // Facturación
+  SIIGO // Facturación electrónica Colombia
+  FACTURAMA // Facturación electrónica México
+
+  // Otros
+  GOOGLE_MAPS // Mapas y geolocalización
+  SENDGRID_ANALYTICS // Analytics de emails
+}
+
+// ============================================
+// CANALES E INTENCIONES
+// ============================================
+
+// Configuración de canales por Business Unit
+model BusinessUnitChannelConfig {
+  id             String      @id @default(uuid())
+  businessUnitId String
+  channel        ChannelType
+
+  // Estado
+  enabled Boolean @default(true)
+
+  // Intenciones permitidas desde este canal
+  // ["*"] = todas, o lista específica como ["UPLOAD_IMAGE", "PROJECT_UPDATE"]
+  allowedIntents Json @default("[]")
+
+  // Configuración específica del canal (opcional)
+  config Json @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  businessUnit BusinessUnit @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
+
+  @@unique([businessUnitId, channel])
+  @@index([businessUnitId])
+  @@map("business_unit_channel_configs")
+}
+
+enum ChannelType {
+  WHATSAPP
+  WEB
+  MOBILE
+  API
+}
+
+// Catálogo de intenciones disponibles en la plataforma
+model IntentDefinition {
+  id          String  @id @default(uuid())
+  name        String  @unique // "UPLOAD_IMAGE", "PROJECT_UPDATE", etc.
+  displayName String // "Subir Imagen", "Actualizar Proyecto"
+  description String?
+  category    String? // "storage", "projects", "communications"
+
+  // Módulo y acción por defecto
+  defaultModule String // "storage", "projects"
+  defaultAction String // "uploadFile", "updateStatus"
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  businessUnitIntents BusinessUnitIntent[]
+
+  @@map("intent_definitions")
+}
+
+// Configuración de intenciones por Business Unit
+// Permite personalizar qué hace cada intención en cada BU
+model BusinessUnitIntent {
+  id             String @id @default(uuid())
+  businessUnitId String
+  intentId       String
+
+  // Personalización de la acción (sobrescribe defaults)
+  module             String? // Si null, usa defaultModule
+  action             String? // Si null, usa defaultAction
+  requiredPermission String? // "projects.update", "files.upload"
+
+  // Configuración específica de la intención
+  config Json @default("{}")
+
+  enabled Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  businessUnit     BusinessUnit     @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
+  intentDefinition IntentDefinition @relation(fields: [intentId], references: [id])
+
+  @@unique([businessUnitId, intentId])
+  @@index([businessUnitId])
+  @@map("business_unit_intents")
+}
+
+// Identidad de usuario en canales externos (WhatsApp, etc.)
+model UserChannelIdentity {
+  id             String      @id @default(uuid())
+  userId         String
+  businessUnitId String
+  channel        ChannelType
+
+  // Identificador en el canal externo
+  externalId String // Número de teléfono para WhatsApp, deviceId para mobile, etc.
+
+  // Verificación
+  verified   Boolean   @default(false)
+  verifiedAt DateTime?
+
+  // Metadata adicional
+  metadata Json @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  businessUnit BusinessUnit @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, businessUnitId, channel, externalId])
+  @@index([userId])
+  @@index([externalId, channel])
+  @@map("user_channel_identities")
+}
+
+// Cola de eventos para procesamiento asíncrono y offline
+model EventQueue {
+  id             String      @id @default(uuid())
+  tenantId       String
+  businessUnitId String
+  userId         String
+  channel        ChannelType
+
+  // Intención y datos
+  intent  String
+  payload Json
+
+  // Estado del procesamiento
+  status EventStatus @default(PENDING)
+
+  // Metadata
+  metadata Json @default("{}")
+
+  // Reintentos
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(3)
+  lastError   String?
+  processedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  businessUnit BusinessUnit @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([tenantId])
+  @@index([userId])
+  @@map("event_queue")
+}
+
+enum EventStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+// ============================================
+// MÓDULOS: EQUIPOS Y MAQUINARIA
+// ============================================
+
+model Equipment {
+  id             String @id @default(uuid())
+  tenantId       String
+  businessUnitId String
+
+  // Identificación
+  code        String // Código único interno (EXC-CAT-320, GRU-LIE-110)
+  name        String
+  category    String // "Maquinaria pesada", "Acceso y soporte", etc.
+  description String?
+
+  // Especificaciones técnicas
+  specifications Json @default("{}")
+
+  // Costos de alquiler
+  dailyRate   Decimal @db.Decimal(10, 2)
+  weeklyRate  Decimal @db.Decimal(10, 2)
+  monthlyRate Decimal @db.Decimal(10, 2)
+
+  // Estado
+  status    EquipmentStatus    @default(AVAILABLE)
+  condition EquipmentCondition @default(GOOD)
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  businessUnit BusinessUnit @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@index([businessUnitId])
+  @@index([status])
+  @@map("equipment")
+}
+
+enum EquipmentStatus {
+  AVAILABLE // Disponible para alquiler
+  RENTED // Actualmente alquilado
+  MAINTENANCE // En mantenimiento
+  OUT_OF_SERVICE // Fuera de servicio
+  RESERVED // Reservado
+}
+
+enum EquipmentCondition {
+  EXCELLENT // Excelente
+  GOOD // Buena
+  FAIR // Regular
+  POOR // Mala
 }

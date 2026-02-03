@@ -29,6 +29,7 @@ interface LoginInput {
 
 interface AuthResponse {
   token: string;
+  refreshToken?: string;
   user: {
     id: string;
     email: string;
@@ -205,19 +206,16 @@ export class AuthService {
       .sendWelcomeEmail(email, firstName, tenantName)
       .catch((err) => console.error("Failed to send welcome email:", err));
 
-    // 7. Generar JWT
-    const token = jwt.sign(
-      {
-        userId: result.user.id,
-        tenantId: result.tenant.id,
-        email: result.user.email,
-      },
-      config.jwt.secret,
-      { expiresIn: config.jwt.expiresIn } as any,
+    // 7. Generar tokens
+    const tokens = this.generateTokens(
+      result.user.id,
+      result.tenant.id,
+      result.user.email,
     );
 
     return {
-      token,
+      token: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
       user: {
         id: result.user.id,
         email: result.user.email,
@@ -331,19 +329,18 @@ export class AuthService {
       data: { lastLoginAt: new Date() },
     });
 
-    // 5. Generar JWT
-    const token = jwt.sign(
-      {
-        userId: user.id,
-        tenantId: user.tenant.id,
-        email: user.email,
-      },
-      config.jwt.secret,
-      { expiresIn: config.jwt.expiresIn } as any,
+    // 5. Generar JWT (access token y refresh token)
+    const firstBusinessUnitId = user.businessUnits[0]?.businessUnit.id;
+    const tokens = this.generateTokens(
+      user.id,
+      user.tenant.id,
+      user.email,
+      firstBusinessUnitId,
     );
 
     return {
-      token,
+      token: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
       user: {
         id: user.id,
         email: user.email,
@@ -505,6 +502,205 @@ export class AuthService {
       where: { id: userId },
       data: { password: hashedPassword },
     });
+  }
+
+  /**
+   * Obtiene información completa del usuario actual
+   * Incluye: user, tenant, businessUnits, roles y permisos
+   */
+  async getCurrentUser(userId: string) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        tenant: true,
+        userBusinessUnits: {
+          include: {
+            businessUnit: true,
+            role: {
+              include: {
+                rolePermissions: {
+                  include: {
+                    permission: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new AppError(404, "USER_NOT_FOUND", "User not found");
+    }
+
+    // Type assertion para incluidos de Prisma
+    const userWithRelations = user as any;
+
+    // Mapear business units con sus roles
+    const businessUnits = userWithRelations.userBusinessUnits.map(
+      (ubu: any) => ({
+        id: ubu.businessUnit.id,
+        name: ubu.businessUnit.name,
+        slug: ubu.businessUnit.slug,
+        description: ubu.businessUnit.description,
+        roleId: ubu.role.id,
+        roleName: ubu.role.name,
+      }),
+    );
+
+    // Extraer roles únicos
+    const rolesMap = new Map();
+    userWithRelations.userBusinessUnits.forEach((ubu: any) => {
+      if (!rolesMap.has(ubu.role.id)) {
+        rolesMap.set(ubu.role.id, {
+          id: ubu.role.id,
+          name: ubu.role.name,
+          displayName: ubu.role.displayName,
+          isSystemRole: ubu.role.isSystemRole,
+        });
+      }
+    });
+    const roles = Array.from(rolesMap.values());
+
+    // Agregar permisos únicos desde todos los roles
+    const permissionsSet = new Set<string>();
+    userWithRelations.userBusinessUnits.forEach((ubu: any) => {
+      ubu.role.rolePermissions.forEach((rp: any) => {
+        permissionsSet.add(rp.permission.name);
+      });
+    });
+    const permissions = Array.from(permissionsSet);
+
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        avatar: user.avatar,
+        status: user.status,
+        tenantId: user.tenantId,
+        lastLoginAt: user.lastLoginAt,
+      },
+      tenant: {
+        id: userWithRelations.tenant.id,
+        name: userWithRelations.tenant.name,
+        slug: userWithRelations.tenant.slug,
+        plan: userWithRelations.tenant.plan,
+        status: userWithRelations.tenant.status,
+        country: userWithRelations.tenant.country,
+      },
+      businessUnits,
+      roles,
+      permissions,
+    };
+  }
+
+  /**
+   * Genera access token y refresh token
+   */
+  generateTokens(
+    userId: string,
+    tenantId: string,
+    email: string,
+    businessUnitId?: string,
+  ) {
+    const accessToken = jwt.sign(
+      { userId, tenantId, email, businessUnitId },
+      config.jwt.secret,
+      { expiresIn: config.jwt.expiresIn } as any,
+    );
+
+    // Usar un secret diferente para refresh token si está disponible
+    const refreshSecret = process.env.JWT_REFRESH_SECRET || config.jwt.secret;
+    const refreshExpiresIn = process.env.JWT_REFRESH_EXPIRES_IN || "30d";
+
+    const refreshToken = jwt.sign(
+      { userId, tenantId, email, businessUnitId, type: "refresh" },
+      refreshSecret,
+      { expiresIn: refreshExpiresIn } as any,
+    );
+
+    return { accessToken, refreshToken };
+  }
+
+  /**
+   * Renueva access token usando refresh token válido
+   */
+  async refreshAccessToken(refreshToken: string) {
+    try {
+      // Verificar refresh token
+      const refreshSecret = process.env.JWT_REFRESH_SECRET || config.jwt.secret;
+
+      const decoded = jwt.verify(refreshToken, refreshSecret) as {
+        userId: string;
+        tenantId: string;
+        email: string;
+        type: string;
+      };
+
+      // Validar que sea un refresh token
+      if (decoded.type !== "refresh") {
+        throw new AppError(
+          401,
+          "INVALID_TOKEN_TYPE",
+          "Token is not a refresh token",
+        );
+      }
+
+      // Validar que el usuario siga existiendo y activo
+      const user = await prisma.user.findUnique({
+        where: { id: decoded.userId },
+        include: { tenant: true },
+      });
+
+      if (!user) {
+        throw new AppError(401, "USER_NOT_FOUND", "User not found");
+      }
+
+      if (user.status !== "ACTIVE") {
+        throw new AppError(403, "ACCOUNT_INACTIVE", "Account is not active");
+      }
+
+      if (user.tenant.status !== "ACTIVE") {
+        throw new AppError(
+          403,
+          "TENANT_SUSPENDED",
+          "Tenant account is suspended",
+        );
+      }
+
+      // Generar nuevo access token
+      const accessToken = jwt.sign(
+        {
+          userId: user.id,
+          tenantId: user.tenantId,
+          email: user.email,
+        },
+        config.jwt.secret,
+        { expiresIn: config.jwt.expiresIn } as any,
+      );
+
+      return {
+        accessToken,
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          tenantId: user.tenantId,
+        },
+      };
+    } catch (error) {
+      if (error instanceof jwt.JsonWebTokenError) {
+        throw new AppError(401, "INVALID_REFRESH_TOKEN", "Invalid token");
+      }
+      if (error instanceof jwt.TokenExpiredError) {
+        throw new AppError(401, "REFRESH_TOKEN_EXPIRED", "Token expired");
+      }
+      throw error;
+    }
   }
 }
 

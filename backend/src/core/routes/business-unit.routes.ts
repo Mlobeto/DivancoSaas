@@ -1,9 +1,18 @@
 import { Router } from "express";
 import { authenticate } from "@core/middlewares/auth.middleware";
+import { BusinessUnitService } from "@core/services/business-unit.service";
+import { z } from "zod";
 
 const router = Router();
+const businessUnitService = new BusinessUnitService();
 
 router.use(authenticate);
+
+const listQuerySchema = z.object({
+  search: z.string().optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+});
 
 /**
  * @openapi
@@ -99,13 +108,42 @@ router.use(authenticate);
  *               $ref: '#/components/schemas/Error'
  */
 router.get("/", async (req, res) => {
-  // TODO: Implementar
-  res.json({ success: true, data: [] });
+  const tenantId = req.context!.tenantId;
+  const options = listQuerySchema.parse(req.query);
+
+  const result = await businessUnitService.listBusinessUnits(tenantId, options);
+  res.json({ success: true, ...result });
 });
 
-router.post("/", async (req, res) => {
-  // TODO: Implementar
-  res.json({ success: true, data: { message: "Not implemented yet" } });
+const createBusinessUnitSchema = z.object({
+  name: z.string().min(2),
+  slug: z.string().regex(/^[a-z0-9-]+$/),
+  description: z.string().optional(),
+});
+
+router.post("/", async (req, res, next) => {
+  try {
+    const tenantId = req.context!.tenantId;
+    const data = createBusinessUnitSchema.parse(req.body);
+
+    const businessUnit = await businessUnitService.createBusinessUnit(
+      tenantId,
+      data,
+    );
+
+    res.status(201).json({ success: true, data: businessUnit });
+  } catch (error: any) {
+    if (error.message?.includes("already exists")) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "BUSINESS_UNIT_ALREADY_EXISTS",
+          message: "Business Unit with this slug already exists",
+        },
+      });
+    }
+    next(error);
+  }
 });
 
 /**
@@ -255,19 +293,78 @@ router.post("/", async (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get("/:id", async (req, res) => {
-  // TODO: Implementar
-  res.json({ success: true, data: { message: "Not implemented yet" } });
+router.get("/:id", async (req, res, next) => {
+  try {
+    const tenantId = req.context!.tenantId;
+    const { id } = req.params;
+
+    const businessUnit = await businessUnitService.getBusinessUnitById(
+      tenantId,
+      id,
+    );
+
+    if (!businessUnit) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: "BUSINESS_UNIT_NOT_FOUND",
+          message: "Business Unit not found",
+        },
+      });
+    }
+
+    res.json({ success: true, data: businessUnit });
+  } catch (error) {
+    next(error);
+  }
 });
 
-router.put("/:id", async (req, res) => {
-  // TODO: Implementar
-  res.json({ success: true, data: { message: "Not implemented yet" } });
+const updateBusinessUnitSchema = z.object({
+  name: z.string().min(2).optional(),
+  description: z.string().optional(),
 });
 
-router.delete("/:id", async (req, res) => {
-  // TODO: Implementar
-  res.json({ success: true, message: "Not implemented yet" });
+router.put("/:id", async (req, res, next) => {
+  try {
+    const tenantId = req.context!.tenantId;
+    const { id } = req.params;
+    const data = updateBusinessUnitSchema.parse(req.body);
+
+    const businessUnit = await businessUnitService.updateBusinessUnit(
+      tenantId,
+      id,
+      data,
+    );
+
+    res.json({ success: true, data: businessUnit });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete("/:id", async (req, res, next) => {
+  try {
+    const tenantId = req.context!.tenantId;
+    const { id } = req.params;
+
+    await businessUnitService.deleteBusinessUnit(tenantId, id);
+
+    res.json({
+      success: true,
+      message: "Business Unit deleted successfully",
+    });
+  } catch (error: any) {
+    if (error.message?.includes("not found")) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: "BUSINESS_UNIT_NOT_FOUND",
+          message: "Business Unit not found",
+        },
+      });
+    }
+    next(error);
+  }
 });
 
 /**

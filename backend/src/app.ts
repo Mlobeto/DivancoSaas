@@ -3,8 +3,8 @@ import cors from "cors";
 import helmet from "helmet";
 import "express-async-errors";
 
-import swaggerUi from 'swagger-ui-express';
-import { swaggerSpec } from '@config/swagger';
+import swaggerUi from "swagger-ui-express";
+import { swaggerSpec } from "@config/swagger";
 
 import { config } from "@config/index";
 import {
@@ -12,6 +12,8 @@ import {
   notFoundHandler,
 } from "@core/middlewares/error.middleware";
 import { auditLogger } from "@core/middlewares/audit.middleware";
+import { apiLimiter } from "@core/middlewares/rate-limit.middleware";
+import { requestLogger } from "@core/utils/logger";
 
 // Bootstrap / Dependency Injection
 // AQUÍ es donde se instancian los adapters (NO en el core)
@@ -23,6 +25,22 @@ import webhookRouter, {
   setPaymentProviderResolver as setWebhookResolver,
 } from "@core/routes/webhook.routes";
 
+// WhatsApp adapter injection
+import { MetaWhatsAppAdapter } from "./integrations/adapters/whatsapp/meta-whatsapp.adapter";
+import { setWhatsAppProviderFactory } from "@core/services/whatsapp.service";
+
+// File storage adapter injection
+import { AzureBlobStorageAdapter } from "./integrations/adapters/storage/azure-blob-storage.adapter";
+import { setFileStorageProviderFactory } from "@core/services/file-storage.service";
+
+// Invoice adapter injection
+import { invoiceProviderResolver } from "./bootstrap/invoice-resolver.bootstrap";
+import { setInvoiceProviderFactory } from "@core/services/invoice.service";
+
+// Shipping adapter injection
+import { shippingProviderResolver } from "./bootstrap/shipping-resolver.bootstrap";
+import { setShippingProviderFactory } from "@core/services/shipping.service";
+
 // Core Routers
 import authRouter from "@core/routes/auth.routes";
 import tenantRouter from "@core/routes/tenant.routes";
@@ -30,18 +48,53 @@ import userRouter from "@core/routes/user.routes";
 import businessUnitRouter from "@core/routes/business-unit.routes";
 import moduleRouter from "@core/routes/module.routes";
 import workflowRouter from "@core/routes/workflow.routes";
+import integrationRouter from "@core/routes/integration.routes";
+import whatsappRouter from "@core/routes/whatsapp.routes";
+import { fileRouter } from "@core/routes/file.routes";
+import { intentRouter } from "@core/routes/intent.routes";
+import { channelRouter } from "@core/routes/channel.routes";
+import userChannelIdentityRouter from "@core/routes/user-channel-identity.routes";
+import eventQueueRouter from "@core/routes/event-queue.routes";
+import invoiceRouter from "@core/routes/invoice.routes";
+import shippingRouter from "@core/routes/shipping.routes";
+import dashboardRouter from "@core/routes/dashboard.routes";
+import equipmentRouter from "@core/routes/equipment.routes";
 
 export function createApp(): Application {
   const app = express();
 
-  // DEPENDENCY INJECTION: Inyectar resolvers en las rutas del core
+  // DEPENDENCY INJECTION: Inyectar resolvers/factories en el core
   // El core nunca importa adapters, recibe las dependencias desde aquí
   setBillingResolver(paymentProviderResolver);
   setWebhookResolver(paymentProviderResolver);
 
+  // Inyectar factory para WhatsApp
+  setWhatsAppProviderFactory((config) => new MetaWhatsAppAdapter(config));
+
+  // Inyectar factory para File Storage
+  setFileStorageProviderFactory(
+    (config) => new AzureBlobStorageAdapter(config),
+  );
+
+  // Inyectar factory para Facturación
+  setInvoiceProviderFactory((provider, config) =>
+    invoiceProviderResolver(provider, config),
+  );
+
+  // Inyectar factory para Envíos
+  setShippingProviderFactory((provider, config) =>
+    shippingProviderResolver(provider, config),
+  );
+
   // Security
   app.use(helmet());
   app.use(cors(config.cors));
+
+  // Request logging with correlation ID
+  app.use(requestLogger);
+
+  // Rate limiting (aplicar a todas las rutas excepto /health)
+  app.use(apiLimiter);
 
   // Body parsing
   app.use(express.json());
@@ -49,9 +102,9 @@ export function createApp(): Application {
 
   // Auditoría
   app.use(auditLogger);
-  
+
   // swagger
-  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+  app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
   // Health check
   app.get("/health", (req, res) => {
@@ -69,6 +122,17 @@ export function createApp(): Application {
   app.use("/api/v1/modules", moduleRouter);
   app.use("/api/v1/workflows", workflowRouter);
   app.use("/api/v1/billing", billingRouter);
+  app.use("/api/v1/integrations", integrationRouter);
+  app.use("/api/v1/whatsapp", whatsappRouter);
+  app.use("/api/v1/files", fileRouter);
+  app.use("/api/v1/intents", intentRouter);
+  app.use("/api/v1/channels", channelRouter);
+  app.use("/api/v1/user-identities", userChannelIdentityRouter);
+  app.use("/api/v1/events", eventQueueRouter);
+  app.use("/api/v1/equipment", equipmentRouter);
+  app.use("/api/v1/invoices", invoiceRouter);
+  app.use("/api/v1/shipping", shippingRouter);
+  app.use("/api/v1/dashboard", dashboardRouter);
 
   // TODO: Cargar rutas de módulos dinámicamente
   // loadModuleRoutes(app);

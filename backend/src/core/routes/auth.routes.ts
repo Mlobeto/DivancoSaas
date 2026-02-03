@@ -2,6 +2,10 @@ import { Router } from "express";
 import { z } from "zod";
 import { authService } from "@core/services/auth.service";
 import { authenticate } from "@core/middlewares/auth.middleware";
+import {
+  authLimiter,
+  passwordResetLimiter,
+} from "@core/middlewares/rate-limit.middleware";
 
 const router = Router();
 
@@ -149,7 +153,7 @@ const changePasswordSchema = z.object({
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post("/register", async (req, res) => {
+router.post("/register", authLimiter, async (req, res) => {
   const data = registerSchema.parse(req.body);
   const result = await authService.register(data);
 
@@ -247,7 +251,7 @@ router.post("/register", async (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post("/login", async (req, res) => {
+router.post("/login", authLimiter, async (req, res) => {
   const data = loginSchema.parse(req.body);
   const result = await authService.login(data);
 
@@ -297,7 +301,7 @@ router.post("/login", async (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post("/forgot-password", async (req, res) => {
+router.post("/forgot-password", passwordResetLimiter, async (req, res) => {
   const data = forgotPasswordSchema.parse(req.body);
   await authService.forgotPassword(data.email, data.tenantSlug);
 
@@ -350,7 +354,7 @@ router.post("/forgot-password", async (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post("/reset-password", async (req, res) => {
+router.post("/reset-password", passwordResetLimiter, async (req, res) => {
   const data = resetPasswordSchema.parse(req.body);
   await authService.resetPassword(data.token, data.newPassword);
 
@@ -417,6 +421,142 @@ router.post("/change-password", authenticate, async (req, res) => {
     success: true,
     message: "Password changed successfully",
   });
+});
+
+/**
+ * @openapi
+ * /auth/refresh:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Renovar access token usando refresh token
+ *     description: Permite obtener un nuevo access token cuando el actual expire, sin requerir login nuevamente
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [refreshToken]
+ *             properties:
+ *               refreshToken:
+ *                 type: string
+ *                 description: Refresh token válido obtenido en login/register
+ *                 example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *     responses:
+ *       200:
+ *         description: Nuevo access token generado exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 accessToken:
+ *                   type: string
+ *                   description: Nuevo access token
+ *                 user:
+ *                   type: object
+ *                   properties:
+ *                     id: { type: string }
+ *                     email: { type: string }
+ *                     firstName: { type: string }
+ *                     lastName: { type: string }
+ *                     tenantId: { type: string }
+ *       401:
+ *         description: Refresh token inválido o expirado
+ */
+router.post("/refresh", async (req, res) => {
+  const { refreshToken } = req.body;
+
+  if (!refreshToken) {
+    return res.status(400).json({
+      error: "MISSING_REFRESH_TOKEN",
+      message: "Refresh token is required",
+    });
+  }
+
+  const result = await authService.refreshAccessToken(refreshToken);
+
+  res.json(result);
+});
+
+/**
+ * @openapi
+ * /auth/me:
+ *   get:
+ *     tags: [Auth]
+ *     summary: Obtener información del usuario actual
+ *     description: Retorna el perfil completo del usuario autenticado incluyendo tenant, business units, roles y permisos. Este endpoint es crucial para la inicialización del frontend.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Información del usuario actual
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user:
+ *                   type: object
+ *                   properties:
+ *                     id: { type: string, format: uuid }
+ *                     email: { type: string, format: email }
+ *                     firstName: { type: string }
+ *                     lastName: { type: string }
+ *                     avatar: { type: string, nullable: true }
+ *                     status: { type: string, enum: [ACTIVE, INACTIVE, SUSPENDED] }
+ *                     tenantId: { type: string, format: uuid }
+ *                     lastLoginAt: { type: string, format: date-time, nullable: true }
+ *                 tenant:
+ *                   type: object
+ *                   properties:
+ *                     id: { type: string, format: uuid }
+ *                     name: { type: string }
+ *                     slug: { type: string }
+ *                     plan: { type: string }
+ *                     status: { type: string }
+ *                     country: { type: string }
+ *                 businessUnits:
+ *                   type: array
+ *                   description: Business Units a las que el usuario tiene acceso
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id: { type: string, format: uuid }
+ *                       name: { type: string }
+ *                       slug: { type: string }
+ *                       description: { type: string, nullable: true }
+ *                       roleId: { type: string, format: uuid }
+ *                       roleName: { type: string }
+ *                 roles:
+ *                   type: array
+ *                   description: Roles únicos del usuario (sin duplicados)
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id: { type: string, format: uuid }
+ *                       name: { type: string }
+ *                       displayName: { type: string }
+ *                       isSystemRole: { type: boolean }
+ *                 permissions:
+ *                   type: array
+ *                   description: Lista de permisos únicos agregados desde todos los roles
+ *                   items:
+ *                     type: string
+ *                   example: ["users:read", "users:write", "business-units:create", "billing:manage"]
+ *       401:
+ *         description: No autenticado o token inválido
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.get("/me", authenticate, async (req, res) => {
+  const userId = (req as any).context.userId;
+
+  const currentUser = await authService.getCurrentUser(userId);
+
+  res.json(currentUser);
 });
 
 export default router;

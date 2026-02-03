@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, Request } from "express";
 import { authenticate } from "@core/middlewares/auth.middleware";
 import { UserService } from "@core/services/user.service";
 import { z } from "zod";
@@ -159,7 +159,7 @@ const listQuerySchema = z.object({
 
 router.get("/", async (req, res, next) => {
   try {
-    const tenantId = (req as any).context.tenantId;
+    const tenantId = (req as Request).context!.tenantId;
     const options = listQuerySchema.parse(req.query);
 
     const result = await userService.listUsers(tenantId, options);
@@ -179,7 +179,7 @@ const createUserSchema = z.object({
 
 router.post("/", async (req, res, next) => {
   try {
-    const tenantId = (req as any).context.tenantId;
+    const tenantId = (req as Request).context!.tenantId;
     const data = createUserSchema.parse(req.body);
 
     const user = await userService.createUser(data, tenantId);

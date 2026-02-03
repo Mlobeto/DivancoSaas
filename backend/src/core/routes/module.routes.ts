@@ -1,9 +1,33 @@
 import { Router } from "express";
 import { authenticate } from "@core/middlewares/auth.middleware";
+import { ModuleService } from "@core/services/module.service";
+import { z } from "zod";
 
 const router = Router();
+const moduleService = new ModuleService();
 
 router.use(authenticate);
+
+const listModulesQuerySchema = z.object({
+  search: z.string().optional(),
+  category: z.string().optional(),
+  isActive: z
+    .enum(["true", "false"])
+    .optional()
+    .transform((v) => (v === undefined ? undefined : v === "true")),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+});
+
+const listBuModulesQuerySchema = z.object({
+  search: z.string().optional(),
+  enabled: z
+    .enum(["true", "false"])
+    .optional()
+    .transform((v) => (v === undefined ? undefined : v === "true")),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+});
 
 /**
  * @openapi
@@ -43,8 +67,9 @@ router.use(authenticate);
  *               $ref: '#/components/schemas/Error'
  */
 router.get("/", async (req, res) => {
-  // TODO: Implementar
-  res.json({ success: true, data: [] });
+  const options = listModulesQuerySchema.parse(req.query);
+  const result = await moduleService.listModules(options);
+  res.json({ success: true, ...result });
 });
 
 /**
@@ -97,8 +122,13 @@ router.get("/", async (req, res) => {
  *               $ref: '#/components/schemas/Error'
  */
 router.get("/:businessUnitId", async (req, res) => {
-  // TODO: Implementar
-  res.json({ success: true, data: [] });
+  const { businessUnitId } = req.params;
+  const options = listBuModulesQuerySchema.parse(req.query);
+  const result = await moduleService.listBusinessUnitModules(
+    businessUnitId,
+    options,
+  );
+  res.json({ success: true, ...result });
 });
 
 /**
@@ -167,9 +197,51 @@ router.get("/:businessUnitId", async (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post("/:businessUnitId/:moduleId/enable", async (req, res) => {
-  // TODO: Implementar
-  res.json({ success: true, data: { message: "Not implemented yet" } });
+const enableModuleSchema = z.object({
+  configuration: z.any().optional(),
+});
+
+router.post("/:businessUnitId/:moduleId/enable", async (req, res, next) => {
+  try {
+    const { businessUnitId, moduleId } = req.params;
+    const { configuration } = enableModuleSchema.parse(req.body);
+
+    const result = await moduleService.enableModule(
+      businessUnitId,
+      moduleId,
+      configuration,
+    );
+
+    res.json({
+      success: true,
+      message: "Module enabled successfully",
+      data: {
+        moduleId: result.moduleId,
+        businessUnitId: result.businessUnitId,
+        activatedAt: result.createdAt,
+      },
+    });
+  } catch (error: any) {
+    if (error.message?.includes("not found")) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: "NOT_FOUND",
+          message: error.message,
+        },
+      });
+    }
+    if (error.message?.includes("already enabled")) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "MODULE_ALREADY_ENABLED",
+          message: "Module is already enabled for this Business Unit",
+        },
+      });
+    }
+    next(error);
+  }
 });
 
 /**
@@ -223,9 +295,37 @@ router.post("/:businessUnitId/:moduleId/enable", async (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post("/:businessUnitId/:moduleId/disable", async (req, res) => {
-  // TODO: Implementar
-  res.json({ success: true, message: "Not implemented yet" });
+router.post("/:businessUnitId/:moduleId/disable", async (req, res, next) => {
+  try {
+    const { businessUnitId, moduleId } = req.params;
+
+    await moduleService.disableModule(businessUnitId, moduleId);
+
+    res.json({
+      success: true,
+      message: "Module disabled successfully",
+    });
+  } catch (error: any) {
+    if (error.message?.includes("not enabled")) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "MODULE_NOT_ENABLED",
+          message: "Module is not enabled in this Business Unit",
+        },
+      });
+    }
+    if (error.message?.includes("already disabled")) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "MODULE_ALREADY_DISABLED",
+          message: "Module is already disabled",
+        },
+      });
+    }
+    next(error);
+  }
 });
 
 export default router;
