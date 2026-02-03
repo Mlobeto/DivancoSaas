@@ -8,7 +8,6 @@
     "lib": ["ES2022"],
     "types": ["node", "jest"],
     "moduleResolution": "node",
-    "ignoreDeprecations": "6.0",
 
     /* ======================================================
      * PROJECT STRUCTURE
