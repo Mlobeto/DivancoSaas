@@ -518,7 +518,7 @@ export class AuthService {
             businessUnit: true,
             role: {
               include: {
-                rolePermissions: {
+                permissions: {
                   include: {
                     permission: true,
                   },
@@ -538,7 +538,7 @@ export class AuthService {
     const userWithRelations = user as any;
 
     // Mapear business units con sus roles
-    const businessUnits = userWithRelations.userBusinessUnits.map(
+    const businessUnits = userWithRelations.businessUnits.map(
       (ubu: any) => ({
         id: ubu.businessUnit.id,
         name: ubu.businessUnit.name,
@@ -551,7 +551,7 @@ export class AuthService {
 
     // Extraer roles únicos
     const rolesMap = new Map();
-    userWithRelations.userBusinessUnits.forEach((ubu: any) => {
+    userWithRelations.businessUnits.forEach((ubu: any) => {
       if (!rolesMap.has(ubu.role.id)) {
         rolesMap.set(ubu.role.id, {
           id: ubu.role.id,
@@ -565,8 +565,8 @@ export class AuthService {
 
     // Agregar permisos únicos desde todos los roles
     const permissionsSet = new Set<string>();
-    userWithRelations.userBusinessUnits.forEach((ubu: any) => {
-      ubu.role.rolePermissions.forEach((rp: any) => {
+    userWithRelations.businessUnits.forEach((ubu: any) => {
+      ubu.role.permissions.forEach((rp: any) => {
         permissionsSet.add(rp.permission.name);
       });
     });
