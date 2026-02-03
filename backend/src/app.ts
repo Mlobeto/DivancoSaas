@@ -93,6 +93,10 @@ export function createApp(): Application {
     shippingProviderResolver(provider, config),
   );
 
+  // Trust proxy - CRÍTICO para Railway/Vercel/cualquier proxy
+  // Permite confiar en X-Forwarded-For para rate limiting y IPs correctas
+  app.set("trust proxy", 1);
+
   // Security
   app.use(helmet());
   app.use(cors(config.cors));
