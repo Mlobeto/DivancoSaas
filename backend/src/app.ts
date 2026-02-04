@@ -46,6 +46,7 @@ import authRouter from "@core/routes/auth.routes";
 import tenantRouter from "@core/routes/tenant.routes";
 import userRouter from "@core/routes/user.routes";
 import businessUnitRouter from "@core/routes/business-unit.routes";
+import businessUnitIntegrationsRouter from "@core/routes/business-unit-integrations.routes";
 import moduleRouter from "@core/routes/module.routes";
 import workflowRouter from "@core/routes/workflow.routes";
 import integrationRouter from "@core/routes/integration.routes";
@@ -130,6 +131,7 @@ export function createApp(): Application {
   app.use("/api/v1/tenants", tenantRouter);
   app.use("/api/v1/users", userRouter);
   app.use("/api/v1/business-units", businessUnitRouter);
+  app.use("/api/v1/business-units", businessUnitIntegrationsRouter); // Rutas de integraciones
   app.use("/api/v1/modules", moduleRouter);
   app.use("/api/v1/workflows", workflowRouter);
   app.use("/api/v1/billing", billingRouter);

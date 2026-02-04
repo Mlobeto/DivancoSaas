@@ -23,6 +23,8 @@ export interface SendEmailParams {
   subject: string;
   text?: string;
   html?: string;
+  cc?: string | string[];
+  bcc?: string | string[];
   attachments?: EmailAttachment[];
 }
 

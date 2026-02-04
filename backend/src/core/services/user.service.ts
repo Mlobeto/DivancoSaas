@@ -263,6 +263,7 @@ export class UserService {
 
       if (tenant) {
         await emailService.sendWelcomeEmail(
+          data.businessUnitId,
           user.email,
           user.firstName,
           tenant.name,

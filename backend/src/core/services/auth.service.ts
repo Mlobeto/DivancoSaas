@@ -204,7 +204,7 @@ export class AuthService {
 
     // 6. Enviar email de bienvenida (async, no bloqueante)
     emailService
-      .sendWelcomeEmail(email, firstName, tenantName)
+      .sendWelcomeEmail(result.businessUnit.id, email, firstName, tenantName)
       .catch((err) => console.error("Failed to send welcome email:", err));
 
     // 7. Generar tokens
@@ -415,12 +415,20 @@ export class AuthService {
       },
     });
 
-    // 4. Enviar email
-    await emailService.sendPasswordResetEmail(
-      user.email,
-      resetToken, // Enviamos el token sin hashear
-      user.firstName,
-    );
+    // 4. Enviar email (usar la primera BU del usuario como default)
+    const userBU = await prisma.userBusinessUnit.findFirst({
+      where: { userId: user.id },
+      select: { businessUnitId: true },
+    });
+
+    if (userBU) {
+      await emailService.sendPasswordResetEmail(
+        userBU.businessUnitId,
+        user.email,
+        resetToken, // Enviamos el token sin hashear
+        user.firstName,
+      );
+    }
   }
 
   /**

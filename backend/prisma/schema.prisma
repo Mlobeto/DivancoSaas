@@ -419,6 +419,7 @@ model BusinessUnitIntegration {
 enum IntegrationType {
   // Comunicaciones
   SENDGRID // Email transaccional y marketing
+  AZURE_COMMUNICATION_SERVICES // Email + SMS + WhatsApp de Azure
   META_WHATSAPP // WhatsApp Business Cloud API
   TWILIO_SMS // SMS transaccional
 

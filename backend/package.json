@@ -29,6 +29,7 @@
   "author": "",
   "license": "UNLICENSED",
   "dependencies": {
+    "@azure/communication-email": "^1.1.0",
     "@azure/storage-blob": "^12.30.0",
     "@prisma/client": "^5.22.0",
     "@sendgrid/mail": "^8.1.6",
