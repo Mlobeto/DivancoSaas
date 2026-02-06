@@ -10,6 +10,7 @@ import {
 import { NormalizedEvent } from "@core/types/events";
 import { WhatsAppWebhookPayload } from "@core/contracts/whatsapp.provider";
 import { PrismaClient } from "@prisma/client";
+import { logger } from "@core/utils/logger";
 import { userChannelIdentityService } from "@core/services/user-channel-identity.service";
 
 const prisma = new PrismaClient();
@@ -75,23 +76,23 @@ export class WhatsAppChannelAdapter implements ChannelAdapter<WhatsAppWebhookPay
    */
   async validate(externalEvent: WhatsAppWebhookPayload): Promise<boolean> {
     if (!externalEvent.from || !externalEvent.to) {
-      console.error("[WhatsAppAdapter] Missing from/to fields");
+      logger.error({ externalEvent }, "[WhatsAppAdapter] Missing from/to fields");
       return false;
     }
 
     if (!externalEvent.messageId) {
-      console.error("[WhatsAppAdapter] Missing messageId");
+      logger.error({ externalEvent }, "[WhatsAppAdapter] Missing messageId");
       return false;
     }
 
     if (!externalEvent.type) {
-      console.error("[WhatsAppAdapter] Missing message type");
+      logger.error({ externalEvent }, "[WhatsAppAdapter] Missing message type");
       return false;
     }
 
     // Para mensajes de texto, debe tener contenido
     if (externalEvent.type === "text" && !externalEvent.text) {
-      console.error("[WhatsAppAdapter] Text message without content");
+      logger.error({ externalEvent }, "[WhatsAppAdapter] Text message without content");
       return false;
     }
 
@@ -100,7 +101,7 @@ export class WhatsAppChannelAdapter implements ChannelAdapter<WhatsAppWebhookPay
       ["image", "document", "audio", "video"].includes(externalEvent.type) &&
       !externalEvent.mediaUrl
     ) {
-      console.error("[WhatsAppAdapter] Media message without URL");
+      logger.error({ externalEvent }, "[WhatsAppAdapter] Media message without URL");
       return false;
     }
 

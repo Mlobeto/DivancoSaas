@@ -12,6 +12,7 @@
  */
 
 import axios, { AxiosInstance } from "axios";
+import { logger } from "../../../core/utils/logger";
 import {
   WhatsAppProvider,
   SendWhatsAppTextParams,
@@ -70,9 +71,9 @@ export class MetaWhatsAppAdapter implements WhatsAppProvider {
         timestamp: new Date(),
       };
     } catch (error: any) {
-      console.error(
-        "[MetaWhatsAppAdapter] Error sending text:",
-        error.response?.data || error.message,
+      logger.error(
+        { error: error.response?.data || error.message },
+        "[MetaWhatsAppAdapter] Error sending text"
       );
       throw new Error(
         `Failed to send WhatsApp message: ${error.response?.data?.error?.message || error.message}`,
@@ -113,9 +114,9 @@ export class MetaWhatsAppAdapter implements WhatsAppProvider {
         timestamp: new Date(),
       };
     } catch (error: any) {
-      console.error(
-        "[MetaWhatsAppAdapter] Error sending template:",
-        error.response?.data || error.message,
+      logger.error(
+        { error: error.response?.data || error.message, template: params.templateName },
+        "[MetaWhatsAppAdapter] Error sending template"
       );
       throw new Error(
         `Failed to send WhatsApp template: ${error.response?.data?.error?.message || error.message}`,
@@ -167,9 +168,9 @@ export class MetaWhatsAppAdapter implements WhatsAppProvider {
         timestamp: new Date(),
       };
     } catch (error: any) {
-      console.error(
-        "[MetaWhatsAppAdapter] Error sending media:",
-        error.response?.data || error.message,
+      logger.error(
+        { error: error.response?.data || error.message, mediaType: params.type },
+        "[MetaWhatsAppAdapter] Error sending media"
       );
       throw new Error(
         `Failed to send WhatsApp media: ${error.response?.data?.error?.message || error.message}`,
@@ -183,11 +184,11 @@ export class MetaWhatsAppAdapter implements WhatsAppProvider {
    */
   verifyWebhook(mode: string, token: string, challenge: string): string | null {
     if (mode === "subscribe" && token === this.config.webhookVerifyToken) {
-      console.log("[MetaWhatsAppAdapter] Webhook verified successfully");
+      logger.info({ mode, challenge }, "[MetaWhatsAppAdapter] Webhook verified successfully");
       return challenge;
     }
 
-    console.warn("[MetaWhatsAppAdapter] Webhook verification failed");
+    logger.warn({ mode, token: token ? "provided" : "missing" }, "[MetaWhatsAppAdapter] Webhook verification failed");
     return null;
   }
 
@@ -250,7 +251,7 @@ export class MetaWhatsAppAdapter implements WhatsAppProvider {
         }
       }
     } catch (error: any) {
-      console.error("[MetaWhatsAppAdapter] Error processing webhook:", error);
+      logger.error({ error }, "[MetaWhatsAppAdapter] Error processing webhook");
     }
 
     return messages;
@@ -273,7 +274,7 @@ export class MetaWhatsAppAdapter implements WhatsAppProvider {
         response.data.id === this.config.phoneNumberId
       );
     } catch (error) {
-      console.error("[MetaWhatsAppAdapter] Configuration check failed:", error);
+      logger.error({ error, tenantId, businessUnitId }, "[MetaWhatsAppAdapter] Configuration check failed");
       return false;
     }
   }
@@ -287,7 +288,7 @@ export class MetaWhatsAppAdapter implements WhatsAppProvider {
       const response = await this.apiClient.get(`/${mediaId}`);
       return response.data.url;
     } catch (error: any) {
-      console.error("[MetaWhatsAppAdapter] Error getting media URL:", error);
+      logger.error({ error, mediaId }, "[MetaWhatsAppAdapter] Error getting media URL");
       throw new Error("Failed to retrieve media URL from Meta");
     }
   }
@@ -302,7 +303,7 @@ export class MetaWhatsAppAdapter implements WhatsAppProvider {
       );
       return response.data;
     } catch (error: any) {
-      console.error("[MetaWhatsAppAdapter] Error getting phone info:", error);
+      logger.error({ error, phoneNumberId }, "[MetaWhatsAppAdapter] Error getting phone info");
       throw new Error("Failed to retrieve phone number info");
     }
   }
