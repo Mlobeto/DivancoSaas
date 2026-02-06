@@ -174,7 +174,7 @@ export class MetaWhatsAppAdapter implements WhatsAppProvider {
       logger.error(
         {
           error: error.response?.data || error.message,
-          mediaType: params.type,
+          mediaType: params.mediaType,
         },
         "[MetaWhatsAppAdapter] Error sending media",
       );
@@ -322,7 +322,7 @@ export class MetaWhatsAppAdapter implements WhatsAppProvider {
       return response.data;
     } catch (error: any) {
       logger.error(
-        { error, phoneNumberId },
+        { error, phoneNumberId: this.config.phoneNumberId },
         "[MetaWhatsAppAdapter] Error getting phone info",
       );
       throw new Error("Failed to retrieve phone number info");
