@@ -66,8 +66,13 @@ export class AzureBlobStorageAdapter implements FileStorageProvider {
         access: "blob", // público por defecto, puede cambiarse a 'private'
       });
 
-      // Generar nombre único para el blob
-      const blobName = this.generateBlobName(params.fileName, params.folder);
+      // Generar nombre único para el blob con estructura multi-tenant
+      const blobName = this.generateBlobName(
+        params.fileName,
+        params.tenantId,
+        params.businessUnitId,
+        params.folder,
+      );
       const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
       // Subir archivo
@@ -384,9 +389,15 @@ export class AzureBlobStorageAdapter implements FileStorageProvider {
   }
 
   /**
-   * Genera un nombre único para el blob
+   * Genera un nombre único para el blob con estructura multi-tenant
+   * Estructura: tenant-{id}/business-unit-{id}/{folder}/{filename}
    */
-  private generateBlobName(fileName: string, folder?: string): string {
+  private generateBlobName(
+    fileName: string,
+    tenantId: string,
+    businessUnitId: string,
+    folder?: string,
+  ): string {
     const timestamp = Date.now();
     const random = Math.random().toString(36).substring(7);
     const extension = fileName.split(".").pop();
@@ -395,9 +406,20 @@ export class AzureBlobStorageAdapter implements FileStorageProvider {
       .toLowerCase()
       .replace(/[^a-z0-9-]/g, "-");
 
-    const blobName = `${sanitizedName}-${timestamp}-${random}.${extension}`;
+    const uniqueFileName = `${sanitizedName}-${timestamp}-${random}.${extension}`;
 
-    return folder ? `${folder}/${blobName}` : blobName;
+    // Estructura multi-tenant obligatoria
+    const tenantPath = `tenant-${tenantId}`;
+    const businessUnitPath = `business-unit-${businessUnitId}`;
+
+    // Construir path completo
+    const pathParts = [tenantPath, businessUnitPath];
+    if (folder) {
+      pathParts.push(folder);
+    }
+    pathParts.push(uniqueFileName);
+
+    return pathParts.join("/");
   }
 
   /**
