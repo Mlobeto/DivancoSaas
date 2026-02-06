@@ -100,7 +100,10 @@ export class AzureBlobStorageAdapter implements FileStorageProvider {
         uploadedAt: properties.createdOn || new Date(),
       };
     } catch (error: any) {
-      logger.error({ error, fileName: params.fileName }, "[AzureBlobStorageAdapter] Upload error");
+      logger.error(
+        { error, fileName: params.fileName },
+        "[AzureBlobStorageAdapter] Upload error",
+      );
       throw new Error(`Failed to upload file: ${error.message}`);
     }
   }
@@ -136,7 +139,10 @@ export class AzureBlobStorageAdapter implements FileStorageProvider {
         size: properties.contentLength || 0,
       };
     } catch (error: any) {
-      logger.error({ error, blobName: params.blobName }, "[AzureBlobStorageAdapter] Download error");
+      logger.error(
+        { error, blobName: params.blobName },
+        "[AzureBlobStorageAdapter] Download error",
+      );
       throw new Error(`Failed to download file: ${error.message}`);
     }
   }
@@ -155,7 +161,10 @@ export class AzureBlobStorageAdapter implements FileStorageProvider {
 
       await blockBlobClient.delete();
     } catch (error: any) {
-      logger.error({ error, blobName: params.blobName }, "[AzureBlobStorageAdapter] Delete error");
+      logger.error(
+        { error, blobName: params.blobName },
+        "[AzureBlobStorageAdapter] Delete error",
+      );
       throw new Error(`Failed to delete file: ${error.message}`);
     }
   }
@@ -198,7 +207,10 @@ export class AzureBlobStorageAdapter implements FileStorageProvider {
 
       return `${blockBlobClient.url}?${sasToken}`;
     } catch (error: any) {
-      logger.error({ error, blobName: params.blobName }, "[AzureBlobStorageAdapter] SAS token error");
+      logger.error(
+        { error, blobName: params.blobName },
+        "[AzureBlobStorageAdapter] SAS token error",
+      );
       throw new Error(`Failed to generate SAS token: ${error.message}`);
     }
   }
@@ -266,7 +278,10 @@ export class AzureBlobStorageAdapter implements FileStorageProvider {
         size: buffer.length,
       };
     } catch (error: any) {
-      logger.error({ error }, "[AzureBlobStorageAdapter] Image processing error");
+      logger.error(
+        { error },
+        "[AzureBlobStorageAdapter] Image processing error",
+      );
       throw new Error(`Failed to process image: ${error.message}`);
     }
   }
@@ -305,7 +320,10 @@ export class AzureBlobStorageAdapter implements FileStorageProvider {
 
       return files;
     } catch (error: any) {
-      logger.error({ error, container: params.container }, "[AzureBlobStorageAdapter] List files error");
+      logger.error(
+        { error, container: params.container },
+        "[AzureBlobStorageAdapter] List files error",
+      );
       throw new Error(`Failed to list files: ${error.message}`);
     }
   }
@@ -353,7 +371,10 @@ export class AzureBlobStorageAdapter implements FileStorageProvider {
         metadata: properties.metadata,
       };
     } catch (error: any) {
-      logger.error({ error, blobName }, "[AzureBlobStorageAdapter] Get metadata error");
+      logger.error(
+        { error, blobName },
+        "[AzureBlobStorageAdapter] Get metadata error",
+      );
       throw new Error(`Failed to get file metadata: ${error.message}`);
     }
   }
@@ -371,7 +392,10 @@ export class AzureBlobStorageAdapter implements FileStorageProvider {
       const result = await iterator.next();
       return !result.done;
     } catch (error) {
-      logger.error({ error, tenantId, businessUnitId }, "[AzureBlobStorageAdapter] Configuration check failed");
+      logger.error(
+        { error, tenantId, businessUnitId },
+        "[AzureBlobStorageAdapter] Configuration check failed",
+      );
       return false;
     }
   }

@@ -89,13 +89,14 @@ model BusinessUnit {
 
 model User {
   id        String     @id @default(uuid())
-  tenantId  String
-  email     String
+  tenantId  String? // Nullable para SUPER_ADMIN
+  email     String     @unique
   password  String
   firstName String
   lastName  String
   avatar    String?
   status    UserStatus @default(ACTIVE)
+  role      UserRole   @default(USER) // Nuevo campo global
 
   // Password Reset
   resetPasswordToken   String?
@@ -107,7 +108,7 @@ model User {
   updatedAt   DateTime  @updatedAt
 
   // Relations
-  tenant            Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant            Tenant?               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   businessUnits     UserBusinessUnit[]
   auditLogs         AuditLog[]
   channelIdentities UserChannelIdentity[]
@@ -118,7 +119,13 @@ model User {
   @@index([tenantId])
   @@index([email])
   @@index([resetPasswordToken])
+  @@index([role])
   @@map("users")
+}
+
+enum UserRole {
+  SUPER_ADMIN // Cross-tenant access, debugging, support
+  USER // Normal user
 }
 
 enum UserStatus {
@@ -778,4 +785,36 @@ model AssetAttachment {
   @@index([assetId])
   @@index([type])
   @@map("asset_attachments")
+}
+
+// ============================================
+// SYSTEM: ANNOUNCEMENTS & MAINTENANCE
+// ============================================
+
+model SystemAnnouncement {
+  id      String           @id @default(uuid())
+  message String // Mensaje a mostrar
+  type    AnnouncementType @default(INFO)
+  active  Boolean          @default(true)
+
+  // Scheduling
+  startsAt DateTime?
+  endsAt   DateTime?
+
+  // Targeting (vacío = todos los tenants)
+  affectedTenants String[] // Array de tenant IDs
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([active, startsAt, endsAt])
+  @@map("system_announcements")
+}
+
+enum AnnouncementType {
+  INFO // Información general
+  MAINTENANCE // Mantenimiento programado
+  UPDATE // Nueva feature/actualización
+  WARNING // Advertencia (deprecation, etc)
+  CRITICAL // Problema crítico/downtime
 }

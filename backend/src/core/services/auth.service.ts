@@ -36,14 +36,14 @@ interface AuthResponse {
     email: string;
     firstName: string;
     lastName: string;
-    tenantId: string;
+    tenantId: string | null;
   };
   tenant: {
     id: string;
     name: string;
     slug: string;
     plan: string;
-  };
+  } | null;
   businessUnits: Array<{
     id: string;
     name: string;
@@ -289,11 +289,13 @@ export class AuthService {
           "MULTIPLE_TENANTS",
           "Multiple accounts found. Please specify tenant slug",
           {
-            tenants: users.map((u) => ({
-              tenantId: u.tenant.id,
-              tenantName: u.tenant.name,
-              tenantSlug: u.tenant.slug,
-            })),
+            tenants: users
+              .filter((u) => u.tenant) // Excluir SUPER_ADMIN
+              .map((u) => ({
+                tenantId: u.tenant!.id,
+                tenantName: u.tenant!.name,
+                tenantSlug: u.tenant!.slug,
+              })),
           },
         );
       }
@@ -310,7 +312,8 @@ export class AuthService {
       throw new AppError(403, "ACCOUNT_INACTIVE", "Account is not active");
     }
 
-    if (user.tenant.status !== "ACTIVE") {
+    // SUPER_ADMIN no tiene tenant, skip validación
+    if (user.tenant && user.tenant.status !== "ACTIVE") {
       throw new AppError(
         403,
         "TENANT_SUSPENDED",
@@ -334,7 +337,7 @@ export class AuthService {
     const firstBusinessUnitId = user.businessUnits[0]?.businessUnit.id;
     const tokens = this.generateTokens(
       user.id,
-      user.tenant.id,
+      user.tenant?.id || null,
       user.email,
       firstBusinessUnitId,
     );
@@ -347,14 +350,16 @@ export class AuthService {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
-        tenantId: user.tenant.id,
+        tenantId: user.tenant?.id || null,
       },
-      tenant: {
-        id: user.tenant.id,
-        name: user.tenant.name,
-        slug: user.tenant.slug,
-        plan: user.tenant.plan,
-      },
+      tenant: user.tenant
+        ? {
+            id: user.tenant.id,
+            name: user.tenant.name,
+            slug: user.tenant.slug,
+            plan: user.tenant.plan,
+          }
+        : null,
       businessUnits: user.businessUnits.map((ubu) => ({
         id: ubu.businessUnit.id,
         name: ubu.businessUnit.name,
@@ -590,14 +595,16 @@ export class AuthService {
         tenantId: user.tenantId,
         lastLoginAt: user.lastLoginAt,
       },
-      tenant: {
-        id: userWithRelations.tenant.id,
-        name: userWithRelations.tenant.name,
-        slug: userWithRelations.tenant.slug,
-        plan: userWithRelations.tenant.plan,
-        status: userWithRelations.tenant.status,
-        country: userWithRelations.tenant.country,
-      },
+      tenant: userWithRelations.tenant
+        ? {
+            id: userWithRelations.tenant.id,
+            name: userWithRelations.tenant.name,
+            slug: userWithRelations.tenant.slug,
+            plan: userWithRelations.tenant.plan,
+            status: userWithRelations.tenant.status,
+            country: userWithRelations.tenant.country,
+          }
+        : null,
       businessUnits,
       roles,
       permissions,
@@ -609,7 +616,7 @@ export class AuthService {
    */
   generateTokens(
     userId: string,
-    tenantId: string,
+    tenantId: string | null,
     email: string,
     businessUnitId?: string,
   ) {
@@ -670,7 +677,8 @@ export class AuthService {
         throw new AppError(403, "ACCOUNT_INACTIVE", "Account is not active");
       }
 
-      if (user.tenant.status !== "ACTIVE") {
+      // SUPER_ADMIN no tiene tenant, skip validación
+      if (user.tenant && user.tenant.status !== "ACTIVE") {
         throw new AppError(
           403,
           "TENANT_SUSPENDED",

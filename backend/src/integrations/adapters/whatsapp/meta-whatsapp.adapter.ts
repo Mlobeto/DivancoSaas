@@ -73,7 +73,7 @@ export class MetaWhatsAppAdapter implements WhatsAppProvider {
     } catch (error: any) {
       logger.error(
         { error: error.response?.data || error.message },
-        "[MetaWhatsAppAdapter] Error sending text"
+        "[MetaWhatsAppAdapter] Error sending text",
       );
       throw new Error(
         `Failed to send WhatsApp message: ${error.response?.data?.error?.message || error.message}`,
@@ -115,8 +115,11 @@ export class MetaWhatsAppAdapter implements WhatsAppProvider {
       };
     } catch (error: any) {
       logger.error(
-        { error: error.response?.data || error.message, template: params.templateName },
-        "[MetaWhatsAppAdapter] Error sending template"
+        {
+          error: error.response?.data || error.message,
+          template: params.templateName,
+        },
+        "[MetaWhatsAppAdapter] Error sending template",
       );
       throw new Error(
         `Failed to send WhatsApp template: ${error.response?.data?.error?.message || error.message}`,
@@ -169,8 +172,11 @@ export class MetaWhatsAppAdapter implements WhatsAppProvider {
       };
     } catch (error: any) {
       logger.error(
-        { error: error.response?.data || error.message, mediaType: params.type },
-        "[MetaWhatsAppAdapter] Error sending media"
+        {
+          error: error.response?.data || error.message,
+          mediaType: params.type,
+        },
+        "[MetaWhatsAppAdapter] Error sending media",
       );
       throw new Error(
         `Failed to send WhatsApp media: ${error.response?.data?.error?.message || error.message}`,
@@ -184,11 +190,17 @@ export class MetaWhatsAppAdapter implements WhatsAppProvider {
    */
   verifyWebhook(mode: string, token: string, challenge: string): string | null {
     if (mode === "subscribe" && token === this.config.webhookVerifyToken) {
-      logger.info({ mode, challenge }, "[MetaWhatsAppAdapter] Webhook verified successfully");
+      logger.info(
+        { mode, challenge },
+        "[MetaWhatsAppAdapter] Webhook verified successfully",
+      );
       return challenge;
     }
 
-    logger.warn({ mode, token: token ? "provided" : "missing" }, "[MetaWhatsAppAdapter] Webhook verification failed");
+    logger.warn(
+      { mode, token: token ? "provided" : "missing" },
+      "[MetaWhatsAppAdapter] Webhook verification failed",
+    );
     return null;
   }
 
@@ -274,7 +286,10 @@ export class MetaWhatsAppAdapter implements WhatsAppProvider {
         response.data.id === this.config.phoneNumberId
       );
     } catch (error) {
-      logger.error({ error, tenantId, businessUnitId }, "[MetaWhatsAppAdapter] Configuration check failed");
+      logger.error(
+        { error, tenantId, businessUnitId },
+        "[MetaWhatsAppAdapter] Configuration check failed",
+      );
       return false;
     }
   }
@@ -288,7 +303,10 @@ export class MetaWhatsAppAdapter implements WhatsAppProvider {
       const response = await this.apiClient.get(`/${mediaId}`);
       return response.data.url;
     } catch (error: any) {
-      logger.error({ error, mediaId }, "[MetaWhatsAppAdapter] Error getting media URL");
+      logger.error(
+        { error, mediaId },
+        "[MetaWhatsAppAdapter] Error getting media URL",
+      );
       throw new Error("Failed to retrieve media URL from Meta");
     }
   }
@@ -303,7 +321,10 @@ export class MetaWhatsAppAdapter implements WhatsAppProvider {
       );
       return response.data;
     } catch (error: any) {
-      logger.error({ error, phoneNumberId }, "[MetaWhatsAppAdapter] Error getting phone info");
+      logger.error(
+        { error, phoneNumberId },
+        "[MetaWhatsAppAdapter] Error getting phone info",
+      );
       throw new Error("Failed to retrieve phone number info");
     }
   }

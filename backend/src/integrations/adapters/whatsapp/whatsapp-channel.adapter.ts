@@ -76,7 +76,10 @@ export class WhatsAppChannelAdapter implements ChannelAdapter<WhatsAppWebhookPay
    */
   async validate(externalEvent: WhatsAppWebhookPayload): Promise<boolean> {
     if (!externalEvent.from || !externalEvent.to) {
-      logger.error({ externalEvent }, "[WhatsAppAdapter] Missing from/to fields");
+      logger.error(
+        { externalEvent },
+        "[WhatsAppAdapter] Missing from/to fields",
+      );
       return false;
     }
 
@@ -92,7 +95,10 @@ export class WhatsAppChannelAdapter implements ChannelAdapter<WhatsAppWebhookPay
 
     // Para mensajes de texto, debe tener contenido
     if (externalEvent.type === "text" && !externalEvent.text) {
-      logger.error({ externalEvent }, "[WhatsAppAdapter] Text message without content");
+      logger.error(
+        { externalEvent },
+        "[WhatsAppAdapter] Text message without content",
+      );
       return false;
     }
 
@@ -101,7 +107,10 @@ export class WhatsAppChannelAdapter implements ChannelAdapter<WhatsAppWebhookPay
       ["image", "document", "audio", "video"].includes(externalEvent.type) &&
       !externalEvent.mediaUrl
     ) {
-      logger.error({ externalEvent }, "[WhatsAppAdapter] Media message without URL");
+      logger.error(
+        { externalEvent },
+        "[WhatsAppAdapter] Media message without URL",
+      );
       return false;
     }
 
