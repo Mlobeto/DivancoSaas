@@ -3,13 +3,18 @@ import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
-import { LoginPage } from "@/pages/LoginPage";
-import { RegisterPage } from "@/pages/RegisterPage";
-import { ForgotPasswordPage } from "@/pages/ForgotPasswordPage";
-import { ResetPasswordPage } from "@/pages/ResetPasswordPage";
-import { DashboardPage } from "@/pages/DashboardPage";
-import { EquipmentPage } from "@/pages/EquipmentPage";
-import { authService } from "@/services/auth.service";
+// Core Pages
+import { LoginPage } from "@/core/pages/LoginPage";
+import { RegisterPage } from "@/core/pages/RegisterPage";
+import { ForgotPasswordPage } from "@/core/pages/ForgotPasswordPage";
+import { ResetPasswordPage } from "@/core/pages/ResetPasswordPage";
+import { DashboardPage } from "@/core/pages/DashboardPage";
+
+// Module Pages
+import { MachineryPage } from "@/modules/machinery/pages/MachineryPage";
+
+// Core Services
+import { authService } from "@/core/services/auth.service";
 
 import "./index.css";
 
@@ -49,12 +54,17 @@ createRoot(document.getElementById("root")!).render(
             }
           />
           <Route
-            path="/equipment"
+            path="/machinery"
             element={
               <ProtectedRoute>
-                <EquipmentPage />
+                <MachineryPage />
               </ProtectedRoute>
             }
+          />
+          {/* Redirect old /equipment route to /machinery */}
+          <Route
+            path="/equipment"
+            element={<Navigate to="/machinery" replace />}
           />
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
         </Routes>

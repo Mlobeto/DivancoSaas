@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { authenticate } from "@core/middlewares/auth.middleware";
 import { BusinessUnitService } from "@core/services/business-unit.service";
+import { prisma } from "@config/database";
 import { z } from "zod";
 
 const router = Router();
@@ -113,6 +114,76 @@ router.get("/", async (req, res) => {
 
   const result = await businessUnitService.listBusinessUnits(tenantId, options);
   res.json({ success: true, ...result });
+});
+
+/**
+ * @openapi
+ * /business-units/my:
+ *   get:
+ *     tags: [Business Units]
+ *     summary: Obtener Business Units del usuario actual
+ *     description: Devuelve todas las Business Units a las que el usuario autenticado tiene acceso, incluyendo su rol en cada una.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lista de Business Units del usuario
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id: { type: string, format: uuid }
+ *                       name: { type: string, example: "Obras Civiles" }
+ *                       slug: { type: string, example: "obras-civiles" }
+ *                       description: { type: string }
+ *                       role:
+ *                         type: object
+ *                         properties:
+ *                           id: { type: string, format: uuid }
+ *                           name: { type: string, example: "admin" }
+ *       401:
+ *         description: No autenticado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.get("/my", async (req, res, next) => {
+  try {
+    const userId = req.context!.userId;
+
+    const userBusinessUnits = await prisma.userBusinessUnit.findMany({
+      where: { userId },
+      include: {
+        businessUnit: true,
+        role: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    const businessUnits = userBusinessUnits.map((ubu) => ({
+      id: ubu.businessUnit.id,
+      name: ubu.businessUnit.name,
+      slug: ubu.businessUnit.slug,
+      description: ubu.businessUnit.description,
+      role: ubu.role,
+    }));
+
+    res.json({ success: true, data: businessUnits });
+  } catch (error) {
+    next(error);
+  }
 });
 
 const createBusinessUnitSchema = z.object({

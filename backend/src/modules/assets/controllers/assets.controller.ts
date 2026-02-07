@@ -216,6 +216,47 @@ export class AssetsController {
     }
   }
 
+  /**
+   * Decommission asset (descarte con motivo)
+   * POST /api/v1/assets/:assetId/decommission
+   */
+  static async decommissionAsset(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      const context = validateBusinessUnitContext(req, res);
+      if (!context) return;
+
+      const assetId = validatePathParam(req, res, "assetId");
+      if (!assetId) return;
+
+      const { reason, notes, attributableToClient, clientId } = req.body;
+
+      if (!reason) {
+        return res.status(400).json({
+          success: false,
+          error: "reason is required for asset decommission",
+        });
+      }
+
+      await assetService.decommissionAsset(
+        context.tenantId,
+        context.businessUnitId,
+        assetId as string,
+        { reason, notes, attributableToClient, clientId },
+      );
+
+      res.json({
+        success: true,
+        message: "Asset decommissioned successfully",
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async updateAssetState(
     req: Request,
     res: Response,

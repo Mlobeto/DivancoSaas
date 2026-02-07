@@ -12,6 +12,7 @@ import {
   AssetFilters,
   PaginationParams,
   PaginatedResponse,
+  DecommissionAssetDTO,
 } from "../types/asset.types";
 
 export class AssetService {
@@ -33,8 +34,10 @@ export class AssetService {
         assetType: data.assetType,
         acquisitionCost: data.acquisitionCost,
         origin: data.origin,
+        currentLocation: data.currentLocation,
         requiresOperator: data.requiresOperator ?? false,
         requiresTracking: data.requiresTracking ?? false,
+        requiresClinic: data.requiresClinic ?? false,
       },
       include: {
         state: true,
@@ -175,6 +178,9 @@ export class AssetService {
         ...(data.requiresTracking !== undefined && {
           requiresTracking: data.requiresTracking,
         }),
+        ...(data.requiresClinic !== undefined && {
+          requiresClinic: data.requiresClinic,
+        }),
       },
       include: {
         state: true,
@@ -295,6 +301,88 @@ export class AssetService {
       },
       orderBy: { createdAt: "desc" },
       take: limit,
+    });
+  }
+
+  /**
+   * Decommission asset (descarte con motivo obligatorio)
+   * Workflow 8: Descarte de activos
+   */
+  async decommissionAsset(
+    tenantId: string,
+    businessUnitId: string,
+    assetId: string,
+    data: DecommissionAssetDTO,
+  ): Promise<void> {
+    // Verify asset exists
+    const asset = await this.prisma.asset.findFirst({
+      where: { id: assetId, tenantId, businessUnitId },
+      include: { state: true },
+    });
+
+    if (!asset) {
+      throw new Error("Asset not found");
+    }
+
+    // Change state to OUT_OF_SERVICE
+    await this.prisma.assetState.upsert({
+      where: { assetId },
+      create: {
+        assetId,
+        workflowId: "asset-lifecycle",
+        currentState: "OUT_OF_SERVICE",
+      },
+      update: {
+        currentState: "OUT_OF_SERVICE",
+      },
+    });
+
+    // Emit decommission event with reason
+    await this.prisma.assetEvent.create({
+      data: {
+        tenantId,
+        businessUnitId,
+        assetId,
+        eventType: "asset.decommissioned",
+        source: "system",
+        payload: {
+          reason: data.reason,
+          notes: data.notes,
+          attributableToClient: data.attributableToClient,
+          clientId: data.clientId,
+          previousState: asset.state?.currentState,
+        },
+      },
+    });
+  }
+
+  /**
+   * Update asset location
+   * Used internally when asset moves (assignment, return, etc)
+   */
+  async updateAssetLocation(
+    tenantId: string,
+    businessUnitId: string,
+    assetId: string,
+    location: string,
+  ): Promise<void> {
+    await this.prisma.asset.update({
+      where: { id: assetId },
+      data: { currentLocation: location },
+    });
+
+    // Emit location change event
+    await this.prisma.assetEvent.create({
+      data: {
+        tenantId,
+        businessUnitId,
+        assetId,
+        eventType: "asset.location_changed",
+        source: "system",
+        payload: {
+          newLocation: location,
+        },
+      },
     });
   }
 }

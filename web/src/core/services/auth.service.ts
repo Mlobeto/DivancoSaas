@@ -4,7 +4,7 @@ import type {
   RegisterRequest,
   AuthResponse,
   ApiResponse,
-} from "@/types/api.types";
+} from "@/core/types/api.types";
 
 export const authService = {
   async login(data: LoginRequest): Promise<AuthResponse> {
@@ -78,6 +78,7 @@ export const authService = {
 
   logout() {
     localStorage.removeItem("token");
+    localStorage.removeItem("divanco-auth-storage"); // Limpiar el estado persistido
   },
 
   getToken(): string | null {

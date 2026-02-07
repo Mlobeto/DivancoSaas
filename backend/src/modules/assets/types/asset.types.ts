@@ -9,8 +9,10 @@ export interface CreateAssetDTO {
   assetType: string; // String libre: machine, implement, vehicle, etc
   acquisitionCost?: number;
   origin?: string;
+  currentLocation?: string; // Ubicación actual (obra, taller, bodega)
   requiresOperator?: boolean;
   requiresTracking?: boolean;
+  requiresClinic?: boolean; // Requiere historia clínica de mantenimiento
 }
 
 export interface UpdateAssetDTO {
@@ -18,8 +20,10 @@ export interface UpdateAssetDTO {
   assetType?: string;
   acquisitionCost?: number;
   origin?: string;
+  currentLocation?: string;
   requiresOperator?: boolean;
   requiresTracking?: boolean;
+  requiresClinic?: boolean;
 }
 
 export interface AssetFilters {
@@ -81,6 +85,13 @@ export interface AttachmentFilters {
   assetId: string;
   type?: string;
   source?: string;
+}
+
+export interface DecommissionAssetDTO {
+  reason: string; // Motivo obligatorio del descarte
+  notes?: string; // Notas adicionales
+  attributableToClient?: boolean; // Si el daño es atribuible al cliente
+  clientId?: string; // Cliente responsable si aplica
 }
 
 export interface PaginationParams {

@@ -32,13 +32,15 @@ model Tenant {
   updatedAt DateTime @updatedAt
 
   // Relations
-  businessUnits BusinessUnit[]
-  users         User[]
-  subscriptions PlatformSubscription[]
-  auditLogs     AuditLog[]
-  eventQueue    EventQueue[]
-  equipment     Equipment[]
-  assets        Asset[]
+  businessUnits   BusinessUnit[]
+  users           User[]
+  subscriptions   PlatformSubscription[]
+  auditLogs       AuditLog[]
+  eventQueue      EventQueue[]
+  equipment       Equipment[]
+  assets          Asset[]
+  supplies        Supply[]
+  rentalContracts RentalContract[]
 
   @@index([slug])
   @@index([country])
@@ -77,6 +79,8 @@ model BusinessUnit {
   eventQueue             EventQueue[]
   equipment              Equipment[]
   assets                 Asset[]
+  supplies               Supply[]
+  rentalContracts        RentalContract[]
 
   @@unique([tenantId, slug])
   @@index([tenantId])
@@ -685,9 +689,11 @@ model Asset {
   assetType       String // String libre: machine, implement, vehicle, etc
   acquisitionCost Decimal?
   origin          String?
+  currentLocation String? // Ubicación actual del activo (obra, taller, bodega)
 
   requiresOperator Boolean @default(false)
   requiresTracking Boolean @default(false)
+  requiresClinic   Boolean @default(false) // Requiere historia clínica de mantenimiento
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -700,6 +706,12 @@ model Asset {
   usages             AssetUsage[]
   events             AssetEvent[]
   attachments        AssetAttachment[]
+  supplyUsages       SupplyUsage[]
+  contractAssets     ContractAsset[]
+  usageReports       UsageReport[]
+  incidents          Incident[]
+  preventiveConfigs  PreventiveConfig[]
+  maintenanceEvents  MaintenanceEvent[]
 
   @@index([tenantId, businessUnitId])
   @@index([assetType])
@@ -785,6 +797,183 @@ model AssetAttachment {
   @@index([assetId])
   @@index([type])
   @@map("asset_attachments")
+}
+
+// ============================================
+// RENTAL MODULE: CONTRACTS & SUPPLIES
+// ============================================
+
+model Supply {
+  id             String @id @default(uuid())
+  tenantId       String
+  businessUnitId String
+
+  name  String
+  unit  String // litros, unidades, kg, etc
+  stock Decimal @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  businessUnit BusinessUnit  @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
+  usages       SupplyUsage[]
+
+  @@index([tenantId, businessUnitId])
+  @@map("supplies")
+}
+
+model SupplyUsage {
+  id       String  @id @default(uuid())
+  supplyId String
+  assetId  String?
+  quantity Decimal
+  reason   String // preventive, post_obra, discard
+  notes    String?
+
+  createdAt DateTime @default(now())
+
+  supply Supply @relation(fields: [supplyId], references: [id], onDelete: Cascade)
+  asset  Asset? @relation(fields: [assetId], references: [id], onDelete: SetNull)
+
+  @@index([supplyId])
+  @@index([assetId])
+  @@index([reason])
+  @@map("supply_usages")
+}
+
+model RentalContract {
+  id             String @id @default(uuid())
+  tenantId       String
+  businessUnitId String
+
+  clientId String // String libre: customer UUID o reference externa
+  status   String // DRAFT, ACTIVE, PAUSED, FINISHED
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  businessUnit   BusinessUnit    @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
+  contractAssets ContractAsset[]
+  usageReports   UsageReport[]
+  incidents      Incident[]
+
+  @@index([tenantId, businessUnitId])
+  @@index([clientId])
+  @@index([status])
+  @@map("rental_contracts")
+}
+
+model ContractAsset {
+  id         String @id @default(uuid())
+  contractId String
+  assetId    String
+  obra       String // Nombre o identificador de la obra
+
+  // Estimaciones
+  estimatedStart DateTime
+  estimatedEnd   DateTime
+  estimatedHours Decimal?
+  estimatedDays  Int?
+
+  // Valores reales (al finalizar)
+  actualEnd   DateTime?
+  actualHours Decimal?
+
+  // Evaluación post-obra
+  needsPostObraMaintenance Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  contract RentalContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  asset    Asset          @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([contractId])
+  @@index([assetId])
+  @@index([obra])
+  @@map("contract_assets")
+}
+
+model UsageReport {
+  id         String  @id @default(uuid())
+  assetId    String
+  contractId String
+  metric     String // horas, km, ciclos
+  value      Decimal
+  reportedBy String // operarioId (string libre, no relación dura)
+  notes      String?
+
+  // Evidencia
+  evidenceUrls String[] // URLs a Azure Blob Storage
+
+  createdAt DateTime @default(now())
+
+  asset    Asset          @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  contract RentalContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([assetId])
+  @@index([contractId])
+  @@index([createdAt])
+  @@map("usage_reports")
+}
+
+model Incident {
+  id          String  @id @default(uuid())
+  assetId     String
+  contractId  String
+  description String
+  resolved    Boolean @default(false)
+  resolution  String? // Descripción de cómo se resolvió
+  decision    String? // REPLACE, PAUSE, CONTINUE
+
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+
+  asset    Asset          @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  contract RentalContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([assetId])
+  @@index([contractId])
+  @@index([resolved])
+  @@map("incidents")
+}
+
+model PreventiveConfig {
+  id      String @id @default(uuid())
+  assetId String
+  version Int    @default(1)
+
+  // Configuración de insumos (JSON flexible)
+  suppliesConfig Json // { "supplyId": { "quantity": 5, "frequency": "cada 100 horas" } }
+  notes          String?
+
+  createdAt DateTime @default(now())
+
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([assetId, version])
+  @@map("preventive_configs")
+}
+
+model MaintenanceEvent {
+  id      String  @id @default(uuid())
+  assetId String
+  type    String // PREVENTIVE | POST_OBRA
+  context String // OBRA | TALLER
+  notes   String?
+
+  // Relación con supplies usados
+  suppliesUsed Json? // JSON con detalles de lo usado
+
+  createdAt DateTime @default(now())
+
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([assetId])
+  @@index([type])
+  @@map("maintenance_events")
 }
 
 // ============================================

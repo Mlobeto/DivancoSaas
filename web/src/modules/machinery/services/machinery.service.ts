@@ -1,7 +1,7 @@
 import api from "@/lib/api";
-import type { ApiResponse, PaginatedResponse } from "@/types/api.types";
+import type { ApiResponse, PaginatedResponse } from "@/core/types/api.types";
 
-export interface Equipment {
+export interface Machinery {
   id: string;
   tenantId: string;
   businessUnitId: string;
@@ -24,16 +24,16 @@ export interface Equipment {
   updatedAt: string;
 }
 
-export interface EquipmentFilters {
+export interface MachineryFilters {
   q?: string;
-  status?: Equipment["status"];
-  condition?: Equipment["condition"];
+  status?: Machinery["status"];
+  condition?: Machinery["condition"];
   category?: string;
   page?: number;
   limit?: number;
 }
 
-export interface CreateEquipmentData {
+export interface CreateMachineryData {
   code: string;
   name: string;
   category: string;
@@ -42,23 +42,23 @@ export interface CreateEquipmentData {
   dailyRate?: number;
   weeklyRate?: number;
   monthlyRate?: number;
-  status?: Equipment["status"];
-  condition?: Equipment["condition"];
+  status?: Machinery["status"];
+  condition?: Machinery["condition"];
 }
 
-export type UpdateEquipmentData = Partial<CreateEquipmentData>;
+export type UpdateMachineryData = Partial<CreateMachineryData>;
 
-export const equipmentService = {
+export const machineryService = {
   async list(
-    filters: EquipmentFilters = {},
-  ): Promise<PaginatedResponse<Equipment>> {
+    filters: MachineryFilters = {},
+  ): Promise<PaginatedResponse<Machinery>> {
     const response = await api.get<
-      ApiResponse<Equipment[]> & PaginatedResponse<Equipment>
+      ApiResponse<Machinery[]> & PaginatedResponse<Machinery>
     >("/equipment", { params: filters });
 
     if (!response.data.success) {
       throw new Error(
-        response.data.error?.message || "Failed to fetch equipment",
+        response.data.error?.message || "Failed to fetch machinery",
       );
     }
 
@@ -68,37 +68,37 @@ export const equipmentService = {
     };
   },
 
-  async getById(id: string): Promise<Equipment> {
-    const response = await api.get<ApiResponse<Equipment>>(`/equipment/${id}`);
+  async getById(id: string): Promise<Machinery> {
+    const response = await api.get<ApiResponse<Machinery>>(`/equipment/${id}`);
 
     if (!response.data.success) {
-      throw new Error(response.data.error?.message || "Equipment not found");
+      throw new Error(response.data.error?.message || "Machinery not found");
     }
 
     return response.data.data!;
   },
 
-  async create(data: CreateEquipmentData): Promise<Equipment> {
-    const response = await api.post<ApiResponse<Equipment>>("/equipment", data);
+  async create(data: CreateMachineryData): Promise<Machinery> {
+    const response = await api.post<ApiResponse<Machinery>>("/equipment", data);
 
     if (!response.data.success) {
       throw new Error(
-        response.data.error?.message || "Failed to create equipment",
+        response.data.error?.message || "Failed to create machinery",
       );
     }
 
     return response.data.data!;
   },
 
-  async update(id: string, data: UpdateEquipmentData): Promise<Equipment> {
-    const response = await api.put<ApiResponse<Equipment>>(
+  async update(id: string, data: UpdateMachineryData): Promise<Machinery> {
+    const response = await api.put<ApiResponse<Machinery>>(
       `/equipment/${id}`,
       data,
     );
 
     if (!response.data.success) {
       throw new Error(
-        response.data.error?.message || "Failed to update equipment",
+        response.data.error?.message || "Failed to update machinery",
       );
     }
 
@@ -110,7 +110,7 @@ export const equipmentService = {
 
     if (!response.data.success) {
       throw new Error(
-        response.data.error?.message || "Failed to delete equipment",
+        response.data.error?.message || "Failed to delete machinery",
       );
     }
   },

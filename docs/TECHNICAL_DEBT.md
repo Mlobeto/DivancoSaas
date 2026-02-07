@@ -8,7 +8,54 @@ Este documento registra decisiones técnicas pospuestas, features pendientes y m
 
 ## 🔴 High Priority (Antes de lanzamiento)
 
-### 1. Maintenance Mode System
+### 1. PLATFORM_OWNER Role & Business Management
+
+**Status**: Not started  
+**Pending**:
+
+- [ ] Agregar `PLATFORM_OWNER` al enum `UserRole` en Prisma
+- [ ] Dashboard de administración del negocio SaaS
+- [ ] Gestión manual de suscripciones (antes de pagos automáticos)
+  - Crear suscripción para tenant
+  - Cambiar plan (free → pro → enterprise)
+  - Suspender/reactivar tenant por falta de pago
+  - Ver historial de pagos manual
+- [ ] Métricas de negocio (KPIs):
+  - MRR (Monthly Recurring Revenue)
+  - Tenants activos/suspendidos/cancelados
+  - Tasa de churn
+  - Crecimiento mensual
+  - Revenue por tenant
+- [ ] Proceso de aprobación de nuevos tenants (opcional)
+- [ ] Gestión de precios y planes desde UI
+
+**Context**:
+
+**Diferencia de roles crítica**:
+
+- `SUPER_ADMIN` (desarrolladora): Debugging técnico, logs, mantenimiento del sistema
+- `PLATFORM_OWNER` (dueño del negocio): Gestión comercial, suscripciones, métricas de negocio
+- `TENANT_ADMIN` (cliente): Administra solo su tenant, paga suscripción
+
+Actualmente los tenants se auto-registran vía `/auth/register` sin control comercial. Necesitamos que PLATFORM_OWNER pueda:
+
+1. Ver todos los tenants y su estado de suscripción
+2. Gestionar manualmente las suscripciones (hasta implementar pagos automáticos)
+3. Suspender tenants por falta de pago
+4. Ver métricas del negocio para tomar decisiones
+
+**Effort**: 3-4 días para MVP (dashboard básico + gestión manual)  
+**Dependencies**:
+
+- SUPER_ADMIN ya implementado (puede servir de base)
+- Frontend dashboard (React)
+- Protección de rutas por role
+
+**Priority Justification**: Sin esto, no se puede operar el negocio SaaS cuando lleguen clientes reales.
+
+---
+
+### 2. Maintenance Mode System
 
 **Status**: Arquitectura básica implementada (SystemAnnouncement tabla)  
 **Pending**:
@@ -26,7 +73,7 @@ Este documento registra decisiones técnicas pospuestas, features pendientes y m
 
 ---
 
-### 2. Zero-Downtime Deployment Strategy
+### 3. Zero-Downtime Deployment Strategy
 
 **Status**: Not started  
 **Pending**:
@@ -44,7 +91,7 @@ Este documento registra decisiones técnicas pospuestas, features pendientes y m
 
 ---
 
-### 3. Audit Log System (Cross-Tenant)
+### 4. Audit Log System (Cross-Tenant)
 
 **Status**: Not started  
 **Pending**:
@@ -431,13 +478,14 @@ Este documento registra decisiones técnicas pospuestas, features pendientes y m
 
 ## 🎯 Decision Log
 
-| Date       | Decision                           | Rationale                                    | Status     |
-| ---------- | ---------------------------------- | -------------------------------------------- | ---------- |
-| 2026-02-06 | Implementar SUPER_ADMIN role       | Debugging cross-tenant necesario             | ✅ Done    |
-| 2026-02-06 | Tabla SystemAnnouncement básica    | Comunicación con todos los tenants           | ✅ Done    |
-| 2026-02-06 | Posponer maintenance mode completo | No es MVP blocker                            | ⏳ Pending |
-| 2026-02-06 | Azure sobre AWS                    | Cliente ya tiene Azure, menor learning curve | ✅ Done    |
-| 2026-02-06 | Migrar console a logger            | Producción requiere structured logging       | 🔄 Partial |
+| Date       | Decision                             | Rationale                                    | Status     |
+| ---------- | ------------------------------------ | -------------------------------------------- | ---------- |
+| 2026-02-06 | Implementar SUPER_ADMIN role         | Debugging cross-tenant necesario             | ✅ Done    |
+| 2026-02-06 | Tabla SystemAnnouncement básica      | Comunicación con todos los tenants           | ✅ Done    |
+| 2026-02-06 | Identificar necesidad PLATFORM_OWNER | Gestión comercial separada de role técnico   | ⏳ Pending |
+| 2026-02-06 | Posponer maintenance mode completo   | No es MVP blocker                            | ⏳ Pending |
+| 2026-02-06 | Azure sobre AWS                      | Cliente ya tiene Azure, menor learning curve | ✅ Done    |
+| 2026-02-06 | Migrar console a logger              | Producción requiere structured logging       | 🔄 Partial |
 
 ---
 

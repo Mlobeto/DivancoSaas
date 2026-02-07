@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "@/store/auth.store";
-import { dashboardService } from "@/services/dashboard.service";
+import { dashboardService } from "@/core/services/dashboard.service";
 
 export function DashboardPage() {
   const { user, tenant, businessUnit, role } = useAuthStore();
@@ -8,7 +8,7 @@ export function DashboardPage() {
   // Fetch tenant stats
   const { data: tenantStats, isLoading: loadingTenantStats } = useQuery({
     queryKey: ["tenantStats", tenant?.id],
-    queryFn: () => dashboardService.getTenantStats(tenant!.id),
+    queryFn: () => dashboardService.getTenantStats(),
     enabled: !!tenant?.id,
   });
 
@@ -22,7 +22,7 @@ export function DashboardPage() {
   // Fetch recent activity
   const { data: recentActivity, isLoading: loadingActivity } = useQuery({
     queryKey: ["recentActivity", tenant?.id],
-    queryFn: () => dashboardService.getRecentActivity(tenant!.id, 5),
+    queryFn: () => dashboardService.getRecentActivity(5),
     enabled: !!tenant?.id,
   });
 
@@ -97,60 +97,113 @@ export function DashboardPage() {
             <h2 className="text-xl font-semibold mb-4">
               Estadísticas del Tenant
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <div className="card">
                 <p className="text-dark-400 text-sm mb-1">Business Units</p>
                 <p className="text-3xl font-bold text-primary-400">
-                  {loadingTenantStats ? "..." : tenantStats.businessUnitsCount}
+                  {loadingTenantStats
+                    ? "..."
+                    : tenantStats.overview.totalBusinessUnits}
                 </p>
               </div>
 
               <div className="card">
-                <p className="text-dark-400 text-sm mb-1">Usuarios</p>
+                <p className="text-dark-400 text-sm mb-1">Usuarios Totales</p>
                 <p className="text-3xl font-bold text-primary-400">
-                  {loadingTenantStats ? "..." : tenantStats.usersCount}
+                  {loadingTenantStats ? "..." : tenantStats.overview.totalUsers}
+                </p>
+              </div>
+
+              <div className="card">
+                <p className="text-dark-400 text-sm mb-1">Usuarios Activos</p>
+                <p className="text-3xl font-bold text-green-400">
+                  {loadingTenantStats
+                    ? "..."
+                    : tenantStats.overview.activeUsers}
                 </p>
               </div>
 
               <div className="card">
                 <p className="text-dark-400 text-sm mb-1">Módulos Activos</p>
                 <p className="text-3xl font-bold text-primary-400">
-                  {loadingTenantStats ? "..." : tenantStats.activeModulesCount}
+                  {loadingTenantStats
+                    ? "..."
+                    : tenantStats.overview.activeModules}
                 </p>
               </div>
             </div>
           </div>
         )}
 
-        {/* Business Unit Modules */}
+        {/* Business Unit Stats */}
         {buStats && businessUnit && (
           <div className="mb-8">
             <h2 className="text-xl font-semibold mb-4">
-              Módulos de {businessUnit.name}
+              Estadísticas de {businessUnit.name}
             </h2>
-            <div className="card">
-              {loadingBuStats ? (
-                <p className="text-dark-400">Cargando módulos...</p>
-              ) : buStats.activeModules.length > 0 ? (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {buStats.activeModules.map((module) => (
-                    <div
-                      key={module.moduleId}
-                      className="p-3 bg-dark-700 rounded border border-dark-600 hover:border-primary-600 transition-colors"
-                    >
-                      <p className="font-medium text-sm">
-                        {module.displayName}
-                      </p>
-                      <p className="text-xs text-dark-400 mt-1">
-                        {module.moduleName}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-dark-400 text-sm">No hay módulos activos</p>
-              )}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="card">
+                <p className="text-dark-400 text-sm mb-1">Usuarios</p>
+                <p className="text-3xl font-bold text-primary-400">
+                  {loadingBuStats ? "..." : buStats.overview.totalUsers}
+                </p>
+              </div>
+
+              <div className="card">
+                <p className="text-dark-400 text-sm mb-1">Usuarios Activos</p>
+                <p className="text-3xl font-bold text-green-400">
+                  {loadingBuStats ? "..." : buStats.overview.activeUsers}
+                </p>
+              </div>
+
+              <div className="card">
+                <p className="text-dark-400 text-sm mb-1">Módulos Activos</p>
+                <p className="text-3xl font-bold text-primary-400">
+                  {loadingBuStats ? "..." : buStats.overview.activeModules}
+                </p>
+              </div>
             </div>
+
+            {/* Equipment Stats */}
+            {buStats.equipment && (
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold mb-4">Equipos</h3>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                  <div className="card bg-dark-800">
+                    <p className="text-dark-400 text-xs mb-1">Total</p>
+                    <p className="text-2xl font-bold text-white">
+                      {buStats.equipment.total}
+                    </p>
+                  </div>
+                  <div className="card bg-green-900/20 border-green-800">
+                    <p className="text-dark-400 text-xs mb-1">Disponibles</p>
+                    <p className="text-2xl font-bold text-green-400">
+                      {buStats.equipment.available}
+                    </p>
+                  </div>
+                  <div className="card bg-blue-900/20 border-blue-800">
+                    <p className="text-dark-400 text-xs mb-1">Rentados</p>
+                    <p className="text-2xl font-bold text-blue-400">
+                      {buStats.equipment.rented}
+                    </p>
+                  </div>
+                  <div className="card bg-yellow-900/20 border-yellow-800">
+                    <p className="text-dark-400 text-xs mb-1">Mantenimiento</p>
+                    <p className="text-2xl font-bold text-yellow-400">
+                      {buStats.equipment.maintenance}
+                    </p>
+                  </div>
+                  <div className="card bg-red-900/20 border-red-800">
+                    <p className="text-dark-400 text-xs mb-1">
+                      Fuera de Servicio
+                    </p>
+                    <p className="text-2xl font-bold text-red-400">
+                      {buStats.equipment.outOfService}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -202,8 +255,8 @@ export function DashboardPage() {
             con datos completamente aislados y workflows configurables.
           </p>
           <div className="flex gap-3 mt-4">
-            <a href="/equipment" className="btn-primary">
-              Ver Equipment →
+            <a href="/machinery" className="btn-primary">
+              Ver Maquinaria →
             </a>
           </div>
         </div>

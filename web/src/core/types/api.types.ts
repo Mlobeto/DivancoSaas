@@ -21,14 +21,21 @@ export interface BusinessUnit {
   id: string;
   name: string;
   slug: string;
+  description?: string;
   enabledModules?: string[];
+  role?: {
+    // Solo en getMyBusinessUnits()
+    id: string;
+    name: string;
+  };
 }
 
 export interface AuthResponse {
   token: string;
+  refreshToken?: string;
   user: User;
   tenant: Tenant;
-  businessUnit?: BusinessUnit;
+  businessUnits: BusinessUnit[]; // ← El backend devuelve array
   role?: string;
 }
 

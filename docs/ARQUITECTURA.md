@@ -43,6 +43,36 @@ El CORE solo contiene lógica transversal y genérica:
 - ✅ Billing de la PLATAFORMA SaaS (suscripciones)
 - ✅ Auditoría y trazabilidad
 
+### Tipos de Usuarios del Sistema:
+
+El sistema distingue tres tipos de usuarios con propósitos diferentes:
+
+1. **PLATFORM_OWNER** (Dueño del negocio SaaS)
+   - Gestiona comercialmente la plataforma DivancoSaaS
+   - Administra suscripciones de todos los tenants
+   - Ve métricas de negocio (MRR, churn, revenue)
+   - Aprueba/suspende/reactiva tenants
+   - Configura precios y planes
+   - **NO** tiene acceso a datos internos de los tenants
+   - Dashboard: Admin comercial del SaaS
+
+2. **SUPER_ADMIN** (Desarrolladora/equipo técnico)
+   - Debugging y mantenimiento técnico
+   - Acceso cross-tenant para troubleshooting
+   - Ve logs, errores, sistema de auditoría
+   - Gestiona infraestructura y deploys
+   - Accede a base de datos directamente si es necesario
+   - Dashboard: Herramientas técnicas y monitoreo
+
+3. **TENANT (Cliente del SaaS)**
+   - Usuario final que paga suscripción
+   - Administra su propio tenant
+   - Crea business units y usuarios
+   - **NO** ve otros tenants
+   - Dashboard: Su aplicación de negocio
+
+**Importante**: PLATFORM_OWNER y SUPER_ADMIN son roles a nivel de plataforma, no pertenecen a ningún tenant. Los usuarios TENANT pertenecen a un tenant específico.
+
 ### El core:
 
 - ❌ NO conoce rubros

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { authService } from "@/services/auth.service";
+import { authService } from "@/core/services/auth.service";
 
 export function ForgotPasswordPage() {
   const navigate = useNavigate();

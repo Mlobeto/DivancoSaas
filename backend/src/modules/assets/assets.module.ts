@@ -12,6 +12,9 @@ import {
   ModuleWorkflow,
 } from "@core/contracts/module.contract";
 import { AssetsController } from "./controllers/assets.controller";
+import { RentalController } from "./controllers/rental.controller";
+import { SupplyController } from "./controllers/supply.controller";
+import { IncidentController } from "./controllers/incident.controller";
 
 export class AssetsModule implements ModuleContract {
   readonly name = "assets";
@@ -31,6 +34,10 @@ export class AssetsModule implements ModuleContract {
     router.patch("/assets/:assetId", AssetsController.updateAsset);
     router.delete("/assets/:assetId", AssetsController.deleteAsset);
     router.post("/assets/:assetId/state", AssetsController.updateAssetState);
+    router.post(
+      "/assets/:assetId/decommission",
+      AssetsController.decommissionAsset,
+    );
     router.get("/assets/:assetId/events", AssetsController.getAssetEvents);
 
     // ========== MAINTENANCE ==========
@@ -63,6 +70,91 @@ export class AssetsModule implements ModuleContract {
     router.delete(
       "/attachments/:attachmentId",
       AssetsController.deleteAttachment,
+    );
+
+    // ========== RENTAL CONTRACTS ==========
+    router.post("/rental/contracts", RentalController.createContract);
+    router.get("/rental/contracts", RentalController.listContracts);
+    router.get("/rental/contracts/:contractId", RentalController.getContract);
+    router.patch(
+      "/rental/contracts/:contractId",
+      RentalController.updateContract,
+    );
+    router.post(
+      "/rental/contracts/:contractId/assign-asset",
+      RentalController.assignAsset,
+    );
+    router.post(
+      "/rental/contracts/:contractId/finalize",
+      RentalController.finalizeContract,
+    );
+
+    // ========== USAGE REPORTS ==========
+    router.post("/rental/usage-reports", RentalController.recordUsageReport);
+    router.get("/rental/usage-reports", RentalController.listUsageReports);
+
+    // ========== AVAILABILITY PROJECTION ==========
+    router.get(
+      "/rental/availability/:assetId",
+      RentalController.projectAssetAvailability,
+    );
+    router.get(
+      "/rental/availability/type/:assetTypeId",
+      RentalController.projectAvailabilityByType,
+    );
+    router.post(
+      "/rental/assets/:assetId/evaluate-post-obra",
+      RentalController.evaluatePostObra,
+    );
+    router.get(
+      "/rental/contract-assets/:contractAssetId/usage-variance",
+      RentalController.getUsageVariance,
+    );
+
+    // ========== SUPPLIES ==========
+    router.post("/supplies", SupplyController.createSupply);
+    router.get("/supplies", SupplyController.listSupplies);
+    router.get("/supplies/:supplyId", SupplyController.getSupply);
+    router.patch("/supplies/:supplyId", SupplyController.updateSupply);
+    router.post("/supplies/usage", SupplyController.recordUsage);
+    router.post("/supplies/:supplyId/discard", SupplyController.discardSupply);
+
+    // ========== PREVENTIVE CONFIGURATION ==========
+    router.post(
+      "/assets/:assetId/preventive-config",
+      SupplyController.configurePreventive,
+    );
+    router.patch(
+      "/assets/:assetId/preventive-config",
+      SupplyController.updatePreventiveConfig,
+    );
+    router.get(
+      "/assets/:assetId/preventive-config",
+      SupplyController.getPreventiveConfig,
+    );
+
+    // ========== MAINTENANCE EVENTS ==========
+    router.post(
+      "/assets/:assetId/maintenance/preventive",
+      SupplyController.executePreventive,
+    );
+    router.post(
+      "/assets/:assetId/maintenance/post-obra",
+      SupplyController.executePostObra,
+    );
+    router.get(
+      "/assets/:assetId/maintenance/history",
+      SupplyController.getMaintenanceHistory,
+    );
+
+    // ========== INCIDENTS ==========
+    router.post("/incidents", IncidentController.reportIncident);
+    router.get("/incidents", IncidentController.listIncidents);
+    router.get("/incidents/active", IncidentController.getActiveIncidents);
+    router.get("/incidents/:incidentId", IncidentController.getIncident);
+    router.post(
+      "/incidents/:incidentId/resolve",
+      IncidentController.resolveIncident,
     );
 
     return router;
@@ -146,6 +238,101 @@ export class AssetsModule implements ModuleContract {
         resource: "attachments",
         action: "delete",
         description: "Delete attachments",
+      },
+
+      // Rental Contracts
+      {
+        resource: "rental-contracts",
+        action: "create",
+        description: "Create rental contracts",
+      },
+      {
+        resource: "rental-contracts",
+        action: "read",
+        description: "View rental contracts",
+      },
+      {
+        resource: "rental-contracts",
+        action: "update",
+        description: "Update rental contracts",
+      },
+      {
+        resource: "rental-contracts",
+        action: "assign-asset",
+        description: "Assign assets to contracts",
+      },
+      {
+        resource: "rental-contracts",
+        action: "finalize",
+        description: "Finalize rental contracts",
+      },
+
+      // Usage Reports
+      {
+        resource: "usage-reports",
+        action: "create",
+        description: "Record usage reports",
+      },
+      {
+        resource: "usage-reports",
+        action: "read",
+        description: "View usage reports",
+      },
+
+      // Supplies
+      {
+        resource: "supplies",
+        action: "create",
+        description: "Create supplies",
+      },
+      {
+        resource: "supplies",
+        action: "read",
+        description: "View supplies",
+      },
+      {
+        resource: "supplies",
+        action: "update",
+        description: "Update supplies",
+      },
+      {
+        resource: "supplies",
+        action: "usage",
+        description: "Record supply usage",
+      },
+
+      // Preventive Maintenance
+      {
+        resource: "preventive-maintenance",
+        action: "configure",
+        description: "Configure preventive maintenance",
+      },
+      {
+        resource: "preventive-maintenance",
+        action: "execute",
+        description: "Execute preventive maintenance",
+      },
+      {
+        resource: "preventive-maintenance",
+        action: "read",
+        description: "View maintenance history",
+      },
+
+      // Incidents
+      {
+        resource: "incidents",
+        action: "create",
+        description: "Report incidents",
+      },
+      {
+        resource: "incidents",
+        action: "read",
+        description: "View incidents",
+      },
+      {
+        resource: "incidents",
+        action: "resolve",
+        description: "Resolve incidents",
       },
     ];
   }

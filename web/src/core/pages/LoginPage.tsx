@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { authService } from "@/services/auth.service";
+import { authService } from "@/core/services/auth.service";
 import { useAuthStore } from "@/store/auth.store";
-import type { LoginRequest } from "@/types/api.types";
+import type { LoginRequest } from "@/core/types/api.types";
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -20,7 +20,13 @@ export function LoginPage() {
   const loginMutation = useMutation({
     mutationFn: authService.login,
     onSuccess: (data) => {
-      setAuth(data);
+      // El backend devuelve businessUnits (array), extraer el primero
+      const firstBusinessUnit = data.businessUnits?.[0];
+      setAuth({
+        user: data.user,
+        tenant: data.tenant!,
+        businessUnit: firstBusinessUnit,
+      });
       navigate("/dashboard");
     },
   });

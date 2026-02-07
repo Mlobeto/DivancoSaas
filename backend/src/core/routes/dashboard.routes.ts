@@ -60,7 +60,7 @@ router.get(
 
     const stats = await getTenantStats(tenantId);
 
-    res.json(stats);
+    res.json({ success: true, data: stats });
   },
 );
 
@@ -129,7 +129,7 @@ router.get(
 
     const stats = await getBusinessUnitStats(businessUnitId as string);
 
-    res.json(stats);
+    res.json({ success: true, data: stats });
   },
 );
 
@@ -195,7 +195,7 @@ router.get("/activity", authenticate, async (req: Request, res: Response) => {
 
   const activity = await getRecentActivity(tenantId, limit);
 
-  res.json(activity);
+  res.json({ success: true, data: activity });
 });
 
 /**

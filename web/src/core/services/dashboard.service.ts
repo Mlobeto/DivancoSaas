@@ -1,19 +1,39 @@
 import api from "@/lib/api";
-import type { ApiResponse } from "@/types/api.types";
+import type { ApiResponse } from "@/core/types/api.types";
 
 export interface TenantStats {
-  businessUnitsCount: number;
-  usersCount: number;
-  activeModulesCount: number;
+  overview: {
+    totalUsers: number;
+    activeUsers: number;
+    totalBusinessUnits: number;
+    activeModules: number;
+  };
+  recentActivity: {
+    eventCount: number;
+    pendingEvents: number;
+    failedEvents: number;
+  };
 }
 
 export interface BusinessUnitStats {
-  usersCount: number;
-  activeModules: Array<{
-    moduleId: string;
-    moduleName: string;
-    displayName: string;
-  }>;
+  overview: {
+    totalUsers: number;
+    activeUsers: number;
+    totalBusinessUnits: number;
+    activeModules: number;
+  };
+  equipment?: {
+    total: number;
+    available: number;
+    rented: number;
+    maintenance: number;
+    outOfService: number;
+  };
+  recentActivity: {
+    eventCount: number;
+    pendingEvents: number;
+    failedEvents: number;
+  };
 }
 
 export interface ActivityLog {
@@ -26,9 +46,9 @@ export interface ActivityLog {
 }
 
 export const dashboardService = {
-  async getTenantStats(tenantId: string): Promise<TenantStats> {
+  async getTenantStats(): Promise<TenantStats> {
     const response = await api.get<ApiResponse<TenantStats>>(
-      `/dashboard/tenant/${tenantId}/stats`,
+      `/dashboard/tenant/stats`,
     );
 
     if (!response.data.success) {
@@ -56,14 +76,11 @@ export const dashboardService = {
     return response.data.data!;
   },
 
-  async getRecentActivity(
-    tenantId: string,
-    limit = 10,
-  ): Promise<ActivityLog[]> {
+  async getRecentActivity(limit = 10): Promise<ActivityLog[]> {
     const response = await api.get<ApiResponse<ActivityLog[]>>(
       `/dashboard/activity`,
       {
-        params: { tenantId, limit },
+        params: { limit },
       },
     );
 
