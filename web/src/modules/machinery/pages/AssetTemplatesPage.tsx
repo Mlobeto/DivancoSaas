@@ -212,7 +212,7 @@ export function AssetTemplatesPage() {
         )}
 
         {/* Empty State */}
-        {data && data.data.length === 0 && (
+        {data && data.data && data.data.length === 0 && (
           <div className="card text-center py-12">
             <div className="text-6xl mb-4">📋</div>
             <p className="text-dark-400 mb-4">No hay plantillas configuradas</p>
@@ -230,7 +230,7 @@ export function AssetTemplatesPage() {
         )}
 
         {/* Templates Grid */}
-        {data && data.data.length > 0 && (
+        {data && data.data && data.data.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {data.data.map((template: AssetTemplate) => (
               <div

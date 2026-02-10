@@ -14,12 +14,31 @@ const api = axios.create({
   },
 });
 
-// Interceptor para agregar token
+// Interceptor para agregar token y contexto multitenancy
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+
+  // Agregar contexto de tenant y business unit desde localStorage
+  const authData = localStorage.getItem("divanco-auth-storage");
+  if (authData) {
+    try {
+      const parsed = JSON.parse(authData);
+      const state = parsed.state;
+
+      if (state?.tenant?.id) {
+        config.headers["X-Tenant-Id"] = state.tenant.id;
+      }
+      if (state?.businessUnit?.id) {
+        config.headers["X-Business-Unit-Id"] = state.businessUnit.id;
+      }
+    } catch (error) {
+      console.error("Error parsing auth data:", error);
+    }
+  }
+
   return config;
 });
 

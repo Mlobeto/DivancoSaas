@@ -188,7 +188,7 @@ export function MachineryPage() {
           </div>
         )}
 
-        {data && data.data.length === 0 && (
+        {data && data.data && data.data.length === 0 && (
           <div className="card text-center py-12">
             <p className="text-dark-400 mb-4">No hay maquinaria registrada</p>
             <button onClick={() => setShowModal(true)} className="btn-primary">
@@ -197,7 +197,7 @@ export function MachineryPage() {
           </div>
         )}
 
-        {data && data.data.length > 0 && (
+        {data && data.data && data.data.length > 0 && (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {data.data.map((machinery) => (

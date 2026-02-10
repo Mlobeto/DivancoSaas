@@ -254,9 +254,18 @@ export function DashboardPage() {
             permite activar módulos según las necesidades de cada Business Unit,
             con datos completamente aislados y workflows configurables.
           </p>
-          <div className="flex gap-3 mt-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mt-4">
             <a href="/machinery" className="btn-primary">
-              Ver Maquinaria →
+              🔧 Maquinaria →
+            </a>
+            <a href="/suppliers" className="btn-primary">
+              🏢 Proveedores →
+            </a>
+            <a href="/purchase-orders" className="btn-primary">
+              📦 Órdenes de Compra →
+            </a>
+            <a href="/purchases/categories" className="btn-primary">
+              📋 Categorías →
             </a>
           </div>
         </div>

@@ -45,6 +45,7 @@ model Tenant {
   supplyQuotes      SupplyQuote[]
   purchaseOrders    PurchaseOrder[]
   stockTransactions StockTransaction[]
+  supplyCategories  SupplyCategory[]
 
   @@index([slug])
   @@index([country])
@@ -84,6 +85,7 @@ model BusinessUnit {
   equipment              Equipment[]
   assetTemplates         AssetTemplate[]
   assets                 Asset[]
+  supplyCategories       SupplyCategory[]
   supplies               Supply[]
   rentalContracts        RentalContract[]
   suppliers              Supplier[]
@@ -856,33 +858,93 @@ model AssetAttachment {
 // RENTAL MODULE: CONTRACTS & SUPPLIES
 // ============================================
 
-model Supply {
+// Categorías configurables de insumos por BusinessUnit
+model SupplyCategory {
   id             String @id @default(uuid())
   tenantId       String
   businessUnitId String
 
-  name  String
-  unit  String // litros, unidades, kg, etc
+  code        String // LUBRICANTE, FILTRO, REPUESTO, MATERIA_PRIMA, PRODUCT
+  name        String // "Lubricantes", "Filtros", "Materia Prima"
+  description String?
+
+  // Tipo de categoría para comportamiento del sistema
+  type SupplyCategoryType @default(CONSUMABLE)
+
+  // Metadata para UI
+  color String? // Hex color: "#3B82F6"
+  icon  String? // Nombre del ícono: "droplet", "filter", "package"
+
+  // Control de inventario por categoría
+  requiresStockControl Boolean @default(true)
+  allowNegativeStock   Boolean @default(false)
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  businessUnit BusinessUnit @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
+
+  supplies Supply[]
+
+  @@unique([businessUnitId, code])
+  @@index([tenantId, businessUnitId])
+  @@index([type])
+  @@map("supply_categories")
+}
+
+enum SupplyCategoryType {
+  CONSUMABLE // Consumibles que se agotan (lubricantes, filtros)
+  SPARE_PART // Repuestos y partes
+  RAW_MATERIAL // Materia prima para producción
+  FINISHED_PRODUCT // Productos terminados para venta
+  TOOL // Herramientas menores no catalogadas como Asset
+  OTHER // Otros tipos definidos por el usuario
+}
+
+model Supply {
+  id             String  @id @default(uuid())
+  tenantId       String
+  businessUnitId String
+  categoryId     String? // Relación con SupplyCategory
+
+  code String? // Código interno del insumo (opcional)
+  name String
+  unit String // litros, unidades, kg, etc
+
   stock Decimal @default(0)
 
   // Gestión económica y alertas
   costPerUnit Decimal? // Costo promedio
   minStock    Decimal? // Stock mínimo para alertas
   maxStock    Decimal? // Stock máximo recomendado
-  category    String? // LUBRICANTE, FILTRO, REPUESTO, PINTURA, etc.
+
+  // Para productos terminados
+  sku     String? // SKU para productos
+  barcode String? // Código de barras
+
+  // Metadata adicional
+  notes String?
+
+  isActive Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   businessUnit       BusinessUnit        @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
+  category           SupplyCategory?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   usages             SupplyUsage[]
   quotes             SupplyQuote[]
   purchaseOrderItems PurchaseOrderItem[]
   transactions       StockTransaction[]
 
+  @@unique([businessUnitId, code])
   @@index([tenantId, businessUnitId])
-  @@index([category])
+  @@index([categoryId])
+  @@index([sku])
   @@map("supplies")
 }
 

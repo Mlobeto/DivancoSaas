@@ -14,6 +14,12 @@ import { DashboardPage } from "@/core/pages/DashboardPage";
 import { MachineryPage } from "@/modules/machinery/pages/MachineryPage";
 import { AssetTemplatesPage } from "@/modules/machinery/pages/AssetTemplatesPage";
 import { TemplateWizardPage } from "@/modules/machinery/pages/TemplateWizardPage";
+import {
+  SuppliersPage,
+  PurchaseOrdersPage,
+  SupplyCategoriesPage,
+  CategoryWizardPage,
+} from "@/modules/purchases";
 
 // Core Services
 import { authService } from "@/core/services/auth.service";
@@ -91,6 +97,47 @@ createRoot(document.getElementById("root")!).render(
           <Route
             path="/equipment"
             element={<Navigate to="/machinery" replace />}
+          />
+          {/* Purchases Module Routes */}
+          <Route
+            path="/suppliers"
+            element={
+              <ProtectedRoute>
+                <SuppliersPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/purchase-orders"
+            element={
+              <ProtectedRoute>
+                <PurchaseOrdersPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/purchases/categories"
+            element={
+              <ProtectedRoute>
+                <SupplyCategoriesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/purchases/categories/new"
+            element={
+              <ProtectedRoute>
+                <CategoryWizardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/purchases/categories/:id/edit"
+            element={
+              <ProtectedRoute>
+                <CategoryWizardPage />
+              </ProtectedRoute>
+            }
           />
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
         </Routes>

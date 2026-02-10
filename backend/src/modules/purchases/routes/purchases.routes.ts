@@ -7,8 +7,37 @@ import { Router } from "express";
 import { SupplierController } from "../controllers/supplier.controller";
 import { QuoteController } from "../controllers/quote.controller";
 import { PurchaseOrderController } from "../controllers/purchase-order.controller";
+import { SupplyCategoryController } from "../controllers/supply-category.controller";
+import { authenticate } from "@core/middlewares/auth.middleware";
 
 const router = Router();
+
+// Aplicar autenticación a todas las rutas del módulo
+router.use(authenticate);
+
+// ============================================
+// SUPPLY CATEGORIES
+// ============================================
+
+router.get("/supply-categories/stats", SupplyCategoryController.getStats);
+router.post("/supply-categories", SupplyCategoryController.createCategory);
+router.get("/supply-categories", SupplyCategoryController.listCategories);
+router.get(
+  "/supply-categories/:categoryId",
+  SupplyCategoryController.getCategory,
+);
+router.put(
+  "/supply-categories/:categoryId",
+  SupplyCategoryController.updateCategory,
+);
+router.delete(
+  "/supply-categories/:categoryId",
+  SupplyCategoryController.deleteCategory,
+);
+router.patch(
+  "/supply-categories/:categoryId/toggle-active",
+  SupplyCategoryController.toggleActive,
+);
 
 // ============================================
 // SUPPLIERS

@@ -140,6 +140,7 @@ class AssetTemplateService {
       };
     }>(`${this.basePath}?${params}`);
 
+    console.log("Asset Templates API Response:", response.data); // Debug log
     return response.data;
   }
 

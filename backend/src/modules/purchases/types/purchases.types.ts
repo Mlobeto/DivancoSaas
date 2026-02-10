@@ -8,7 +8,41 @@ import {
   AccountEntryType,
   PurchaseOrderStatus,
   TransactionType,
+  SupplyCategoryType,
 } from "@prisma/client";
+
+// ============================================
+// SUPPLY CATEGORY TYPES
+// ============================================
+
+export interface CreateSupplyCategoryDTO {
+  code: string;
+  name: string;
+  description?: string;
+  type: SupplyCategoryType;
+  color?: string;
+  icon?: string;
+  requiresStockControl?: boolean;
+  allowNegativeStock?: boolean;
+}
+
+export interface UpdateSupplyCategoryDTO {
+  code?: string;
+  name?: string;
+  description?: string;
+  type?: SupplyCategoryType;
+  color?: string;
+  icon?: string;
+  requiresStockControl?: boolean;
+  allowNegativeStock?: boolean;
+  isActive?: boolean;
+}
+
+export interface SupplyCategoryFilters {
+  type?: SupplyCategoryType;
+  search?: string; // Busca en code, name, description
+  isActive?: boolean;
+}
 
 // ============================================
 // SUPPLIER TYPES
