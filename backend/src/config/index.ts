@@ -18,7 +18,11 @@ export const config = {
 
   // CORS
   cors: {
-    origin: process.env.CORS_ORIGIN?.split(",") || ["http://localhost:5173"],
+    // Permitir múltiples orígenes separados por coma en CORS_ORIGIN
+    // y tolerar espacios en blanco ("http://localhost:5173, https://app.com").
+    origin: process.env.CORS_ORIGIN?.split(",")
+      .map((origin) => origin.trim())
+      .filter(Boolean) || ["http://localhost:5173"],
   },
 
   // Platform Billing
