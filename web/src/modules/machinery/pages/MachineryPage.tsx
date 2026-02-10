@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import {
   machineryService,
   type Machinery,
@@ -10,6 +11,7 @@ import { useAuthStore } from "@/store/auth.store";
 
 export function MachineryPage() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { tenant, businessUnit } = useAuthStore();
   const [filters, setFilters] = useState<MachineryFilters>({
     page: 1,
@@ -96,6 +98,12 @@ export function MachineryPage() {
           <a href="/dashboard" className="btn-ghost">
             ← Dashboard
           </a>
+          <button
+            onClick={() => navigate("/machinery/templates")}
+            className="btn-secondary"
+          >
+            ⚙️ Plantillas
+          </button>
           <button onClick={() => setShowModal(true)} className="btn-primary">
             + Nueva Maquinaria
           </button>

@@ -15,6 +15,7 @@ import { AssetsController } from "./controllers/assets.controller";
 import { RentalController } from "./controllers/rental.controller";
 import { SupplyController } from "./controllers/supply.controller";
 import { IncidentController } from "./controllers/incident.controller";
+import assetTemplateRoutes from "./routes/asset-template.routes";
 
 export class AssetsModule implements ModuleContract {
   readonly name = "assets";
@@ -26,6 +27,9 @@ export class AssetsModule implements ModuleContract {
 
   getRoutes(): Router {
     const router = Router();
+
+    // ========== ASSET TEMPLATES ==========
+    router.use("/templates", assetTemplateRoutes);
 
     // ========== ASSETS ==========
     router.post("/assets", AssetsController.createAsset);

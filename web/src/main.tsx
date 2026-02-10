@@ -12,6 +12,8 @@ import { DashboardPage } from "@/core/pages/DashboardPage";
 
 // Module Pages
 import { MachineryPage } from "@/modules/machinery/pages/MachineryPage";
+import { AssetTemplatesPage } from "@/modules/machinery/pages/AssetTemplatesPage";
+import { TemplateWizardPage } from "@/modules/machinery/pages/TemplateWizardPage";
 
 // Core Services
 import { authService } from "@/core/services/auth.service";
@@ -58,6 +60,30 @@ createRoot(document.getElementById("root")!).render(
             element={
               <ProtectedRoute>
                 <MachineryPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/machinery/templates"
+            element={
+              <ProtectedRoute>
+                <AssetTemplatesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/machinery/templates/create"
+            element={
+              <ProtectedRoute>
+                <TemplateWizardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/machinery/templates/:id/edit"
+            element={
+              <ProtectedRoute>
+                <TemplateWizardPage />
               </ProtectedRoute>
             }
           />

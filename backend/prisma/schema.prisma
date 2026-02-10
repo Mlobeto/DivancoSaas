@@ -78,6 +78,7 @@ model BusinessUnit {
   userChannelIdentities  UserChannelIdentity[]
   eventQueue             EventQueue[]
   equipment              Equipment[]
+  assetTemplates         AssetTemplate[]
   assets                 Asset[]
   supplies               Supply[]
   rentalContracts        RentalContract[]
@@ -680,16 +681,55 @@ enum EquipmentCondition {
 // ASSETS MODULE - Rental Equipment Management
 // ============================================
 
-model Asset {
+model AssetTemplate {
   id             String @id @default(uuid())
-  tenantId       String
   businessUnitId String
 
+  name        String // "Retroexcavadora", "Andamio Tubular"
+  category    AssetCategory // MACHINERY | IMPLEMENT | VEHICLE | TOOL
+  description String?
+  icon        String? // Emoji o nombre de ícono
+
+  requiresPreventiveMaintenance Boolean @default(false)
+
+  // Array de definiciones de campos personalizados
+  customFields Json // CustomField[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  businessUnit BusinessUnit @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
+  assets       Asset[]
+
+  @@unique([businessUnitId, name])
+  @@index([businessUnitId])
+  @@index([category])
+  @@map("asset_templates")
+}
+
+enum AssetCategory {
+  MACHINERY // Maquinaria pesada (requiere mantenimiento preventivo típicamente)
+  IMPLEMENT // Implementos (andamios, herramientas grandes)
+  VEHICLE // Vehículos
+  TOOL // Herramientas menores
+}
+
+model Asset {
+  id             String  @id @default(uuid())
+  tenantId       String
+  businessUnitId String
+  templateId     String? // Relación opcional con template
+
+  code            String // Código interno único (RET-001, AND-045)
   name            String
-  assetType       String // String libre: machine, implement, vehicle, etc
+  assetType       String // String libre: machine, implement, vehicle, etc (deprecated, usar template.category)
   acquisitionCost Decimal?
   origin          String?
   currentLocation String? // Ubicación actual del activo (obra, taller, bodega)
+
+  // Datos dinámicos según template
+  customData Json? // Almacena los valores de los customFields del template
 
   requiresOperator Boolean @default(false)
   requiresTracking Boolean @default(false)
@@ -701,6 +741,7 @@ model Asset {
   // Relations
   tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   businessUnit       BusinessUnit        @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
+  template           AssetTemplate?      @relation(fields: [templateId], references: [id], onDelete: SetNull)
   state              AssetState?
   maintenanceRecords MaintenanceRecord[]
   usages             AssetUsage[]
@@ -713,8 +754,10 @@ model Asset {
   preventiveConfigs  PreventiveConfig[]
   maintenanceEvents  MaintenanceEvent[]
 
+  @@unique([businessUnitId, code])
   @@index([tenantId, businessUnitId])
   @@index([assetType])
+  @@index([templateId])
   @@map("assets")
 }
 
