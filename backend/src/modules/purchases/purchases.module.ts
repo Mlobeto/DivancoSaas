@@ -11,7 +11,7 @@
  * - Trazabilidad completa de transacciones
  */
 
-import { Application } from "express";
+import { Router } from "express";
 import purchasesRouter from "./routes/purchases.routes";
 import { logger } from "../../core/utils/logger";
 
@@ -22,17 +22,11 @@ export class PurchasesModule {
   /**
    * Inicializar el módulo
    */
-  initialize(app?: Application): void {
+  initialize(): void {
     try {
-      // Si se proporciona una app de Express, registrar las rutas
-      if (app) {
-        app.use(`/api/v1/modules/purchases`, purchasesRouter);
-        logger.info(
-          `[Module] ${this.MODULE_NAME} v${this.VERSION} initialized`,
-        );
-      }
+      logger.info(`[Module] ${this.MODULE_NAME} v${this.VERSION} initialized`);
 
-      // Aquí podrían agregarse otras inicializaciones:
+      // Aquí podrían agregarse otras inicializaciones en el futuro:
       // - Tareas programadas (ej: desactivar cotizaciones vencidas)
       // - Listeners de eventos
       // - Validaciones de integridad
@@ -43,6 +37,13 @@ export class PurchasesModule {
       );
       throw error;
     }
+  }
+
+  /**
+   * Obtener el router del módulo para montarlo en la app principal
+   */
+  getRoutes(): Router {
+    return purchasesRouter;
   }
 
   /**

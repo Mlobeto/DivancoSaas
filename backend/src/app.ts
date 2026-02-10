@@ -73,7 +73,7 @@ export function createApp(): Application {
   assetsModule.initialize();
 
   const purchasesModule = new PurchasesModule();
-  purchasesModule.initialize(app);
+  purchasesModule.initialize();
 
   // DEPENDENCY INJECTION: Inyectar resolvers/factories en el core  // DEPENDENCY INJECTION: Inyectar resolvers/factories en el core
   // El core nunca importa adapters, recibe las dependencias desde aquí
@@ -153,6 +153,7 @@ export function createApp(): Application {
 
   // Business Module routes
   app.use("/api/v1/modules/assets", assetsModule.getRoutes());
+  app.use("/api/v1/modules/purchases", purchasesModule.getRoutes());
 
   // TODO: Cargar rutas de módulos dinámicamente
   // loadModuleRoutes(app);
