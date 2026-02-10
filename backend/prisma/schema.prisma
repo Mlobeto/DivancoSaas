@@ -32,15 +32,19 @@ model Tenant {
   updatedAt DateTime @updatedAt
 
   // Relations
-  businessUnits   BusinessUnit[]
-  users           User[]
-  subscriptions   PlatformSubscription[]
-  auditLogs       AuditLog[]
-  eventQueue      EventQueue[]
-  equipment       Equipment[]
-  assets          Asset[]
-  supplies        Supply[]
-  rentalContracts RentalContract[]
+  businessUnits     BusinessUnit[]
+  users             User[]
+  subscriptions     PlatformSubscription[]
+  auditLogs         AuditLog[]
+  eventQueue        EventQueue[]
+  equipment         Equipment[]
+  assets            Asset[]
+  supplies          Supply[]
+  rentalContracts   RentalContract[]
+  suppliers         Supplier[]
+  supplyQuotes      SupplyQuote[]
+  purchaseOrders    PurchaseOrder[]
+  stockTransactions StockTransaction[]
 
   @@index([slug])
   @@index([country])
@@ -82,6 +86,10 @@ model BusinessUnit {
   assets                 Asset[]
   supplies               Supply[]
   rentalContracts        RentalContract[]
+  suppliers              Supplier[]
+  supplyQuotes           SupplyQuote[]
+  purchaseOrders         PurchaseOrder[]
+  stockTransactions      StockTransaction[]
 
   @@unique([tenantId, slug])
   @@index([tenantId])
@@ -753,6 +761,7 @@ model Asset {
   incidents          Incident[]
   preventiveConfigs  PreventiveConfig[]
   maintenanceEvents  MaintenanceEvent[]
+  stockTransactions  StockTransaction[]
 
   @@unique([businessUnitId, code])
   @@index([tenantId, businessUnitId])
@@ -801,7 +810,8 @@ model MaintenanceRecord {
   startedAt   DateTime
   endedAt     DateTime?
 
-  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  asset             Asset              @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  stockTransactions StockTransaction[]
 
   @@index([assetId])
   @@index([startedAt])
@@ -855,14 +865,24 @@ model Supply {
   unit  String // litros, unidades, kg, etc
   stock Decimal @default(0)
 
+  // Gestión económica y alertas
+  costPerUnit Decimal? // Costo promedio
+  minStock    Decimal? // Stock mínimo para alertas
+  maxStock    Decimal? // Stock máximo recomendado
+  category    String? // LUBRICANTE, FILTRO, REPUESTO, PINTURA, etc.
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  businessUnit BusinessUnit  @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
-  usages       SupplyUsage[]
+  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  businessUnit       BusinessUnit        @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
+  usages             SupplyUsage[]
+  quotes             SupplyQuote[]
+  purchaseOrderItems PurchaseOrderItem[]
+  transactions       StockTransaction[]
 
   @@index([tenantId, businessUnitId])
+  @@index([category])
   @@map("supplies")
 }
 
@@ -883,6 +903,264 @@ model SupplyUsage {
   @@index([assetId])
   @@index([reason])
   @@map("supply_usages")
+}
+
+// ============================================
+// MÓDULO: PURCHASES & SUPPLIERS
+// Gestión de proveedores, cotizaciones y órdenes de compra
+// Reutilizable para cualquier BusinessUnit
+// ============================================
+
+model Supplier {
+  id             String @id @default(uuid())
+  tenantId       String
+  businessUnitId String
+
+  // Datos comerciales
+  code      String // Código interno (ej: PROV-001)
+  name      String // Razón social
+  tradeName String? // Nombre comercial
+  taxId     String? // CUIT/RUT/RFC/NIT
+  email     String?
+  phone     String?
+  website   String?
+
+  // Dirección
+  address String?
+  city    String?
+  state   String?
+  country String?
+  zipCode String?
+
+  // Condiciones comerciales
+  paymentTerms String? // "30 días", "Contado", etc.
+  currency     String   @default("USD")
+  creditLimit  Decimal?
+
+  status SupplierStatus @default(ACTIVE)
+
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  businessUnit BusinessUnit @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
+
+  contacts       SupplierContact[]
+  quotes         SupplyQuote[]
+  purchaseOrders PurchaseOrder[]
+  accountEntries SupplierAccountEntry[]
+
+  @@unique([tenantId, businessUnitId, code])
+  @@index([tenantId, businessUnitId])
+  @@index([status])
+  @@map("suppliers")
+}
+
+enum SupplierStatus {
+  ACTIVE
+  INACTIVE
+  BLOCKED
+}
+
+model SupplierContact {
+  id         String @id @default(uuid())
+  supplierId String
+
+  name      String
+  role      String? // "Gerente", "Vendedor", etc.
+  email     String?
+  phone     String?
+  isPrimary Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@index([supplierId])
+  @@map("supplier_contacts")
+}
+
+model SupplierAccountEntry {
+  id         String @id @default(uuid())
+  supplierId String
+
+  type    AccountEntryType
+  amount  Decimal
+  balance Decimal // Balance después de esta operación
+
+  reference   String? // Nro de factura, recibo, etc.
+  description String?
+  dueDate     DateTime?
+
+  purchaseOrderId String?
+
+  createdAt DateTime @default(now())
+  createdBy String?
+
+  supplier      Supplier       @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  purchaseOrder PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
+
+  @@index([supplierId])
+  @@index([type])
+  @@index([createdAt])
+  @@map("supplier_account_entries")
+}
+
+enum AccountEntryType {
+  PURCHASE // Compra (aumenta deuda)
+  PAYMENT // Pago (reduce deuda)
+  CREDIT_NOTE // Nota de crédito (reduce deuda)
+  DEBIT_NOTE // Nota de débito (aumenta deuda)
+  ADJUSTMENT // Ajuste
+}
+
+model SupplyQuote {
+  id             String @id @default(uuid())
+  tenantId       String
+  businessUnitId String
+
+  supplierId String
+  supplyId   String // El insumo cotizado
+
+  unitPrice Decimal
+  quantity  Decimal?
+  currency  String   @default("USD")
+
+  validFrom  DateTime
+  validUntil DateTime?
+
+  notes    String?
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  createdBy String?
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  businessUnit BusinessUnit @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
+  supplier     Supplier     @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  supply       Supply       @relation(fields: [supplyId], references: [id], onDelete: Cascade)
+
+  @@index([supplierId])
+  @@index([supplyId])
+  @@index([validFrom, validUntil])
+  @@index([tenantId, businessUnitId])
+  @@map("supply_quotes")
+}
+
+model PurchaseOrder {
+  id             String @id @default(uuid())
+  tenantId       String
+  businessUnitId String
+
+  code       String // PO-001, PO-002
+  supplierId String
+
+  status PurchaseOrderStatus @default(DRAFT)
+
+  orderDate    DateTime  @default(now())
+  expectedDate DateTime?
+  receivedDate DateTime?
+
+  subtotal Decimal @default(0)
+  tax      Decimal @default(0)
+  total    Decimal @default(0)
+  currency String  @default("USD")
+
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  businessUnit BusinessUnit @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
+  supplier     Supplier     @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  items          PurchaseOrderItem[]
+  accountEntries SupplierAccountEntry[]
+  transactions   StockTransaction[]
+
+  @@unique([tenantId, businessUnitId, code])
+  @@index([tenantId, businessUnitId])
+  @@index([supplierId])
+  @@index([status])
+  @@map("purchase_orders")
+}
+
+enum PurchaseOrderStatus {
+  DRAFT // Borrador
+  SENT // Enviada al proveedor
+  CONFIRMED // Confirmada por proveedor
+  RECEIVED // Mercadería recibida
+  CANCELLED // Cancelada
+}
+
+model PurchaseOrderItem {
+  id              String @id @default(uuid())
+  purchaseOrderId String
+  supplyId        String
+
+  quantity   Decimal
+  unitPrice  Decimal
+  totalPrice Decimal
+
+  receivedQty Decimal @default(0)
+
+  notes String?
+
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  supply        Supply        @relation(fields: [supplyId], references: [id], onDelete: Cascade)
+
+  @@index([purchaseOrderId])
+  @@index([supplyId])
+  @@map("purchase_order_items")
+}
+
+model StockTransaction {
+  id             String @id @default(uuid())
+  tenantId       String
+  businessUnitId String
+
+  supplyId String
+  type     TransactionType
+
+  quantity  Decimal // Positivo para entradas, negativo para salidas
+  unitCost  Decimal?
+  totalCost Decimal?
+
+  // Relaciones opcionales según tipo
+  purchaseOrderId     String?
+  maintenanceRecordId String?
+  assetId             String?
+
+  reason String? // Para descartes: "Pintura volcada"
+  notes  String?
+
+  createdAt DateTime @default(now())
+  createdBy String?
+
+  tenant            Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  businessUnit      BusinessUnit       @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
+  supply            Supply             @relation(fields: [supplyId], references: [id], onDelete: Cascade)
+  purchaseOrder     PurchaseOrder?     @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
+  maintenanceRecord MaintenanceRecord? @relation(fields: [maintenanceRecordId], references: [id], onDelete: SetNull)
+  asset             Asset?             @relation(fields: [assetId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, businessUnitId])
+  @@index([supplyId])
+  @@index([type])
+  @@index([createdAt])
+  @@map("stock_transactions")
+}
+
+enum TransactionType {
+  PURCHASE // Compra a proveedor
+  MAINTENANCE_USE // Uso en mantenimiento
+  DISCARD // Descarte (con motivo)
+  ADJUSTMENT // Ajuste de inventario
+  RETURN // Devolución a proveedor
 }
 
 model RentalContract {

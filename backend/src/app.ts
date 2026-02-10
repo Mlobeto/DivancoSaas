@@ -63,6 +63,7 @@ import equipmentRouter from "@core/routes/equipment.routes";
 
 // Business Modules
 import { AssetsModule } from "./modules/assets/assets.module";
+import { PurchasesModule } from "./modules/purchases/purchases.module";
 
 export function createApp(): Application {
   const app = express();
@@ -71,7 +72,10 @@ export function createApp(): Application {
   const assetsModule = new AssetsModule();
   assetsModule.initialize();
 
-  // DEPENDENCY INJECTION: Inyectar resolvers/factories en el core
+  const purchasesModule = new PurchasesModule();
+  purchasesModule.initialize(app);
+
+  // DEPENDENCY INJECTION: Inyectar resolvers/factories en el core  // DEPENDENCY INJECTION: Inyectar resolvers/factories en el core
   // El core nunca importa adapters, recibe las dependencias desde aquí
   setBillingResolver(paymentProviderResolver);
   setWebhookResolver(paymentProviderResolver);
