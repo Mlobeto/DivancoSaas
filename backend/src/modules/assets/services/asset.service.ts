@@ -30,6 +30,7 @@ export class AssetService {
       data: {
         tenantId,
         businessUnitId,
+        code: data.code,
         name: data.name,
         assetType: data.assetType,
         acquisitionCost: data.acquisitionCost,

@@ -5,6 +5,7 @@
  */
 
 export interface CreateAssetDTO {
+  code: string; // Código único del activo (ej: MACH-001, IMPL-045)
   name: string;
   assetType: string; // String libre: machine, implement, vehicle, etc
   acquisitionCost?: number;
