@@ -40,8 +40,9 @@ export class QuotationController {
   async getById(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
+      const quotationId = Array.isArray(id) ? id[0] : id;
 
-      const quotation = await quotationService.getQuotationById(id);
+      const quotation = await quotationService.getQuotationById(quotationId);
 
       if (!quotation) {
         res.status(404).json({
@@ -101,7 +102,8 @@ export class QuotationController {
   async generatePDF(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const pdfUrl = await quotationService.generateQuotationPDF(id);
+      const quotationId = Array.isArray(id) ? id[0] : id;
+      const pdfUrl = await quotationService.generateQuotationPDF(quotationId);
 
       res.json({
         success: true,
@@ -122,10 +124,11 @@ export class QuotationController {
   async requestSignature(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
+      const quotationId = Array.isArray(id) ? id[0] : id;
       const { signers } = req.body;
 
       const signatureRequest = await quotationService.requestSignature(
-        id,
+        quotationId,
         signers,
       );
 
@@ -148,6 +151,7 @@ export class QuotationController {
   async handleSignatureWebhook(req: Request, res: Response): Promise<void> {
     try {
       const { provider } = req.params;
+      const providerName = Array.isArray(provider) ? provider[0] : provider;
       const signature = req.headers["x-signature"] as string;
       const rawPayload = req.body;
 
@@ -155,7 +159,9 @@ export class QuotationController {
       const digitalSignatureResolver =
         await import("@integrations/adapters/digital-signature/digital-signature.resolver");
       const providerInstance =
-        digitalSignatureResolver.digitalSignatureResolver.getProvider(provider);
+        digitalSignatureResolver.digitalSignatureResolver.getProviderByName(
+          providerName,
+        );
 
       if (!providerInstance) {
         res.status(400).json({
@@ -180,7 +186,7 @@ export class QuotationController {
       }
 
       // Procesar eventos de firma completada
-      if (event.eventType === "signed" || event.status === "signed") {
+      if (event.eventType === "document.signed" || event.status === "signed") {
         // Descargar documento firmado
         const signedDocument = await providerInstance.downloadSignedDocument(
           event.requestId,
@@ -211,7 +217,9 @@ export class QuotationController {
   async createContract(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const contract = await quotationService.createContractFromQuotation(id);
+      const quotationId = Array.isArray(id) ? id[0] : id;
+      const contract =
+        await quotationService.createContractFromQuotation(quotationId);
 
       res.json({
         success: true,

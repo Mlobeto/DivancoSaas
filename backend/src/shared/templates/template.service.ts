@@ -130,7 +130,7 @@ export class TemplateService {
       },
     });
 
-    return template as Template;
+    return template as any as Template;
   }
 
   /**
@@ -141,7 +141,7 @@ export class TemplateService {
       where: { id: templateId },
     });
 
-    return template as Template | null;
+    return template as any as Template | null;
   }
 
   /**
@@ -169,7 +169,7 @@ export class TemplateService {
       },
     });
 
-    return template as Template | null;
+    return template as any as Template | null;
   }
 
   /**
@@ -189,7 +189,7 @@ export class TemplateService {
       },
     });
 
-    return templates as Template[];
+    return templates as any as Template[];
   }
 
   /**
@@ -218,7 +218,7 @@ export class TemplateService {
       },
     });
 
-    return template as Template;
+    return template as any as Template;
   }
 
   /**
