@@ -265,4 +265,48 @@ export class UsageService {
       },
     });
   }
+
+  /**
+   * Upload evidence files for usage record (photos of odometer/hourometer)
+   */
+  async uploadEvidence(
+    tenantId: string,
+    businessUnitId: string,
+    usageId: string,
+    evidenceUrls: string[],
+  ): Promise<AssetUsage> {
+    const usage = await this.getUsageById(tenantId, businessUnitId, usageId);
+
+    if (!usage) {
+      throw new Error("Usage record not found");
+    }
+
+    // Merge with existing evidence URLs
+    const currentEvidence = (usage.evidenceUrls as string[]) || [];
+    const updatedEvidence = [...currentEvidence, ...evidenceUrls];
+
+    const updatedUsage = await this.prisma.assetUsage.update({
+      where: { id: usageId },
+      data: {
+        evidenceUrls: updatedEvidence,
+      },
+    });
+
+    // Emit event
+    await this.prisma.assetEvent.create({
+      data: {
+        tenantId,
+        businessUnitId,
+        assetId: usage.assetId,
+        eventType: "usage.evidence_added",
+        source: "system",
+        payload: {
+          usageId,
+          count: evidenceUrls.length,
+        },
+      },
+    });
+
+    return updatedUsage;
+  }
 }

@@ -10,6 +10,8 @@ import { MaintenanceService } from "../services/maintenance.service";
 import { UsageService } from "../services/usage.service";
 import { AttachmentService } from "../services/attachment.service";
 import { PrismaClient } from "@prisma/client";
+import { azureBlobStorageService } from "@shared/storage/azure-blob-storage.service";
+import multer from "multer";
 
 const prisma = new PrismaClient();
 const assetService = new AssetService(prisma);
@@ -614,6 +616,79 @@ export class AssetsController {
     }
   }
 
+  /**
+   * Upload evidence for usage record (odometer/hourometer photos)
+   * POST /usage/:usageId/evidence
+   */
+  static async uploadUsageEvidence(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      const context = validateBusinessUnitContext(req, res);
+      if (!context) return;
+
+      const usageId = validatePathParam(req, res, "usageId");
+      if (!usageId) return;
+
+      if (!req.files || !Array.isArray(req.files) || req.files.length === 0) {
+        res.status(400).json({
+          success: false,
+          error: "At least one evidence file is required",
+        });
+        return;
+      }
+
+      // Verificar que el usage record existe
+      const usage = await usageService.getUsageById(
+        context.tenantId,
+        context.businessUnitId,
+        usageId,
+      );
+
+      if (!usage) {
+        res.status(404).json({
+          success: false,
+          error: "Usage record not found",
+        });
+        return;
+      }
+
+      // Upload each evidence file to Azure Blob Storage
+      const evidenceUrls = await Promise.all(
+        req.files.map(async (file) => {
+          const uploadResult = await azureBlobStorageService.uploadFile({
+            file: file.buffer,
+            fileName: file.originalname,
+            contentType: file.mimetype,
+            folder: "usage-evidence",
+            tenantId: context.tenantId,
+            businessUnitId: context.businessUnitId,
+          });
+
+          return uploadResult.url;
+        }),
+      );
+
+      // Update usage record with evidence URLs
+      const updatedUsage = await usageService.uploadEvidence(
+        context.tenantId,
+        context.businessUnitId,
+        usageId,
+        evidenceUrls,
+      );
+
+      res.json({
+        success: true,
+        data: updatedUsage,
+        message: `${evidenceUrls.length} evidence file(s) uploaded successfully`,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   // ========== ATTACHMENTS ==========
 
   static async createAttachment(
@@ -736,4 +811,262 @@ export class AssetsController {
       next(error);
     }
   }
+
+  // ========== IMAGE UPLOAD ==========
+
+  /**
+   * Upload main image for asset
+   * POST /assets/:assetId/image
+   */
+  static async uploadMainImage(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      const context = validateBusinessUnitContext(req, res);
+      if (!context) return;
+
+      const assetId = validatePathParam(req, res, "assetId");
+      if (!assetId) return;
+
+      if (!req.file) {
+        res.status(400).json({
+          success: false,
+          error: "Image file is required",
+        });
+        return;
+      }
+
+      // Verificar que el asset existe
+      const asset = await assetService.getAssetById(
+        context.tenantId,
+        context.businessUnitId,
+        assetId,
+      );
+
+      if (!asset) {
+        res.status(404).json({
+          success: false,
+          error: "Asset not found",
+        });
+        return;
+      }
+
+      // Subir imagen a Azure Blob Storage
+      const uploadResult = await azureBlobStorageService.uploadFile({
+        file: req.file.buffer,
+        fileName: req.file.originalname,
+        contentType: req.file.mimetype,
+        folder: "assets",
+        tenantId: context.tenantId,
+        businessUnitId: context.businessUnitId,
+      });
+
+      // Actualizar asset con URL de imagen
+      const updatedAsset = await assetService.uploadMainImage(
+        context.tenantId,
+        context.businessUnitId,
+        assetId,
+        uploadResult.url,
+      );
+
+      res.json({
+        success: true,
+        data: {
+          asset: updatedAsset,
+          imageUrl: uploadResult.url,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Delete main image
+   * DELETE /assets/:assetId/image
+   */
+  static async deleteMainImage(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      const context = validateBusinessUnitContext(req, res);
+      if (!context) return;
+
+      const assetId = validatePathParam(req, res, "assetId");
+      if (!assetId) return;
+
+      const updatedAsset = await assetService.deleteMainImage(
+        context.tenantId,
+        context.businessUnitId,
+        assetId,
+      );
+
+      res.json({
+        success: true,
+        data: updatedAsset,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Upload multiple attachments (documents/photos)
+   * POST /assets/:assetId/attachments
+   * Body: { documentTypeId?, issueDate?, expiryDate?, alertDays?, notes? }
+   */
+  static async uploadMultipleAttachments(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      const context = validateBusinessUnitContext(req, res);
+      if (!context) return;
+
+      const assetId = validatePathParam(req, res, "assetId");
+      if (!assetId) return;
+
+      if (!req.files || !Array.isArray(req.files) || req.files.length === 0) {
+        res.status(400).json({
+          success: false,
+          error: "At least one file is required",
+        });
+        return;
+      }
+
+      // Verificar que el asset existe
+      const asset = await assetService.getAssetById(
+        context.tenantId,
+        context.businessUnitId,
+        assetId,
+      );
+
+      if (!asset) {
+        res.status(404).json({
+          success: false,
+          error: "Asset not found",
+        });
+        return;
+      }
+
+      // Parse optional fields from body
+      const {
+        documentTypeId,
+        issueDate,
+        expiryDate,
+        alertDays,
+        notes,
+        source = "web",
+      } = req.body;
+
+      // Upload each file and create attachments
+      const uploadedAttachments = await Promise.all(
+        req.files.map(async (file) => {
+          // Subir a Azure Blob Storage
+          const uploadResult = await azureBlobStorageService.uploadFile({
+            file: file.buffer,
+            fileName: file.originalname,
+            contentType: file.mimetype,
+            folder: "attachments",
+            tenantId: context.tenantId,
+            businessUnitId: context.businessUnitId,
+          });
+
+          // Determinar tipo de attachment
+          let type = "unknown";
+          if (file.mimetype.startsWith("image/")) {
+            type = "image";
+          } else if (file.mimetype === "application/pdf") {
+            type = "pdf";
+          } else if (
+            file.mimetype.includes("word") ||
+            file.mimetype.includes("document")
+          ) {
+            type = "document";
+          }
+
+          // Crear attachment en DB con metadata de vencimiento
+          const attachment = await attachmentService.createAttachmentWithFile(
+            context.tenantId,
+            context.businessUnitId,
+            assetId,
+            {
+              type,
+              url: uploadResult.url,
+              fileName: file.originalname,
+              source,
+              documentTypeId: documentTypeId || undefined,
+              issueDate: issueDate ? new Date(issueDate) : undefined,
+              expiryDate: expiryDate ? new Date(expiryDate) : undefined,
+              alertDays: alertDays ? parseInt(alertDays) : undefined,
+              notes: notes || undefined,
+            },
+          );
+
+          return attachment;
+        }),
+      );
+
+      res.json({
+        success: true,
+        data: uploadedAttachments,
+        message: `${uploadedAttachments.length} attachment(s) uploaded successfully`,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
+
+// Configurar multer para imágenes de maquinarias (5MB)
+export const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB
+  },
+  fileFilter: (req, file, cb) => {
+    // Aceptar solo imágenes
+    if (file.mimetype.startsWith("image/")) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only image files are allowed"));
+    }
+  },
+});
+
+// Configurar multer para documentos/attachments (10MB, múltiples archivos)
+export const uploadDocuments = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB por archivo
+    files: 10, // Máximo 10 archivos
+  },
+  fileFilter: (req, file, cb) => {
+    // Aceptar imágenes, PDFs, Word, Excel
+    const allowedMimeTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ];
+
+    if (allowedMimeTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(
+        new Error(
+          "Only images, PDF, Word and Excel files are allowed for documents",
+        ),
+      );
+    }
+  },
+});

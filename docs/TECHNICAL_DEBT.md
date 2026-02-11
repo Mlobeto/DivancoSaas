@@ -1,8 +1,51 @@
 # 📋 Technical Debt - DivancoSaaS
 
-**Last Updated**: 2026-02-06
+**Last Updated**: 2026-02-11
 
 Este documento registra decisiones técnicas pospuestas, features pendientes y mejoras arquitectónicas identificadas durante el desarrollo.
+
+---
+
+## ✅ Recently Completed (Febrero 2026)
+
+### Sistema de Cotizaciones y Contratos - COMPLETADO
+
+**Completed**: 2026-02-11  
+**Components**:
+
+- [x] Contrato `DigitalSignatureProvider` en core
+- [x] Adapter SignNow con verificación de webhooks
+- [x] DigitalSignatureResolver para proveedores intercambiables
+- [x] Sistema de plantillas genérico (Handlebars + Puppeteer)
+- [x] Template service en shared/ (reutilizable cross-módulos)
+- [x] Modelos Prisma: Template, Quotation, QuotationItem, QuotationContract
+- [x] QuotationService con generación de PDF
+- [x] Firma digital y webhooks
+- [x] Procesamiento de pagos
+- [x] Creación automática de RentalContract desde Quotation (solo si tiene assetId)
+- [x] Detección inteligente de rubros (rental vs otros)
+- [x] Guard Rail compliant (campos específicos opcionales, metadata flexible)
+
+**Context**: Sistema completo para cotizar, firmar digitalmente y convertir en contratos. Arquitectura reutilizable para múltiples rubros (maquinaria, arquitectura, servicios, productos).
+
+**Documentation**: Ver `QUOTATIONS_SIGNATURES_CONTRACTS.md` e `IMPLEMENTATION_GUIDE_QUOTATIONS.md`
+
+---
+
+### Sistema de Documentación con Vencimientos - COMPLETADO
+
+**Completed**: 2026-02-11  
+**Components**:
+
+- [x] Modelo `AssetDocumentType` (configurable por BusinessUnit)
+- [x] Extensión de `AssetAttachment` con campos de vencimiento
+- [x] Enum `AttachmentStatus` (ACTIVE, EXPIRING, EXPIRED, ARCHIVED)
+- [x] Sistema de alertas configurable por tipo de documento
+- [x] Guard Rail compliant (tipos definidos por usuario, no hardcodeados)
+
+**Context**: Cada BU puede definir sus propios tipos de documentos (SOAT, Revisión Técnica, Certificados, etc.) con vencimientos y alertas personalizadas. Reutilizable para múltiples industrias.
+
+**Pending Integration**: Sistema de alertas automáticas (cron job) y notificaciones
 
 ---
 
@@ -55,7 +98,69 @@ Actualmente los tenants se auto-registran vía `/auth/register` sin control come
 
 ---
 
-### 2. Maintenance Mode System
+### 2. Módulo de Maquinaria - Completar Gestión de Activos
+
+**Status**: Schema implementado, Frontend y Backend parcial  
+**Pending**:
+
+#### Backend:
+
+- [ ] Campo `imageUrl` en modelo Asset (foto principal/portada)
+- [ ] Campos en AssetUsage para métricas flexibles:
+  - `kmUsed` (para vehículos)
+  - `metricType` y `metricValue` (genérico: HOURS, KM, CYCLES)
+  - `evidenceUrls` (JSON array de fotos de horómetro/odómetro)
+  - `createdAtDevice` y `syncedAt` (para sincronización offline mobile)
+- [ ] API endpoints para AssetDocumentType (CRUD)
+- [ ] API endpoints para Asset attachments (upload con Azure Blob)
+- [ ] Sistema de alertas automáticas para documentos por vencer (cron job)
+- [ ] Notificaciones de vencimiento vía email/WhatsApp (motor de intenciones)
+- [ ] Endpoints para AssetUsage (reportes desde móvil)
+
+#### Frontend:
+
+- [ ] Página de creación/edición de Activos con:
+  - Upload de imagen principal (Azure Blob)
+  - Modal de configuración de mantenimiento preventivo (si template lo requiere)
+  - Modal de carga de documentación con vencimientos
+  - Formulario de customFields dinámico según template
+- [ ] Página de gestión de tipos de documentos por BU
+- [ ] Vista de alertas de documentos próximos a vencer
+- [ ] Integración con AssetTemplatesPage (ya existe)
+- [ ] Pantalla de creación de cotizaciones con selección de activos
+
+#### Mobile (Offline-First):
+
+- [ ] App React Native con Expo
+- [ ] Sincronización offline de AssetUsage
+- [ ] Camera para capturar evidencia (horómetro, kilometraje)
+- [ ] Cola local de eventos pendientes de sincronización
+- [ ] Resolución de conflictos por timestamp
+
+**Context**:
+
+- Cliente necesita gestionar activos (maquinaria pesada, vehículos, herramientas)
+- Cada activo puede requerir mantenimiento preventivo con insumos configurables
+- Documentación con vencimientos (SOAT, revisión técnica, certificados)
+- Operarios en campo reportan uso diario/semanal/mensual desde app móvil sin conexión
+
+**Effort**:
+
+- Backend: 3-4 días
+- Frontend: 4-5 días
+- Mobile: 1-2 semanas
+
+**Dependencies**:
+
+- Azure Blob Storage configurado ✅
+- Template system implementado ✅
+- Motor de intenciones para notificaciones (parcial)
+
+**Priority Justification**: Feature core del negocio del cliente. Sin esto no pueden alquilar maquinaria ni hacer seguimiento operativo.
+
+---
+
+### 3. Maintenance Mode System
 
 **Status**: Arquitectura básica implementada (SystemAnnouncement tabla)  
 **Pending**:
@@ -478,14 +583,22 @@ Actualmente los tenants se auto-registran vía `/auth/register` sin control come
 
 ## 🎯 Decision Log
 
-| Date       | Decision                             | Rationale                                    | Status     |
-| ---------- | ------------------------------------ | -------------------------------------------- | ---------- |
-| 2026-02-06 | Implementar SUPER_ADMIN role         | Debugging cross-tenant necesario             | ✅ Done    |
-| 2026-02-06 | Tabla SystemAnnouncement básica      | Comunicación con todos los tenants           | ✅ Done    |
-| 2026-02-06 | Identificar necesidad PLATFORM_OWNER | Gestión comercial separada de role técnico   | ⏳ Pending |
-| 2026-02-06 | Posponer maintenance mode completo   | No es MVP blocker                            | ⏳ Pending |
-| 2026-02-06 | Azure sobre AWS                      | Cliente ya tiene Azure, menor learning curve | ✅ Done    |
-| 2026-02-06 | Migrar console a logger              | Producción requiere structured logging       | 🔄 Partial |
+| Date       | Decision                                 | Rationale                                                    | Status     |
+| ---------- | ---------------------------------------- | ------------------------------------------------------------ | ---------- |
+| 2026-02-06 | Implementar SUPER_ADMIN role             | Debugging cross-tenant necesario                             | ✅ Done    |
+| 2026-02-06 | Tabla SystemAnnouncement básica          | Comunicación con todos los tenants                           | ✅ Done    |
+| 2026-02-06 | Identificar necesidad PLATFORM_OWNER     | Gestión comercial separada de role técnico                   | ⏳ Pending |
+| 2026-02-06 | Posponer maintenance mode completo       | No es MVP blocker                                            | ⏳ Pending |
+| 2026-02-06 | Azure sobre AWS                          | Cliente ya tiene Azure, menor learning curve                 | ✅ Done    |
+| 2026-02-06 | Migrar console a logger                  | Producción requiere structured logging                       | 🔄 Partial |
+| 2026-02-10 | Sistema de cotizaciones genérico         | Reutilizable para múltiples rubros, no hardcodear categorías | ✅ Done    |
+| 2026-02-10 | Firma digital con adapters               | SignNow como primer provider, arquitectura extensible        | ✅ Done    |
+| 2026-02-10 | Templates en shared/                     | Sistema de plantillas transversal, no acoplado a rental      | ✅ Done    |
+| 2026-02-11 | QuotationContract → RentalContract       | Conexión automática según tipo de cotización                 | ✅ Done    |
+| 2026-02-11 | AssetDocumentType configurable           | Tipos de docs definidos por usuario, guard rail compliant    | ✅ Done    |
+| 2026-02-11 | AssetAttachment con vencimientos         | Extender modelo existente vs crear nuevo                     | ✅ Done    |
+| 2026-02-11 | Posponer sincronización offline completa | MVP puede ser sin mobile, agregar después                    | ⏳ Pending |
+| 2026-02-11 | imageUrl directo + attachments array     | Pragmático: foto principal accesible, múltiples en array     | ⏳ Pending |
 
 ---
 
@@ -495,6 +608,61 @@ Actualmente los tenants se auto-registran vía `/auth/register` sin control come
 - Prioridades pueden cambiar según feedback de usuarios
 - Esfuerzo estimado es para 1 desarrollador full-time
 - Dependencies críticas están marcadas y deben resolverse primero
+
+---
+
+## 🎯 Roadmap Módulo de Maquinaria (Próximos Pasos)
+
+### Fase 1: Completar Gestión de Activos (1 semana)
+
+**Objetivo**: Poder crear y gestionar activos completos con documentación
+
+1. ✅ **Schema Prisma** - Completado
+   - AssetDocumentType
+   - AssetAttachment extendido
+   - AttachmentStatus enum
+
+2. ⏳ **Migración de datos**
+   - Agregar `imageUrl` a Asset
+   - Agregar `kmUsed`, `evidenceUrls`, `metricType`, `metricValue` a AssetUsage
+   - Agregar `createdAtDevice`, `syncedAt` a AssetUsage
+
+3. 🔄 **Backend API**
+   - [ ] CRUD AssetDocumentType
+   - [ ] Upload de attachments con Azure Blob
+   - [ ] AssetService completo (crear con imagen, docs, mantenimiento)
+   - [ ] AssetUsageService (reportes de uso)
+
+4. 🔄 **Frontend**
+   - [ ] Modal de configuración de mantenimiento preventivo
+   - [ ] Modal de carga de documentación
+   - [ ] Formulario crear/editar Asset integrado
+   - [ ] Vista de alertas de vencimientos
+
+### Fase 2: Sistema de Alertas y Reportes (3-4 días)
+
+1. [ ] Cron job para detectar documentos por vencer
+2. [ ] Integración con motor de intenciones (SEND_EXPIRY_ALERT)
+3. [ ] Notificaciones por email/WhatsApp
+4. [ ] Dashboard de alertas para administradores
+
+### Fase 3: Cotizaciones y Contratos de Alquiler (2-3 días)
+
+1. [ ] Frontend para crear cotizaciones
+2. [ ] Configurar plantilla de cotización vía UI
+3. [ ] Configurar SignNow en BusinessUnit
+4. [ ] Probar flujo completo: Cotización → Firma → Pago → Contrato → Activos marcados como "rented"
+
+### Fase 4: App Móvil Offline-First (2-3 semanas)
+
+1. [ ] Setup Expo + React Native
+2. [ ] Autenticación
+3. [ ] Lista de activos asignados al operario
+4. [ ] Formulario de reporte de uso (horómetro/km)
+5. [ ] Captura de fotos (evidencia)
+6. [ ] Cola de sincronización offline
+7. [ ] Sync al reconectar
+8. [ ] Resolución de conflictos
 
 ---
 

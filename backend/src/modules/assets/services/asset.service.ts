@@ -386,4 +386,47 @@ export class AssetService {
       },
     });
   }
+
+  /**
+   * Upload main image for asset
+   */
+  async uploadMainImage(
+    tenantId: string,
+    businessUnitId: string,
+    assetId: string,
+    imageUrl: string,
+  ): Promise<Asset> {
+    const asset = await this.prisma.asset.update({
+      where: { id: assetId },
+      data: { imageUrl },
+    });
+
+    // Emit event
+    await this.prisma.assetEvent.create({
+      data: {
+        tenantId,
+        businessUnitId,
+        assetId,
+        eventType: "asset.image_uploaded",
+        source: "system",
+        payload: { imageUrl },
+      },
+    });
+
+    return asset;
+  }
+
+  /**
+   * Delete main image
+   */
+  async deleteMainImage(
+    tenantId: string,
+    businessUnitId: string,
+    assetId: string,
+  ): Promise<Asset> {
+    return this.prisma.asset.update({
+      where: { id: assetId },
+      data: { imageUrl: null },
+    });
+  }
 }

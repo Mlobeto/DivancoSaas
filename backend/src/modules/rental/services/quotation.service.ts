@@ -283,7 +283,14 @@ export class QuotationService {
   async createContractFromQuotation(quotationId: string): Promise<any> {
     const quotation = await prisma.quotation.findUnique({
       where: { id: quotationId },
-      include: { items: true },
+      include: {
+        items: {
+          include: {
+            asset: true, // Incluir info del activo
+          },
+        },
+        client: true,
+      },
     });
 
     if (!quotation) {
@@ -310,31 +317,101 @@ export class QuotationService {
       quotation.items[0]?.rentalEndDate ||
       new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
+    // Detectar si es un contrato de alquiler (tiene items con assetId)
+    const hasRentalAssets = quotation.items.some((item) => item.assetId);
+
+    // Usar transacción para crear todos los registros relacionados
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Crear QuotationContract (registro de conversión)
+      const quotationContract = await tx.quotationContract.create({
+        data: {
+          tenantId: quotation.tenantId,
+          businessUnitId: quotation.businessUnitId,
+          quotationId: quotation.id,
+          code: contractCode,
+          status: "active",
+          startDate,
+          endDate,
+          pdfUrl: `https://storage.divancosaas.com/${quotation.tenantId}/contracts/${contractCode}.pdf`,
+          signedPdfUrl: quotation.signedPdfUrl!,
+          totalAmount: quotation.totalAmount,
+          currency: quotation.currency,
+        },
+      });
+
+      let rentalContract = null;
+
+      // 2. Si tiene activos de alquiler, crear RentalContract operativo
+      if (hasRentalAssets) {
+        rentalContract = await tx.rentalContract.create({
+          data: {
+            tenantId: quotation.tenantId,
+            businessUnitId: quotation.businessUnitId,
+            clientId: quotation.clientId,
+            status: "ACTIVE",
+            contractAssets: {
+              create: quotation.items
+                .filter((item) => item.assetId) // Solo items con activos
+                .map((item) => ({
+                  assetId: item.assetId!,
+                  obra: quotation.notes || "Obra por definir",
+                  estimatedStart: item.rentalStartDate || startDate,
+                  estimatedEnd: item.rentalEndDate || endDate,
+                  estimatedDays: item.rentalDays || null,
+                  estimatedHours: null,
+                  needsPostObraMaintenance: false,
+                })),
+            },
+          },
+          include: {
+            contractAssets: true,
+          },
+        });
+
+        // 3. Actualizar ubicación de los activos
+        const assetIds = quotation.items
+          .filter((item) => item.assetId)
+          .map((item) => item.assetId!);
+
+        if (assetIds.length > 0) {
+          // Actualizar ubicación
+          await tx.asset.updateMany({
+            where: {
+              id: { in: assetIds },
+            },
+            data: {
+              currentLocation: quotation.notes || "En obra",
+            },
+          });
+
+          // Actualizar estado a través de AssetState (si existe)
+          for (const assetId of assetIds) {
+            await tx.assetState.updateMany({
+              where: { assetId },
+              data: { currentState: "rented" },
+            });
+          }
+        }
+      }
+
+      // 4. Actualizar estado de cotización
+      await tx.quotation.update({
+        where: { id: quotationId },
+        data: { status: "contract_created" },
+      });
+
+      return {
+        quotationContract,
+        rentalContract,
+        hasRentalAssets,
+      };
+    });
+
     // TODO: Generar PDF de contrato con plantilla específica
+    // TODO: Enviar notificación al cliente con contrato generado
+    // TODO: Si es rental, emitir evento para iniciar seguimiento de obra
 
-    const contract = await prisma.quotationContract.create({
-      data: {
-        tenantId: quotation.tenantId,
-        businessUnitId: quotation.businessUnitId,
-        quotationId: quotation.id,
-        code: contractCode,
-        status: "active",
-        startDate,
-        endDate,
-        pdfUrl: `https://storage.divancosaas.com/${quotation.tenantId}/contracts/${contractCode}.pdf`,
-        signedPdfUrl: quotation.signedPdfUrl!,
-        totalAmount: quotation.totalAmount,
-        currency: quotation.currency,
-      },
-    });
-
-    // Actualizar estado de cotización
-    await prisma.quotation.update({
-      where: { id: quotationId },
-      data: { status: "contract_created" },
-    });
-
-    return contract;
+    return result;
   }
 
   /**

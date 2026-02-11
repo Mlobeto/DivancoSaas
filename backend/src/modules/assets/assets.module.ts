@@ -11,7 +11,11 @@ import {
   ModulePermission,
   ModuleWorkflow,
 } from "@core/contracts/module.contract";
-import { AssetsController } from "./controllers/assets.controller";
+import {
+  AssetsController,
+  upload,
+  uploadDocuments,
+} from "./controllers/assets.controller";
 import { RentalController } from "./controllers/rental.controller";
 import { SupplyController } from "./controllers/supply.controller";
 import { IncidentController } from "./controllers/incident.controller";
@@ -44,6 +48,21 @@ export class AssetsModule implements ModuleContract {
     );
     router.get("/assets/:assetId/events", AssetsController.getAssetEvents);
 
+    // ========== ASSET IMAGE UPLOAD ==========
+    router.post(
+      "/assets/:assetId/image",
+      upload.single("image"),
+      AssetsController.uploadMainImage,
+    );
+    router.delete("/assets/:assetId/image", AssetsController.deleteMainImage);
+
+    // ========== ASSET ATTACHMENTS (Multiple documents/photos) ==========
+    router.post(
+      "/assets/:assetId/attachments",
+      uploadDocuments.array("files", 10),
+      AssetsController.uploadMultipleAttachments,
+    );
+
     // ========== MAINTENANCE ==========
     router.post("/maintenance", AssetsController.createMaintenance);
     router.get("/maintenance/active", AssetsController.getActiveMaintenance);
@@ -65,6 +84,11 @@ export class AssetsModule implements ModuleContract {
     router.get(
       "/assets/:assetId/usage/summary",
       AssetsController.getAssetUsageSummary,
+    );
+    router.post(
+      "/usage/:usageId/evidence",
+      upload.array("files", 5),
+      AssetsController.uploadUsageEvidence,
     );
 
     // ========== ATTACHMENTS ==========

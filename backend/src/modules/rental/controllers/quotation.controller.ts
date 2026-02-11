@@ -218,12 +218,19 @@ export class QuotationController {
     try {
       const { id } = req.params;
       const quotationId = Array.isArray(id) ? id[0] : id;
-      const contract =
+      const result =
         await quotationService.createContractFromQuotation(quotationId);
 
       res.json({
         success: true,
-        data: contract,
+        message: result.hasRentalAssets
+          ? "Contrato creado exitosamente. Activos asociados al contrato de alquiler."
+          : "Contrato creado exitosamente.",
+        data: {
+          quotationContract: result.quotationContract,
+          rentalContract: result.rentalContract, // Puede ser null si no tiene activos
+          hasRentalAssets: result.hasRentalAssets,
+        },
       });
     } catch (error: any) {
       res.status(400).json({

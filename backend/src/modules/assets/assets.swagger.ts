@@ -601,3 +601,205 @@
  *       200:
  *         description: List of attachments
  */
+
+/**
+ * @swagger
+ * /modules/assets/assets/{assetId}/image:
+ *   post:
+ *     tags: [Assets]
+ *     summary: Upload main image for asset
+ *     description: Upload a single main image for the asset (replaces existing image)
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: assetId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - image
+ *             properties:
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *                 description: Image file (JPG, PNG, WebP - max 5MB)
+ *     responses:
+ *       200:
+ *         description: Image uploaded successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     asset:
+ *                       $ref: '#/components/schemas/Asset'
+ *                     imageUrl:
+ *                       type: string
+ *                       format: uri
+ *       400:
+ *         description: Invalid file or missing image
+ *       404:
+ *         description: Asset not found
+ *
+ *   delete:
+ *     tags: [Assets]
+ *     summary: Delete main image from asset
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: assetId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Image deleted successfully
+ *       404:
+ *         description: Asset not found
+ */
+
+/**
+ * @swagger
+ * /modules/assets/assets/{assetId}/attachments:
+ *   post:
+ *     tags: [Attachments]
+ *     summary: Upload multiple attachments (documents/photos)
+ *     description: Upload multiple files with optional document type and expiry tracking
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: assetId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - files
+ *             properties:
+ *               files:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: binary
+ *                 description: Multiple files (images, PDF, Word, Excel - max 10 files, 10MB each)
+ *               documentTypeId:
+ *                 type: string
+ *                 format: uuid
+ *                 description: Optional link to AssetDocumentType (e.g., "Insurance", "Permit")
+ *               issueDate:
+ *                 type: string
+ *                 format: date
+ *                 description: Document issue date
+ *               expiryDate:
+ *                 type: string
+ *                 format: date
+ *                 description: Document expiry date (for tracking)
+ *               alertDays:
+ *                 type: integer
+ *                 description: Days before expiry to send alert (default 30)
+ *               notes:
+ *                 type: string
+ *                 description: Additional notes about the documents
+ *               source:
+ *                 type: string
+ *                 example: "web"
+ *                 description: Upload source (web, mobile, api)
+ *     responses:
+ *       200:
+ *         description: Attachments uploaded successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/AssetAttachment'
+ *                 message:
+ *                   type: string
+ *                   example: "5 attachment(s) uploaded successfully"
+ *       400:
+ *         description: Invalid files or missing required fields
+ *       404:
+ *         description: Asset not found
+ */
+
+/**
+ * @swagger
+ * /modules/assets/usage/{usageId}/evidence:
+ *   post:
+ *     tags: [Usage]
+ *     summary: Upload evidence for usage record
+ *     description: Upload photos of odometer/hourometer as evidence for usage report
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: usageId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - files
+ *             properties:
+ *               files:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: binary
+ *                 description: Evidence photos (max 5 images, 5MB each)
+ *     responses:
+ *       200:
+ *         description: Evidence uploaded successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   $ref: '#/components/schemas/AssetUsage'
+ *                 message:
+ *                   type: string
+ *                   example: "3 evidence file(s) uploaded successfully"
+ *       400:
+ *         description: Invalid files or missing required fields
+ *       404:
+ *         description: Usage record not found
+ */
