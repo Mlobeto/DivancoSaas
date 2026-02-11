@@ -43,6 +43,9 @@ export function BasicInfoStep({
 
   return (
     <div className="card space-y-6">
+      <h2 className="text-xl font-semibold text-white border-b border-dark-700 pb-3">
+        📋 Información Básica
+      </h2>
       {/* Name */}
       <div>
         <label className="label">Nombre de la Plantilla *</label>
@@ -121,20 +124,6 @@ export function BasicInfoStep({
         </div>
       </div>
 
-      {/* Description */}
-      <div>
-        <label className="label">Descripción</label>
-        <textarea
-          className="input"
-          rows={3}
-          placeholder="Describe el tipo de activo..."
-          value={formData.description || ""}
-          onChange={(e) =>
-            setFormData({ ...formData, description: e.target.value })
-          }
-        />
-      </div>
-
       {/* Requires Preventive Maintenance */}
       <div className="flex items-center gap-3">
         <input
@@ -169,6 +158,16 @@ export function CustomFieldsStep({
 }) {
   const [editingField, setEditingField] = useState<CustomField | null>(null);
   const [showFieldModal, setShowFieldModal] = useState(false);
+
+  if (!formData.name) {
+    return (
+      <div className="card">
+        <div className="text-center py-12 text-dark-400">
+          <p>Primero completa el nombre de la plantilla arriba ↑</p>
+        </div>
+      </div>
+    );
+  }
 
   // Agrupar campos por sección
   const sections = formData.customFields.reduce(
@@ -255,13 +254,13 @@ export function CustomFieldsStep({
   return (
     <div className="space-y-6">
       <div className="card">
+        <h2 className="text-xl font-semibold text-white border-b border-dark-700 pb-3 mb-6">
+          ⚙️ Campos Personalizados
+        </h2>
         <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-xl font-bold">Campos Personalizados</h2>
-            <p className="text-dark-400 text-sm mt-1">
-              Define los campos que se solicitarán al crear este tipo de activo
-            </p>
-          </div>
+          <p className="text-dark-400 text-sm">
+            Define los campos que se solicitarán al crear este tipo de activo
+          </p>
           <button onClick={handleAddField} className="btn-primary">
             + Agregar Campo
           </button>
@@ -709,82 +708,82 @@ export function PreviewStep({ formData }: { formData: CreateTemplateInput }) {
   });
 
   return (
-    <div className="space-y-6">
-      <div className="card bg-primary-900/10 border-primary-800">
-        <div className="flex items-start gap-4">
-          <div className="text-4xl">{formData.icon || "📋"}</div>
-          <div className="flex-1">
-            <h2 className="text-2xl font-bold mb-2">
-              {formData.name || "Sin nombre"}
-            </h2>
-            {formData.description && (
-              <p className="text-dark-400">{formData.description}</p>
-            )}
-            <div className="flex gap-4 mt-4 text-sm">
-              <div>
-                <span className="text-dark-400">Categoría: </span>
-                <span className="font-semibold">
-                  {AssetCategoryLabels[formData.category] || formData.category}
-                </span>
-              </div>
-              {formData.requiresPreventiveMaintenance && (
-                <div className="text-green-400">
-                  ✓ Requiere mantenimiento preventivo
+    <div className="card">
+      <h2 className="text-xl font-semibold text-white border-b border-dark-700 pb-3 mb-6">
+        👁️ Vista Previa
+      </h2>
+      <div className="space-y-6">
+        <div className="bg-primary-900/10 border border-primary-800 rounded-lg p-6">
+          <div className="flex items-start gap-4">
+            <div className="text-4xl">{formData.icon || "📋"}</div>
+            <div className="flex-1">
+              <h3 className="text-2xl font-bold mb-2">
+                {formData.name || "Sin nombre"}
+              </h3>
+              <div className="flex gap-4 mt-4 text-sm">
+                <div>
+                  <span className="text-dark-400">Categoría: </span>
+                  <span className="font-semibold">
+                    {AssetCategoryLabels[formData.category] ||
+                      formData.category}
+                  </span>
                 </div>
-              )}
+                {formData.requiresPreventiveMaintenance && (
+                  <div className="text-green-400">
+                    ✓ Requiere mantenimiento preventivo
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="card">
-        <h3 className="text-lg font-bold mb-4">
-          Vista Previa del Formulario de Creación
-        </h3>
-        <p className="text-dark-400 text-sm mb-6">
-          Así se verá el formulario al crear un activo de este tipo:
-        </p>
+        <div className="bg-dark-800 rounded-lg p-6">
+          <h4 className="text-md font-semibold mb-4 text-dark-300">
+            Así se verá el formulario al crear un activo:
+          </h4>
 
-        <div className="space-y-6 p-6 bg-dark-800 rounded-lg">
-          {/* Código (siempre presente) */}
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Código interno *
-            </label>
-            <input
-              type="text"
-              className="input"
-              placeholder="Ej: RET-001, AND-045..."
-              disabled
-            />
-          </div>
-
-          {/* Custom Fields por sección */}
-          {Object.entries(sections).map(([sectionName, fields]) => (
-            <div key={sectionName}>
-              <h4 className="font-semibold text-md mb-3 text-primary-400">
-                {sectionName}
-              </h4>
-              <div className="space-y-4">
-                {fields.map((field) => (
-                  <div key={field.key}>
-                    <label className="block text-sm font-medium mb-2">
-                      {field.label}{" "}
-                      {field.required && (
-                        <span className="text-red-400">*</span>
-                      )}
-                    </label>
-                    {renderFieldPreview(field)}
-                    {field.helperText && (
-                      <p className="text-xs text-dark-500 mt-1">
-                        {field.helperText}
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
+          <div className="space-y-6">
+            {/* Código (siempre presente) */}
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Código interno *
+              </label>
+              <input
+                type="text"
+                className="input"
+                placeholder="Ej: RET-001, AND-045..."
+                disabled
+              />
             </div>
-          ))}
+
+            {/* Custom Fields por sección */}
+            {Object.entries(sections).map(([sectionName, fields]) => (
+              <div key={sectionName}>
+                <h4 className="font-semibold text-md mb-3 text-primary-400">
+                  {sectionName}
+                </h4>
+                <div className="space-y-4">
+                  {fields.map((field) => (
+                    <div key={field.key}>
+                      <label className="block text-sm font-medium mb-2">
+                        {field.label}{" "}
+                        {field.required && (
+                          <span className="text-red-400">*</span>
+                        )}
+                      </label>
+                      {renderFieldPreview(field)}
+                      {field.helperText && (
+                        <p className="text-xs text-dark-500 mt-1">
+                          {field.helperText}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

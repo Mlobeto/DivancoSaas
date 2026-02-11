@@ -17,12 +17,10 @@ import {
   CustomFieldsStep,
   PreviewStep,
 } from "@/modules/machinery/components/TemplateWizardSteps";
-type WizardStep = "basic" | "fields" | "preview";
 
 export function TemplateWizardPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [step, setStep] = useState<WizardStep>("basic");
 
   // Form state
   const [formData, setFormData] = useState<CreateTemplateInput>({
@@ -46,7 +44,7 @@ export function TemplateWizardPage() {
       setFormData({
         name: existingTemplate.name,
         category: existingTemplate.category,
-        description: existingTemplate.description || "",
+        description: "", // No longer used
         icon: existingTemplate.icon || "",
         requiresPreventiveMaintenance:
           existingTemplate.requiresPreventiveMaintenance,
@@ -76,115 +74,50 @@ export function TemplateWizardPage() {
     saveMutation.mutate(formData);
   };
 
-  const renderStep = () => {
-    switch (step) {
-      case "basic":
-        return <BasicInfoStep formData={formData} setFormData={setFormData} />;
-      case "fields":
-        return (
-          <CustomFieldsStep formData={formData} setFormData={setFormData} />
-        );
-      case "preview":
-        return <PreviewStep formData={formData} />;
-    }
-  };
+  const canSave =
+    formData.name && formData.category && formData.customFields.length > 0;
 
   return (
     <Layout
       title={id ? "Editar Plantilla" : "Nueva Plantilla"}
-      subtitle={`Paso ${step === "basic" ? "1" : step === "fields" ? "2" : "3"} de 3`}
+      subtitle="Define la estructura para crear activos de este tipo"
       actions={
-        <button
-          onClick={() => navigate("/machinery/templates")}
-          className="btn-ghost"
-        >
-          ✕ Cancelar
-        </button>
-      }
-    >
-      <div className="p-8 max-w-5xl mx-auto">
-        {/* Progress Bar */}
-        <div className="card mb-6">
-          <div className="flex items-center justify-between gap-4">
-            <StepIndicator
-              number={1}
-              title="Información Básica"
-              active={step === "basic"}
-              completed={step === "fields" || step === "preview"}
-              onClick={() => setStep("basic")}
-            />
-            <div className="flex-1 h-0.5 bg-dark-700" />
-            <StepIndicator
-              number={2}
-              title="Campos Personalizados"
-              active={step === "fields"}
-              completed={step === "preview"}
-              onClick={() => setStep("fields")}
-            />
-            <div className="flex-1 h-0.5 bg-dark-700" />
-            <StepIndicator
-              number={3}
-              title="Vista Previa"
-              active={step === "preview"}
-              completed={false}
-              onClick={() => setStep("preview")}
-            />
-          </div>
-        </div>
-
-        {/* Step Content */}
-        {renderStep()}
-
-        {/* Navigation Buttons */}
-        <div className="flex justify-between gap-4 mt-8">
+        <div className="flex gap-3">
           <button
             onClick={() => navigate("/machinery/templates")}
             className="btn-ghost"
           >
-            Cancelar
+            ✕ Cancelar
           </button>
-
-          <div className="flex gap-3">
-            {step !== "basic" && (
-              <button
-                onClick={() => setStep(step === "fields" ? "basic" : "fields")}
-                className="btn-secondary"
-              >
-                ← Anterior
-              </button>
-            )}
-
-            {step !== "preview" && (
-              <button
-                onClick={() => setStep(step === "basic" ? "fields" : "preview")}
-                className="btn-primary"
-                disabled={
-                  step === "basic" && (!formData.name || !formData.category)
-                }
-              >
-                Siguiente →
-              </button>
-            )}
-
-            {step === "preview" && (
-              <button
-                onClick={handleSubmit}
-                className="btn-primary"
-                disabled={saveMutation.isPending}
-              >
-                {saveMutation.isPending
-                  ? "Guardando..."
-                  : id
-                    ? "Actualizar Plantilla"
-                    : "Crear Plantilla"}
-              </button>
-            )}
-          </div>
+          <button
+            onClick={handleSubmit}
+            className="btn-primary"
+            disabled={saveMutation.isPending || !canSave}
+          >
+            {saveMutation.isPending
+              ? "Guardando..."
+              : id
+                ? "💾 Actualizar"
+                : "💾 Crear Plantilla"}
+          </button>
         </div>
+      }
+    >
+      <div className="p-8 max-w-5xl mx-auto space-y-6">
+        {/* Basic Info Section */}
+        <BasicInfoStep formData={formData} setFormData={setFormData} />
+
+        {/* Custom Fields Section */}
+        <CustomFieldsStep formData={formData} setFormData={setFormData} />
+
+        {/* Preview Section */}
+        {formData.customFields.length > 0 && (
+          <PreviewStep formData={formData} />
+        )}
 
         {/* Error Message */}
         {saveMutation.error && (
-          <div className="card bg-red-900/20 border-red-800 text-red-400 mt-4">
+          <div className="card bg-red-900/20 border-red-800 text-red-400">
             {saveMutation.error instanceof Error
               ? saveMutation.error.message
               : "Error al guardar"}
@@ -192,47 +125,5 @@ export function TemplateWizardPage() {
         )}
       </div>
     </Layout>
-  );
-}
-
-// ============================================
-// STEP COMPONENTS
-// ============================================
-
-function StepIndicator({
-  number,
-  title,
-  active,
-  completed,
-  onClick,
-}: {
-  number: number;
-  title: string;
-  active: boolean;
-  completed: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className="flex flex-col items-center gap-2 group"
-    >
-      <div
-        className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-colors ${
-          active
-            ? "bg-primary-600 text-white"
-            : completed
-              ? "bg-green-600 text-white"
-              : "bg-dark-700 text-dark-400 group-hover:bg-dark-600"
-        }`}
-      >
-        {completed ? "✓" : number}
-      </div>
-      <span
-        className={`text-sm ${active ? "text-white font-semibold" : "text-dark-400"}`}
-      >
-        {title}
-      </span>
-    </button>
   );
 }
