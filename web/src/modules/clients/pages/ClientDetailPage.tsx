@@ -41,6 +41,12 @@ export function ClientDetailPage() {
       }
       actions={
         <>
+          <button
+            onClick={() => navigate(`/clients/${id}/edit`)}
+            className="btn-secondary mr-2"
+          >
+            Editar
+          </button>
           <button onClick={() => navigate("/clients")} className="btn-ghost">
             ← Clientes
           </button>

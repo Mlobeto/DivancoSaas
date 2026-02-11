@@ -10,11 +10,25 @@ import type {
   ClientSummary,
   ClientAccountMovement,
   ClientRankingConfig,
+  GlobalClientSearchResult,
 } from "../types/client.types";
 
 const BASE_URL = "/modules/clients";
 
 export const clientService = {
+  async searchGlobal(search: string): Promise<GlobalClientSearchResult[]> {
+    const params = new URLSearchParams();
+    params.append("search", search);
+    const response = await apiClient.get(
+      `${BASE_URL}/global-search?${params.toString()}`,
+    );
+    return response.data.data;
+  },
+
+  async link(clientId: string): Promise<void> {
+    await apiClient.post(`${BASE_URL}/clients/${clientId}/link`);
+  },
+
   async list(filters: ClientFilters = {}): Promise<ClientListResponse> {
     const params = new URLSearchParams();
     if (filters.status) params.append("status", filters.status);
@@ -31,6 +45,20 @@ export const clientService = {
   async getById(id: string): Promise<Client> {
     const response = await apiClient.get(`${BASE_URL}/clients/${id}`);
     return response.data.data;
+  },
+
+  async create(data: Partial<Client>): Promise<Client> {
+    const response = await apiClient.post(`${BASE_URL}/clients`, data);
+    return response.data.data;
+  },
+
+  async update(id: string, data: Partial<Client>): Promise<Client> {
+    const response = await apiClient.put(`${BASE_URL}/clients/${id}`, data);
+    return response.data.data;
+  },
+
+  async delete(id: string): Promise<void> {
+    await apiClient.delete(`${BASE_URL}/clients/${id}`);
   },
 
   async getSummary(id: string): Promise<ClientSummary> {

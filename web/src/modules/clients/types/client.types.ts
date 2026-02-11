@@ -15,6 +15,17 @@ export enum ClientType {
 
 export type ContactChannel = "EMAIL" | "PHONE" | "WHATSAPP" | "OTHER";
 
+export interface GlobalClientSearchResult {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  taxId: string | null;
+  documentNumber: string | null;
+  isLinked: boolean;
+  businessUnitsCount: number;
+}
+
 export interface Client {
   id: string;
   tenantId: string;

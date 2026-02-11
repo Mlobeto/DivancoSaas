@@ -91,6 +91,59 @@ export class ClientsController {
     }
   }
 
+  static async deleteClient(req: Request, res: Response, next: NextFunction) {
+    try {
+      const context = validateBusinessUnitContext(req, res);
+      if (!context) return;
+
+      const clientId = req.params.clientId as string;
+
+      await clientsService.deleteClient(context, clientId);
+
+      res.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async searchGlobalClients(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      const context = validateBusinessUnitContext(req, res);
+      if (!context) return;
+
+      const { q } = req.query;
+      if (typeof q !== "string") {
+        res
+          .status(400)
+          .json({ success: false, error: "Query param q is required" });
+        return;
+      }
+
+      const results = await clientsService.searchGlobalClients(context, q);
+      res.json({ success: true, data: results });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async linkClient(req: Request, res: Response, next: NextFunction) {
+    try {
+      const context = validateBusinessUnitContext(req, res);
+      if (!context) return;
+
+      const clientId = req.params.clientId as string;
+      await clientsService.linkClientToBusinessUnit(context, clientId);
+
+      res.json({ success: true });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async getClientSummary(
     req: Request,
     res: Response,

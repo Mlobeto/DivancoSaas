@@ -11,3 +11,4 @@ export * from "./services/client.service";
 // Pages
 export { ClientsPage } from "./pages/ClientsPage";
 export { ClientDetailPage } from "./pages/ClientDetailPage";
+export { ClientWizardPage } from "./pages/ClientWizardPage";

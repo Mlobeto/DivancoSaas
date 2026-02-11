@@ -1,24 +1,44 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { Layout } from "@/core/components/Layout";
 import { useAuthStore } from "@/store/auth.store";
 import { clientService } from "../services/client.service";
 import { Client, ClientFilters, ClientStatus } from "../types/client.types";
+import { ClientLinkModal } from "../components/ClientLinkModal";
 
 export function ClientsPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { tenant, businessUnit } = useAuthStore();
   const [filters, setFilters] = useState<ClientFilters>({
     page: 1,
     limit: 20,
   });
+  const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["clients", tenant?.id, businessUnit?.id, filters],
     queryFn: () => clientService.list(filters),
     enabled: !!tenant?.id && !!businessUnit?.id,
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => clientService.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["clients"] });
+    },
+  });
+
+  const handleDelete = (id: string) => {
+    if (
+      confirm(
+        "¿Estás seguro de que deseas eliminar este cliente de esta Business Unit?",
+      )
+    ) {
+      deleteMutation.mutate(id);
+    }
+  };
 
   const statusColors: Record<ClientStatus, string> = {
     ACTIVE: "bg-green-900/30 text-green-400 border-green-800",
@@ -53,6 +73,18 @@ export function ClientsPage() {
       subtitle={`Gestión de clientes y cuenta corriente - ${businessUnit.name}`}
       actions={
         <>
+          <button
+            onClick={() => setIsLinkModalOpen(true)}
+            className="btn-secondary mr-2"
+          >
+            🔗 Vincular Existente
+          </button>
+          <button
+            onClick={() => navigate("/clients/new")}
+            className="btn-primary"
+          >
+            + Nuevo Cliente
+          </button>
           <a href="/dashboard" className="btn-ghost">
             ← Dashboard
           </a>
@@ -215,12 +247,31 @@ export function ClientsPage() {
                         </div>
                       </td>
                       <td>
-                        <button
-                          onClick={() => navigate(`/clients/${client.id}`)}
-                          className="btn-ghost text-sm"
-                        >
-                          Ver
-                        </button>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => navigate(`/clients/${client.id}`)}
+                            className="btn-ghost text-sm"
+                            title="Ver detalle"
+                          >
+                            Ver
+                          </button>
+                          <button
+                            onClick={() =>
+                              navigate(`/clients/${client.id}/edit`)
+                            }
+                            className="btn-ghost text-sm text-blue-400 hover:text-blue-300"
+                            title="Editar"
+                          >
+                            Editar
+                          </button>
+                          <button
+                            onClick={() => handleDelete(client.id)}
+                            className="btn-ghost text-sm text-red-400 hover:text-red-300"
+                            title="Desvincular de esta BU"
+                          >
+                            Eliminar
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -264,6 +315,14 @@ export function ClientsPage() {
           )}
         </div>
       )}
+
+      <ClientLinkModal
+        isOpen={isLinkModalOpen}
+        onClose={() => setIsLinkModalOpen(false)}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ["clients"] });
+        }}
+      />
     </Layout>
   );
 }

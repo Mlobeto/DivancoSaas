@@ -191,6 +191,92 @@ export class ClientsService {
     return updated;
   }
 
+  async deleteClient(context: Context, clientId: string) {
+    const where = {
+      tenantId_businessUnitId_clientId: {
+        tenantId: context.tenantId,
+        businessUnitId: context.businessUnitId,
+        clientId,
+      },
+    };
+
+    const existing = await this.prisma.clientBusinessUnit.findUnique({ where });
+
+    // Si no existe la asignación en esta BU, consideramos la operación idempotente
+    if (!existing) {
+      return;
+    }
+
+    await this.prisma.clientBusinessUnit.delete({ where });
+  }
+
+  async searchGlobalClients(context: Context, query: string) {
+    if (!query || query.length < 2) return [];
+
+    // Buscar clientes en todo el tenant que coincidan con el término
+    const clients = await this.prisma.client.findMany({
+      where: {
+        tenantId: context.tenantId,
+        OR: [
+          { name: { contains: query, mode: "insensitive" } },
+          { displayName: { contains: query, mode: "insensitive" } },
+          { taxProfiles: { some: { taxIdNumber: { contains: query } } } },
+        ],
+      },
+      include: {
+        businessUnits: {
+          select: { businessUnitId: true },
+        },
+      },
+      take: 10,
+    });
+
+    // Mapear resultado para indicar si ya está vinculado a esta BU
+    return clients.map((c) => ({
+      id: c.id,
+      name: c.name,
+      displayName: c.displayName,
+      email: c.email,
+      phone: c.phone,
+      isLinked: c.businessUnits.some(
+        (bu) => bu.businessUnitId === context.businessUnitId,
+      ),
+    }));
+  }
+
+  async linkClientToBusinessUnit(context: Context, clientId: string) {
+    // Verificar que el cliente exista en el tenant
+    const client = await this.prisma.client.findFirst({
+      where: { id: clientId, tenantId: context.tenantId },
+    });
+
+    if (!client) {
+      throw new Error("Client not found in this tenant");
+    }
+
+    // Crear la relación (si ya existe, falla por constraint unique, o usamos upsert/ignore)
+    // Aquí usamos upsert para ser idempotentes pero preservando si ya existía
+    const linked = await this.prisma.clientBusinessUnit.upsert({
+      where: {
+        tenantId_businessUnitId_clientId: {
+          tenantId: context.tenantId,
+          businessUnitId: context.businessUnitId,
+          clientId,
+        },
+      },
+      create: {
+        tenantId: context.tenantId,
+        businessUnitId: context.businessUnitId,
+        clientId,
+        status: ClientStatus.ACTIVE,
+        tags: [],
+      },
+      update: {}, // No actualizar si ya existe
+    });
+
+    return linked;
+  }
+
   async getClientSummary(context: Context, clientId: string) {
     const [client, movements, risk] = await this.prisma.$transaction([
       this.prisma.client.findFirst({

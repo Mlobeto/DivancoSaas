@@ -9,8 +9,11 @@ router.use(authenticate);
 
 router.get("/clients", ClientsController.listClients);
 router.post("/clients", ClientsController.createClient);
+router.get("/global-search", ClientsController.searchGlobalClients);
+router.post("/clients/:clientId/link", ClientsController.linkClient);
 router.get("/clients/:clientId", ClientsController.getClientById);
 router.put("/clients/:clientId", ClientsController.updateClient);
+router.delete("/clients/:clientId", ClientsController.deleteClient);
 
 router.get("/clients/:clientId/summary", ClientsController.getClientSummary);
 

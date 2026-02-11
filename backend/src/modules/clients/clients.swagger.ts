@@ -394,6 +394,115 @@
 
 /**
  * @swagger
+ * /modules/clients/global-search:
+ *   get:
+ *     summary: Search clients globally in the Tenant
+ *     description: Search for clients across the entire Tenant to link them to the current Business Unit. Returns basic info and whether it is already linked.
+ *     tags: [Clients]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: header
+ *         name: X-Tenant-Id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - in: header
+ *         name: X-Business-Unit-Id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - in: query
+ *         name: search
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Search by name, NIT/TaxID, or email (min 3 chars)
+ *     responses:
+ *       200:
+ *         description: Search results
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         format: uuid
+ *                       name:
+ *                         type: string
+ *                       email:
+ *                         type: string
+ *                       phone:
+ *                         type: string
+ *                       taxId:
+ *                         type: string
+ *                       documentNumber:
+ *                         type: string
+ *                       isLinked:
+ *                         type: boolean
+ *                         description: True if the client is already linked to the requesting Business Unit
+ *                       businessUnitsCount:
+ *                         type: integer
+ *                         description: How many BUs this client is already linked to
+ */
+
+/**
+ * @swagger
+ * /modules/clients/clients/{clientId}/link:
+ *   post:
+ *     summary: Link existing client to Business Unit
+ *     description: Associates an existing global client to the current Business Unit. Creates a ClientBusinessUnit record.
+ *     tags: [Clients]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: header
+ *         name: X-Tenant-Id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - in: header
+ *         name: X-Business-Unit-Id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - in: path
+ *         name: clientId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Client successfully linked
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Client linked successfully"
+ */
+
+/**
+ * @swagger
  * /modules/clients/clients/{clientId}:
  *   get:
  *     summary: Get client by ID
