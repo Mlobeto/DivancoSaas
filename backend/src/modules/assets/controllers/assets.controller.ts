@@ -1039,7 +1039,15 @@ export class AssetsController {
       const context = validateBusinessUnitContext(req, res);
       if (!context) return;
 
-      const { code, name, description, requiresExpiry, defaultAlertDays, color, icon } = req.body;
+      const {
+        code,
+        name,
+        description,
+        requiresExpiry,
+        defaultAlertDays,
+        color,
+        icon,
+      } = req.body;
 
       if (!code || !name || requiresExpiry === undefined) {
         res.status(400).json({
@@ -1173,7 +1181,14 @@ export class AssetsController {
       const documentTypeId = validatePathParam(req, res, "documentTypeId");
       if (!documentTypeId) return;
 
-      const { name, description, requiresExpiry, defaultAlertDays, color, icon } = req.body;
+      const {
+        name,
+        description,
+        requiresExpiry,
+        defaultAlertDays,
+        color,
+        icon,
+      } = req.body;
 
       const documentType = await documentTypeService.updateDocumentType(
         context.tenantId,
