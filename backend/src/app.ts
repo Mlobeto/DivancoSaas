@@ -65,6 +65,7 @@ import equipmentRouter from "@core/routes/equipment.routes";
 import { AssetsModule } from "./modules/assets/assets.module";
 import { PurchasesModule } from "./modules/purchases/purchases.module";
 import { ClientsModule } from "./modules/clients/clients.module";
+import rentalModule from "./modules/rental/rental.module";
 
 export function createApp(): Application {
   const app = express();
@@ -159,6 +160,7 @@ export function createApp(): Application {
   app.use("/api/v1/modules/assets", assetsModule.getRoutes());
   app.use("/api/v1/modules/purchases", purchasesModule.getRoutes());
   app.use("/api/v1/modules/clients", clientsModule.getRoutes());
+  app.use("/api/v1/rental", rentalModule.routes);
 
   // TODO: Cargar rutas de módulos dinámicamente
   // loadModuleRoutes(app);
