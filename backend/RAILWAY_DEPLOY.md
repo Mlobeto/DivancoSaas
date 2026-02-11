@@ -45,6 +45,15 @@ META_WHATSAPP_WEBHOOK_VERIFY_TOKEN=
 CORS_ORIGINS=https://tudominio.com
 ```
 
+**Variables para Puppeteer (Generación de PDFs):**
+
+```
+PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+PUPPETEER_EXECUTABLE_PATH=/nix/store/*/bin/chromium
+```
+
+> **Nota:** Railway con Nixpacks incluye Chromium automáticamente gracias a la configuración en `nixpacks.toml`
+
 ### 4. Ejecutar migraciones
 
 Railway ejecutará automáticamente:

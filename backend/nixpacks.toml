@@ -1,11 +1,16 @@
 [phases.setup]
-nixPkgs = ['nodejs_20', 'openssl']
+nixPkgs = ['nodejs_20', 'openssl', 'chromium']
 
 [phases.install]
 cmds = [
   'npm ci',
   'npx prisma generate'
 ]
+
+# Variables de entorno para Puppeteer
+[phases.setup.nixPkgsEnvironment]
+PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = 'true'
+PUPPETEER_EXECUTABLE_PATH = '/nix/store/*/bin/chromium'
 
 [phases.build]
 cmds = ['npm run build']
