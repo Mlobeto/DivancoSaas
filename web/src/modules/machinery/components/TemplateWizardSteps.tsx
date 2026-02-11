@@ -466,27 +466,12 @@ function FieldEditorModal({
             />
           </div>
 
-          {/* Key */}
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Key (identificador técnico) *
-            </label>
-            <input
-              type="text"
-              className="input font-mono"
-              placeholder="Ej: brand, year_manufacture..."
-              value={formData.key}
-              onChange={(e) =>
-                setFormData({ ...formData, key: e.target.value })
-              }
-              pattern="^[a-z_][a-z0-9_]*$"
-              disabled={!!field}
-              required
-            />
-            <p className="text-xs text-dark-500 mt-1">
-              Solo letras minúsculas, números y guiones bajos
-            </p>
-          </div>
+          {/* Key - Hidden from UI but auto-generated from label */}
+          <input
+            type="hidden"
+            value={formData.key}
+            name="key"
+          />
 
           {/* Type & Section */}
           <div className="grid grid-cols-2 gap-4">
