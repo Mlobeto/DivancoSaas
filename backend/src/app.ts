@@ -59,7 +59,7 @@ import eventQueueRouter from "@core/routes/event-queue.routes";
 import invoiceRouter from "@core/routes/invoice.routes";
 import shippingRouter from "@core/routes/shipping.routes";
 import dashboardRouter from "@core/routes/dashboard.routes";
-import equipmentRouter from "@core/routes/equipment.routes";
+// import equipmentRouter from "@core/routes/equipment.routes"; // DEPRECATED: Usar módulo Assets en su lugar
 
 // Business Modules
 import { AssetsModule } from "./modules/assets/assets.module";
@@ -151,7 +151,7 @@ export function createApp(): Application {
   app.use("/api/v1/channels", channelRouter);
   app.use("/api/v1/user-identities", userChannelIdentityRouter);
   app.use("/api/v1/events", eventQueueRouter);
-  app.use("/api/v1/equipment", equipmentRouter);
+  // app.use("/api/v1/equipment", equipmentRouter); // DEPRECATED: Usar /api/v1/modules/assets en su lugar
   app.use("/api/v1/invoices", invoiceRouter);
   app.use("/api/v1/shipping", shippingRouter);
   app.use("/api/v1/dashboard", dashboardRouter);

@@ -14,6 +14,9 @@ import { DashboardPage } from "@/core/pages/DashboardPage";
 import { MachineryPage } from "@/modules/machinery/pages/MachineryPage";
 import { AssetTemplatesPage } from "@/modules/machinery/pages/AssetTemplatesPage";
 import { TemplateWizardPage } from "@/modules/machinery/pages/TemplateWizardPage";
+import { DocumentTypesPage } from "@/modules/machinery/pages/DocumentTypesPage";
+import { AssetFormPage } from "@/modules/machinery/pages/AssetFormPage";
+import { AlertsDashboardPage } from "@/modules/machinery/pages/AlertsDashboardPage";
 import {
   SuppliersPage,
   PurchaseOrdersPage,
@@ -95,6 +98,38 @@ createRoot(document.getElementById("root")!).render(
             element={
               <ProtectedRoute>
                 <TemplateWizardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/machinery/document-types"
+            element={
+              <ProtectedRoute>
+                <DocumentTypesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/machinery/assets/new"
+            element={
+              <ProtectedRoute>
+                <AssetFormPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/machinery/assets/:id/edit"
+            element={
+              <ProtectedRoute>
+                <AssetFormPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/machinery/alerts"
+            element={
+              <ProtectedRoute>
+                <AlertsDashboardPage />
               </ProtectedRoute>
             }
           />

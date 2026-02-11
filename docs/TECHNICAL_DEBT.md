@@ -98,26 +98,44 @@ Actualmente los tenants se auto-registran vía `/auth/register` sin control come
 
 ---
 
-### 2. Módulo de Maquinaria - Completar Gestión de Activos
+### 2. Módulo de Maquinaria - COMPLETADO ✅
 
-**Status**: Schema implementado, Frontend y Backend parcial  
-**Pending**:
+**Status**: Backend ✅ | Frontend ✅ (2026-02-11)
 
-#### Backend:
+**Completed Backend** (2026-02-11):
 
-- [ ] Campo `imageUrl` en modelo Asset (foto principal/portada)
-- [ ] Campos en AssetUsage para métricas flexibles:
-  - `kmUsed` (para vehículos)
-  - `metricType` y `metricValue` (genérico: HOURS, KM, CYCLES)
-  - `evidenceUrls` (JSON array de fotos de horómetro/odómetro)
-  - `createdAtDevice` y `syncedAt` (para sincronización offline mobile)
-- [ ] API endpoints para AssetDocumentType (CRUD)
-- [ ] API endpoints para Asset attachments (upload con Azure Blob)
-- [ ] Sistema de alertas automáticas para documentos por vencer (cron job)
+- [x] Campo `imageUrl` en modelo Asset (foto principal/portada)
+- [x] Campos en AssetUsage para métricas flexibles (kmUsed, metricType, metricValue, evidenceUrls, sync fields)
+- [x] API endpoints para AssetDocumentType (CRUD completo)
+- [x] API endpoints para Asset main image upload (POST/DELETE con Azure Blob)
+- [x] API endpoints para múltiples attachments upload (POST con document types y expiry)
+- [x] API endpoint para AssetUsage evidence upload (POST con fotos de horómetro/odómetro)
+- [x] AttachmentService extendido con métodos para document expiry management
+- [x] UsageService extendido con upload de evidencias
+- [x] Swagger documentation completa para todos los endpoints
+
+**Completed Frontend** (2026-02-11):
+
+- [x] DocumentTypesPage - CRUD UI completo para tipos de documentos configurables
+- [x] AssetFormPage - Formulario de creación/edición con upload de imagen y custom fields dinámicos
+- [x] AssetDocumentationModal - Modal para subir múltiples documentos con fechas de vencimiento
+- [x] AlertsDashboardPage - Dashboard de alertas de vencimiento agrupadas por urgencia
+- [x] Servicios API completos (documentTypes, assets, alerts)
+- [x] Integración con Azure Blob Storage para uploads
+- [x] TypeScript types completos
+
+**Documentación**:
+
+- Backend: Swagger en `/api-docs`
+- Frontend: Ver `web/src/modules/machinery/FRONTEND_COMPLETED.md`
+
+**Pending** (Prioridad Media):
+
+- [ ] Sistema de alertas automáticas para documentos por vencer (cron job backend)
 - [ ] Notificaciones de vencimiento vía email/WhatsApp (motor de intenciones)
-- [ ] Endpoints para AssetUsage (reportes desde móvil)
+- [ ] Integración de rutas en router principal (configuración manual del usuario)
 
-#### Frontend:
+**Pending Mobile** (Prioridad Baja):
 
 - [ ] Página de creación/edición de Activos con:
   - Upload de imagen principal (Azure Blob)
@@ -613,7 +631,7 @@ Actualmente los tenants se auto-registran vía `/auth/register` sin control come
 
 ## 🎯 Roadmap Módulo de Maquinaria (Próximos Pasos)
 
-### Fase 1: Completar Gestión de Activos (1 semana)
+### Fase 1: Completar Gestión de Activos - ✅ COMPLETADO (2026-02-11)
 
 **Objetivo**: Poder crear y gestionar activos completos con documentación
 
@@ -621,23 +639,34 @@ Actualmente los tenants se auto-registran vía `/auth/register` sin control come
    - AssetDocumentType
    - AssetAttachment extendido
    - AttachmentStatus enum
+   - Asset.imageUrl
+   - AssetUsage con métricas flexibles
 
-2. ⏳ **Migración de datos**
-   - Agregar `imageUrl` a Asset
-   - Agregar `kmUsed`, `evidenceUrls`, `metricType`, `metricValue` a AssetUsage
-   - Agregar `createdAtDevice`, `syncedAt` a AssetUsage
+2. ✅ **Migración de datos** - Completado
+   - Agregado `imageUrl` a Asset
+   - Agregado `kmUsed`, `evidenceUrls`, `metricType`, `metricValue` a AssetUsage
+   - Agregado `createdAtDevice`, `syncedAt` a AssetUsage
 
-3. 🔄 **Backend API**
-   - [ ] CRUD AssetDocumentType
-   - [ ] Upload de attachments con Azure Blob
-   - [ ] AssetService completo (crear con imagen, docs, mantenimiento)
-   - [ ] AssetUsageService (reportes de uso)
+3. ✅ **Backend API** - Completado
+   - [x] CRUD AssetDocumentType (5 endpoints)
+   - [x] Upload de imagen principal del asset (POST/DELETE)
+   - [x] Upload de múltiples attachments con Azure Blob
+   - [x] Upload de evidencia de uso (AssetUsage)
+   - [x] AttachmentService completo (bulk upload, document types, expiry tracking)
+   - [x] UsageService extendido (evidencias)
+   - [x] Swagger documentation completa
 
-4. 🔄 **Frontend**
-   - [ ] Modal de configuración de mantenimiento preventivo
-   - [ ] Modal de carga de documentación
-   - [ ] Formulario crear/editar Asset integrado
-   - [ ] Vista de alertas de vencimientos
+4. ✅ **Frontend** - Completado
+   - [x] DocumentTypesPage - CRUD completo de tipos de documentos
+   - [x] AssetFormPage - Formulario crear/editar Asset con uploads
+   - [x] AssetDocumentationModal - Modal de carga de múltiples documentos
+   - [x] AlertsDashboardPage - Vista de alertas de vencimientos agrupadas
+   - [x] Servicios API completos (documentTypes, assets, alerts)
+   - [x] Integración con Azure Blob Storage
+
+**Documentación**: Ver [web/src/modules/machinery/FRONTEND_COMPLETED.md](../web/src/modules/machinery/FRONTEND_COMPLETED.md)
+
+**Pending**: Integración de rutas en React Router principal
 
 ### Fase 2: Sistema de Alertas y Reportes (3-4 días)
 
