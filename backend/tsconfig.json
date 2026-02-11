@@ -6,7 +6,7 @@
     "target": "ES2022",
     "module": "commonjs",
     "lib": ["ES2022"],
-    "types": ["node"],
+    "types": ["node", "jest"],
     "moduleResolution": "node",
 
     /* ======================================================
@@ -27,7 +27,7 @@
      * TYPE SAFETY (arquitectura first)
      * ====================================================== */
     "strict": true,
-    "noUncheckedIndexedAccess": false, // Temporalmente deshabilitado para evitar conflictos con Express req.params
+    "noUncheckedIndexedAccess": false,
     "forceConsistentCasingInFileNames": true,
 
     /* ======================================================
@@ -49,11 +49,5 @@
    * FILES
    * ====================================================== */
   "include": ["src/**/*", "prisma/**/*"],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "**/*.test.ts",
-    "**/*.spec.ts",
-    "src/test/**/*"
-  ]
+  "exclude": ["node_modules", "dist"]
 }
