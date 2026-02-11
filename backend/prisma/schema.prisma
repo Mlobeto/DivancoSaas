@@ -46,6 +46,10 @@ model Tenant {
   purchaseOrders    PurchaseOrder[]
   stockTransactions StockTransaction[]
   supplyCategories  SupplyCategory[]
+  clients           Client[]
+  clientMovements   ClientAccountMovement[]
+  clientConfigs     ClientRankingConfig[]
+  clientBUs         ClientBusinessUnit[]
 
   @@index([slug])
   @@index([country])
@@ -92,6 +96,9 @@ model BusinessUnit {
   supplyQuotes           SupplyQuote[]
   purchaseOrders         PurchaseOrder[]
   stockTransactions      StockTransaction[]
+  clientMovements        ClientAccountMovement[]
+  clientConfigs          ClientRankingConfig[]
+  clientBUs              ClientBusinessUnit[]
 
   @@unique([tenantId, slug])
   @@index([tenantId])
@@ -852,6 +859,208 @@ model AssetAttachment {
   @@index([assetId])
   @@index([type])
   @@map("asset_attachments")
+}
+
+// ============================================
+// MÓDULO: CLIENTS (Clientes por BU)
+// ============================================
+
+model Client {
+  id             String @id @default(uuid())
+  tenantId       String
+
+  // Datos básicos (compartidos en todo el tenant)
+  name        String    // Razón social o nombre principal
+  displayName String?   // Alias o nombre corto
+  type        ClientType @default(COMPANY)
+  countryCode String?   // ISO 3166-1 alpha-2 (CO, MX, US, ...)
+
+  email String?
+  phone String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relaciones
+  tenant        Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contacts      ClientContact[]
+  taxProfiles   ClientTaxProfile[]
+  movements     ClientAccountMovement[]
+  riskSnapshots ClientRiskSnapshot[]
+  businessUnits ClientBusinessUnit[]
+
+  @@index([tenantId])
+  @@index([name])
+  @@map("clients")
+}
+
+enum ClientType {
+  PERSON
+  COMPANY
+}
+
+enum ClientStatus {
+  ACTIVE
+  INACTIVE
+  BLOCKED
+}
+
+// Asignación de clientes a Business Units dentro de un tenant
+model ClientBusinessUnit {
+  id             String @id @default(uuid())
+  tenantId       String
+  businessUnitId String
+  clientId       String
+
+  status ClientStatus @default(ACTIVE)
+
+  // Segmentación flexible (ej: ["VIP", "Moroso"]), por BU
+  tags Json @default("[]")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  businessUnit BusinessUnit @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
+  client       Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, businessUnitId, clientId])
+  @@index([tenantId])
+  @@index([businessUnitId])
+  @@map("client_business_units")
+}
+
+model ClientContact {
+  id        String @id @default(uuid())
+  clientId  String
+  name      String
+  position  String?
+  email     String?
+  phone     String?
+  channel   ContactChannel? // Canal preferido
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+  @@map("client_contacts")
+}
+
+enum ContactChannel {
+  EMAIL
+  PHONE
+  WHATSAPP
+}
+
+model ClientTaxProfile {
+  id        String @id @default(uuid())
+  clientId  String
+
+  countryCode        String // CO, MX, etc.
+  taxIdType          String // Configurable por país (NIT, CC, etc.)
+  taxIdNumber        String
+  taxRegime          String? // Régimen fiscal
+  fiscalResponsibility String?
+
+  fiscalAddressLine1 String?
+  fiscalAddressLine2 String?
+  city               String?
+  state              String?
+  postalCode         String?
+
+  extra Json @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+  @@index([countryCode])
+  @@map("client_tax_profiles")
+}
+
+model ClientAccountMovement {
+  id             String  @id @default(uuid())
+  tenantId       String
+  businessUnitId String
+  clientId       String
+
+  date   DateTime @default(now())
+  amount Decimal  @db.Decimal(14, 2)
+  direction MovementDirection
+  currency  String @default("USD")
+
+  sourceModule String // "assets", "purchases", "sales", etc.
+  sourceType   String // "QUOTE_DEPOSIT", "INVOICE", "CREDIT_NOTE", etc.
+  sourceId     String?
+
+  description   String?
+  balanceAfter  Decimal? @db.Decimal(14, 2)
+  metadata      Json     @default("{}")
+
+  createdAt DateTime @default(now())
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  businessUnit BusinessUnit @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
+  client       Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([businessUnitId])
+  @@index([clientId])
+  @@index([date])
+  @@map("client_account_movements")
+}
+
+enum MovementDirection {
+  DEBIT
+  CREDIT
+}
+
+// Configuración de ranking y políticas de riesgo por BusinessUnit
+model ClientRankingConfig {
+  id             String @id @default(uuid())
+  tenantId       String
+  businessUnitId String
+
+  // Ponderaciones para cálculo de score (JSON)
+  weights Json @default("{}")
+
+  // Umbrales por segmento y políticas (JSON)
+  thresholds Json @default("{}")
+  policies   Json @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  businessUnit BusinessUnit @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
+
+  @@unique([businessUnitId])
+  @@index([tenantId])
+  @@map("client_ranking_configs")
+}
+
+// Snapshot de riesgo para lecturas rápidas
+model ClientRiskSnapshot {
+  id       String @id @default(uuid())
+  clientId String
+
+  score   Int
+  segment String // "TRUSTED", "NORMAL", "RISKY", etc.
+
+  currentBalance Decimal? @db.Decimal(14, 2)
+  details        Json     @default("{}")
+
+  lastUpdatedAt DateTime @default(now())
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId])
+  @@index([segment])
+  @@map("client_risk_snapshots")
 }
 
 // ============================================

@@ -64,6 +64,7 @@ import equipmentRouter from "@core/routes/equipment.routes";
 // Business Modules
 import { AssetsModule } from "./modules/assets/assets.module";
 import { PurchasesModule } from "./modules/purchases/purchases.module";
+import { ClientsModule } from "./modules/clients/clients.module";
 
 export function createApp(): Application {
   const app = express();
@@ -74,6 +75,9 @@ export function createApp(): Application {
 
   const purchasesModule = new PurchasesModule();
   purchasesModule.initialize();
+
+  const clientsModule = new ClientsModule();
+  clientsModule.initialize();
 
   // DEPENDENCY INJECTION: Inyectar resolvers/factories en el core  // DEPENDENCY INJECTION: Inyectar resolvers/factories en el core
   // El core nunca importa adapters, recibe las dependencias desde aquí
@@ -154,6 +158,7 @@ export function createApp(): Application {
   // Business Module routes
   app.use("/api/v1/modules/assets", assetsModule.getRoutes());
   app.use("/api/v1/modules/purchases", purchasesModule.getRoutes());
+  app.use("/api/v1/modules/clients", clientsModule.getRoutes());
 
   // TODO: Cargar rutas de módulos dinámicamente
   // loadModuleRoutes(app);

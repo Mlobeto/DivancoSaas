@@ -20,6 +20,7 @@ import {
   SupplyCategoriesPage,
   CategoryWizardPage,
 } from "@/modules/purchases";
+import { ClientsPage, ClientDetailPage } from "@/modules/clients";
 
 // Core Services
 import { authService } from "@/core/services/auth.service";
@@ -136,6 +137,23 @@ createRoot(document.getElementById("root")!).render(
             element={
               <ProtectedRoute>
                 <CategoryWizardPage />
+              </ProtectedRoute>
+            }
+          />
+          {/* Clients Module Routes */}
+          <Route
+            path="/clients"
+            element={
+              <ProtectedRoute>
+                <ClientsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/clients/:id"
+            element={
+              <ProtectedRoute>
+                <ClientDetailPage />
               </ProtectedRoute>
             }
           />

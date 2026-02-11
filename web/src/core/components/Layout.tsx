@@ -70,6 +70,11 @@ export function Layout({ children, title, subtitle, actions }: LayoutProps) {
         { label: "Órdenes", path: "/purchase-orders" },
       ],
     },
+    {
+      label: "Clientes",
+      icon: "👥",
+      path: "/clients",
+    },
   ];
 
   const isActive = (path: string) => {
