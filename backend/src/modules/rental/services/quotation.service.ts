@@ -368,20 +368,37 @@ export class QuotationService {
           },
         });
 
-        // 3. Actualizar estado de los activos a "rented"
+        // 3. Actualizar ubicación de los activos y emitir eventos
         const assetIds = quotation.items
           .filter((item) => item.assetId)
           .map((item) => item.assetId!);
 
+        // Actualizar ubicación de assets
         await tx.asset.updateMany({
           where: {
             id: { in: assetIds },
           },
           data: {
-            status: "rented",
             currentLocation: quotation.notes || "En obra",
           },
         });
+
+        // Emitir eventos de renta para cada asset (el sistema workflow procesará el cambio de estado)
+        for (const assetId of assetIds) {
+          await tx.assetEvent.create({
+            data: {
+              tenantId: quotation.tenantId,
+              businessUnitId: quotation.businessUnitId,
+              assetId,
+              eventType: "asset.rented",
+              source: "rental_contract",
+              payload: {
+                contractId: rentalContract.id,
+                quotationId,
+              },
+            },
+          });
+        }
       }
 
       // 4. Actualizar estado de cotización
