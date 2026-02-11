@@ -11,7 +11,8 @@ import { ResetPasswordPage } from "@/core/pages/ResetPasswordPage";
 import { DashboardPage } from "@/core/pages/DashboardPage";
 
 // Module Pages
-import { MachineryPage } from "@/modules/machinery/pages/MachineryPage";
+// import { MachineryPage } from "@/modules/machinery/pages/MachineryPage"; // DEPRECATED
+import { AssetsListPage } from "@/modules/machinery/pages/AssetsListPage";
 import { AssetTemplatesPage } from "@/modules/machinery/pages/AssetTemplatesPage";
 import { TemplateWizardPage } from "@/modules/machinery/pages/TemplateWizardPage";
 import { DocumentTypesPage } from "@/modules/machinery/pages/DocumentTypesPage";
@@ -73,7 +74,7 @@ createRoot(document.getElementById("root")!).render(
             path="/machinery"
             element={
               <ProtectedRoute>
-                <MachineryPage />
+                <AssetsListPage />
               </ProtectedRoute>
             }
           />

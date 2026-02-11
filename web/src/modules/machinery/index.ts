@@ -1,5 +1,6 @@
 // Pages
 // DEPRECATED: export { MachineryPage } from "./pages/MachineryPage"; // Usar AssetFormPage
+export { AssetsListPage } from "./pages/AssetsListPage";
 export { AssetTemplatesPage } from "./pages/AssetTemplatesPage";
 export { DocumentTypesPage } from "./pages/DocumentTypesPage";
 export { AssetFormPage } from "./pages/AssetFormPage";
