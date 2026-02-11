@@ -6,7 +6,7 @@
     "target": "ES2022",
     "module": "commonjs",
     "lib": ["ES2022"],
-    "types": ["node", "jest"],
+    "types": ["node"],
     "moduleResolution": "node",
 
     /* ======================================================
@@ -49,5 +49,11 @@
    * FILES
    * ====================================================== */
   "include": ["src/**/*", "prisma/**/*"],
-  "exclude": ["node_modules", "dist"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "src/test/**/*"
+  ]
 }
