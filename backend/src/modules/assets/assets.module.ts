@@ -100,6 +100,13 @@ export class AssetsModule implements ModuleContract {
       AssetsController.deleteAttachment,
     );
 
+    // ========== DOCUMENT TYPES ==========
+    router.post("/document-types", AssetsController.createDocumentType);
+    router.get("/document-types", AssetsController.listDocumentTypes);
+    router.get("/document-types/:documentTypeId", AssetsController.getDocumentType);
+    router.patch("/document-types/:documentTypeId", AssetsController.updateDocumentType);
+    router.delete("/document-types/:documentTypeId", AssetsController.deleteDocumentType);
+
     // ========== RENTAL CONTRACTS ==========
     router.post("/rental/contracts", RentalController.createContract);
     router.get("/rental/contracts", RentalController.listContracts);

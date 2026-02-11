@@ -9,6 +9,8 @@
  *     description: Asset usage tracking and reporting
  *   - name: Attachments
  *     description: Asset file attachments (photos, PDFs, etc)
+ *   - name: Document Types
+ *     description: Configurable document types per Business Unit (Insurance, Permits, Certifications, etc)
  */
 
 /**
@@ -167,6 +169,51 @@
  *           example: "APP"
  *           description: "Free-form string: WHATSAPP, APP, SYSTEM"
  *         createdAt:
+ *           type: string
+ *           format: date-time
+ *
+ *     AssetDocumentType:
+ *       type: object
+ *       required:
+ *         - code
+ *         - name
+ *         - requiresExpiry
+ *       properties:
+ *         id:
+ *           type: string
+ *           format: uuid
+ *         businessUnitId:
+ *           type: string
+ *           format: uuid
+ *         code:
+ *           type: string
+ *           example: "SOAT"
+ *           description: "Unique code for document type within Business Unit"
+ *         name:
+ *           type: string
+ *           example: "Seguro Obligatorio"
+ *         description:
+ *           type: string
+ *           example: "Seguro obligatorio de accidentes de tránsito"
+ *         requiresExpiry:
+ *           type: boolean
+ *           description: "Whether this document type requires expiry date tracking"
+ *         defaultAlertDays:
+ *           type: integer
+ *           example: 30
+ *           description: "Days before expiry to send alert"
+ *         color:
+ *           type: string
+ *           example: "#FF5722"
+ *           description: "Hex color for UI display"
+ *         icon:
+ *           type: string
+ *           example: "shield"
+ *           description: "Icon name for UI display"
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *         updatedAt:
  *           type: string
  *           format: date-time
  */
@@ -802,4 +849,212 @@
  *         description: Invalid files or missing required fields
  *       404:
  *         description: Usage record not found
+ */
+
+/**
+ * @swagger
+ * /modules/assets/document-types:
+ *   post:
+ *     tags: [Document Types]
+ *     summary: Create a new document type
+ *     description: Define a new document type for asset documentation (e.g., Insurance, Permit, SOAT)
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - code
+ *               - name
+ *               - requiresExpiry
+ *             properties:
+ *               code:
+ *                 type: string
+ *                 example: "SOAT"
+ *                 description: Unique code within Business Unit
+ *               name:
+ *                 type: string
+ *                 example: "Seguro Obligatorio"
+ *               description:
+ *                 type: string
+ *                 example: "Seguro obligatorio de accidentes de tránsito"
+ *               requiresExpiry:
+ *                 type: boolean
+ *                 description: Whether this document type requires expiry date
+ *               defaultAlertDays:
+ *                 type: integer
+ *                 example: 30
+ *               color:
+ *                 type: string
+ *                 example: "#FF5722"
+ *               icon:
+ *                 type: string
+ *                 example: "shield"
+ *     responses:
+ *       201:
+ *         description: Document type created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   $ref: '#/components/schemas/AssetDocumentType'
+ *       400:
+ *         description: Invalid input or duplicate code
+ *
+ *   get:
+ *     tags: [Document Types]
+ *     summary: List document types
+ *     description: Get all document types configured for the Business Unit
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: requiresExpiry
+ *         schema:
+ *           type: boolean
+ *         description: Filter by expiry requirement
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search in name, code, or description
+ *       - in: query
+ *         name: stats
+ *         schema:
+ *           type: boolean
+ *         description: Include usage statistics (attachment count, expiring count)
+ *     responses:
+ *       200:
+ *         description: List of document types
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/AssetDocumentType'
+ */
+
+/**
+ * @swagger
+ * /modules/assets/document-types/{documentTypeId}:
+ *   get:
+ *     tags: [Document Types]
+ *     summary: Get document type by ID
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: documentTypeId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Document type details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   $ref: '#/components/schemas/AssetDocumentType'
+ *       404:
+ *         description: Document type not found
+ *
+ *   patch:
+ *     tags: [Document Types]
+ *     summary: Update document type
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: documentTypeId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               requiresExpiry:
+ *                 type: boolean
+ *               defaultAlertDays:
+ *                 type: integer
+ *               color:
+ *                 type: string
+ *               icon:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Document type updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   $ref: '#/components/schemas/AssetDocumentType'
+ *       404:
+ *         description: Document type not found
+ *
+ *   delete:
+ *     tags: [Document Types]
+ *     summary: Delete document type
+ *     description: Delete a document type (only if not in use by any attachments)
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: documentTypeId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Document type deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Document type deleted successfully"
+ *       400:
+ *         description: Cannot delete - document type is in use
+ *       404:
+ *         description: Document type not found
  */

@@ -9,6 +9,7 @@ import { AssetService } from "../services/asset.service";
 import { MaintenanceService } from "../services/maintenance.service";
 import { UsageService } from "../services/usage.service";
 import { AttachmentService } from "../services/attachment.service";
+import { DocumentTypeService } from "../services/document-type.service";
 import { PrismaClient } from "@prisma/client";
 import { azureBlobStorageService } from "@shared/storage/azure-blob-storage.service";
 import multer from "multer";
@@ -18,6 +19,7 @@ const assetService = new AssetService(prisma);
 const maintenanceService = new MaintenanceService(prisma);
 const usageService = new UsageService(prisma);
 const attachmentService = new AttachmentService(prisma);
+const documentTypeService = new DocumentTypeService(prisma);
 
 /**
  * Helper to validate business unit context
@@ -1016,6 +1018,211 @@ export class AssetsController {
         success: true,
         data: uploadedAttachments,
         message: `${uploadedAttachments.length} attachment(s) uploaded successfully`,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // ========== DOCUMENT TYPES ==========
+
+  /**
+   * Create document type
+   * POST /document-types
+   */
+  static async createDocumentType(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      const context = validateBusinessUnitContext(req, res);
+      if (!context) return;
+
+      const { code, name, description, requiresExpiry, defaultAlertDays, color, icon } = req.body;
+
+      if (!code || !name || requiresExpiry === undefined) {
+        res.status(400).json({
+          success: false,
+          error: "Missing required fields: code, name, requiresExpiry",
+        });
+        return;
+      }
+
+      const documentType = await documentTypeService.createDocumentType(
+        context.tenantId,
+        context.businessUnitId,
+        {
+          code,
+          name,
+          description,
+          requiresExpiry,
+          defaultAlertDays,
+          color,
+          icon,
+        },
+      );
+
+      res.status(201).json({
+        success: true,
+        data: documentType,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * List document types
+   * GET /document-types
+   */
+  static async listDocumentTypes(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      const context = validateBusinessUnitContext(req, res);
+      if (!context) return;
+
+      const { requiresExpiry, search, stats } = req.query;
+
+      if (stats === "true") {
+        const documentTypes = await documentTypeService.getDocumentTypeStats(
+          context.tenantId,
+          context.businessUnitId,
+        );
+
+        res.json({
+          success: true,
+          data: documentTypes,
+        });
+        return;
+      }
+
+      const documentTypes = await documentTypeService.listDocumentTypes(
+        context.tenantId,
+        context.businessUnitId,
+        {
+          requiresExpiry: requiresExpiry === "true" ? true : undefined,
+          search: search?.toString(),
+        },
+      );
+
+      res.json({
+        success: true,
+        data: documentTypes,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get document type by ID
+   * GET /document-types/:documentTypeId
+   */
+  static async getDocumentType(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      const context = validateBusinessUnitContext(req, res);
+      if (!context) return;
+
+      const documentTypeId = validatePathParam(req, res, "documentTypeId");
+      if (!documentTypeId) return;
+
+      const documentType = await documentTypeService.getDocumentTypeById(
+        context.tenantId,
+        context.businessUnitId,
+        documentTypeId,
+      );
+
+      if (!documentType) {
+        res.status(404).json({
+          success: false,
+          error: "Document type not found",
+        });
+        return;
+      }
+
+      res.json({
+        success: true,
+        data: documentType,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Update document type
+   * PATCH /document-types/:documentTypeId
+   */
+  static async updateDocumentType(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      const context = validateBusinessUnitContext(req, res);
+      if (!context) return;
+
+      const documentTypeId = validatePathParam(req, res, "documentTypeId");
+      if (!documentTypeId) return;
+
+      const { name, description, requiresExpiry, defaultAlertDays, color, icon } = req.body;
+
+      const documentType = await documentTypeService.updateDocumentType(
+        context.tenantId,
+        context.businessUnitId,
+        documentTypeId,
+        {
+          name,
+          description,
+          requiresExpiry,
+          defaultAlertDays,
+          color,
+          icon,
+        },
+      );
+
+      res.json({
+        success: true,
+        data: documentType,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Delete document type
+   * DELETE /document-types/:documentTypeId
+   */
+  static async deleteDocumentType(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      const context = validateBusinessUnitContext(req, res);
+      if (!context) return;
+
+      const documentTypeId = validatePathParam(req, res, "documentTypeId");
+      if (!documentTypeId) return;
+
+      await documentTypeService.deleteDocumentType(
+        context.tenantId,
+        context.businessUnitId,
+        documentTypeId,
+      );
+
+      res.json({
+        success: true,
+        message: "Document type deleted successfully",
       });
     } catch (error) {
       next(error);
