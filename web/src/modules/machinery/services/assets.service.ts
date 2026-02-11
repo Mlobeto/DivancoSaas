@@ -91,6 +91,23 @@ export const assetsService = {
   },
 
   /**
+   * Get next available code for asset type
+   */
+  async getNextCode(assetType: string): Promise<string> {
+    const response = await api.get<ApiResponse<{ code: string }>>(
+      `/modules/assets/assets/next-code?assetType=${assetType}`,
+    );
+
+    if (!response.data.success) {
+      throw new Error(
+        response.data.error?.message || "Failed to fetch next code",
+      );
+    }
+
+    return response.data.data!.code;
+  },
+
+  /**
    * Get asset by ID
    */
   async getById(id: string): Promise<Asset> {

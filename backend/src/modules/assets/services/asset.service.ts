@@ -429,4 +429,54 @@ export class AssetService {
       data: { imageUrl: null },
     });
   }
+
+  /**
+   * Get next available code for asset type
+   * Returns suggested code based on asset type prefix
+   */
+  async getNextAvailableCode(
+    tenantId: string,
+    businessUnitId: string,
+    assetType: string,
+  ): Promise<string> {
+    // Define prefixes for each asset type
+    const prefixes: Record<string, string> = {
+      IMPLEMENTO: "IMP",
+      HERRAMIENTA: "HER",
+      VEHICULO: "VEH",
+      MAQUINARIA: "MAQ",
+    };
+
+    const prefix = prefixes[assetType] || "AST";
+
+    // Find the last asset with this prefix
+    const lastAsset = await this.prisma.asset.findFirst({
+      where: {
+        tenantId,
+        businessUnitId,
+        code: {
+          startsWith: prefix,
+        },
+      },
+      orderBy: {
+        code: "desc",
+      },
+    });
+
+    if (!lastAsset) {
+      return `${prefix}001`;
+    }
+
+    // Extract number from last code (e.g., "IMP005" -> 5)
+    const match = lastAsset.code.match(/\d+$/);
+    if (!match) {
+      return `${prefix}001`;
+    }
+
+    const lastNumber = parseInt(match[0], 10);
+    const nextNumber = lastNumber + 1;
+
+    // Pad with zeros (3 digits minimum)
+    return `${prefix}${nextNumber.toString().padStart(3, "0")}`;
+  }
 }

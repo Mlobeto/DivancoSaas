@@ -37,6 +37,7 @@ export class AssetsModule implements ModuleContract {
 
     // ========== ASSETS ==========
     router.post("/assets", AssetsController.createAsset);
+    router.get("/assets/next-code", AssetsController.getNextCode); // Before :assetId to avoid conflict
     router.get("/assets", AssetsController.listAssets);
     router.get("/assets/:assetId", AssetsController.getAsset);
     router.patch("/assets/:assetId", AssetsController.updateAsset);

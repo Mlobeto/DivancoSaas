@@ -324,6 +324,44 @@
 
 /**
  * @swagger
+ * /modules/assets/assets/next-code:
+ *   get:
+ *     tags: [Assets]
+ *     summary: Get next available code for asset type
+ *     description: Returns suggested code based on asset type (e.g., IMP001 for IMPLEMENTO, HER001 for HERRAMIENTA)
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: assetType
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [IMPLEMENTO, HERRAMIENTA, VEHICULO, MAQUINARIA]
+ *         description: Type of asset to generate code for
+ *     responses:
+ *       200:
+ *         description: Next available code
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     code:
+ *                       type: string
+ *                       example: "IMP001"
+ *       400:
+ *         description: assetType parameter is required
+ */
+
+/**
+ * @swagger
  * /modules/assets/assets/{assetId}:
  *   get:
  *     tags: [Assets]

@@ -27,11 +27,13 @@ export function AssetFormPage() {
   const [imagePreview, setImagePreview] = useState<string>("");
   const [showDocModal, setShowDocModal] = useState(false);
   const [createdAssetId, setCreatedAssetId] = useState<string | null>(null);
+  const [suggestedCode, setSuggestedCode] = useState<string>("");
+  const [manuallyEditedCode, setManuallyEditedCode] = useState(false);
 
   const [formData, setFormData] = useState<CreateAssetData>({
     code: "",
     name: "",
-    assetType: "",
+    assetType: "IMPLEMENTO",
     templateId: "",
     acquisitionCost: undefined,
     origin: "",
@@ -77,12 +79,28 @@ export function AssetFormPage() {
         requiresTracking: asset.requiresTracking,
         requiresClinic: asset.requiresClinic,
       });
+      setManuallyEditedCode(true); // In edit mode, code is already set
 
       if (asset.imageUrl) {
         setImagePreview(asset.imageUrl);
       }
     }
   }, [asset]);
+
+  // Fetch suggested code when assetType changes
+  useEffect(() => {
+    if (!isEditMode && formData.assetType && !manuallyEditedCode) {
+      assetsService
+        .getNextCode(formData.assetType)
+        .then((code) => {
+          setSuggestedCode(code);
+          setFormData((prev) => ({ ...prev, code }));
+        })
+        .catch((error) => {
+          console.error("Failed to fetch next code:", error);
+        });
+    }
+  }, [formData.assetType, isEditMode, manuallyEditedCode]);
 
   // Create/Update mutations
   const createMutation = useMutation({
@@ -285,16 +303,22 @@ export function AssetFormPage() {
                 <input
                   type="text"
                   value={formData.code}
-                  onChange={(e) =>
+                  onChange={(e) => {
                     setFormData({
                       ...formData,
                       code: e.target.value.toUpperCase(),
-                    })
-                  }
-                  placeholder="EXC-001"
+                    });
+                    setManuallyEditedCode(true);
+                  }}
+                  placeholder={suggestedCode || "EXC-001"}
                   required
                   className="w-full px-3 py-2 bg-[#2b2b2b] border border-[#555555] rounded-none text-[#e0e0e0] placeholder-[#9e9e9e] focus:outline-none focus:ring-1 focus:ring-[#0696d7]"
                 />
+                {suggestedCode && !manuallyEditedCode && (
+                  <p className="text-xs text-[#4caf50] mt-1">
+                    Sugerido: {suggestedCode}
+                  </p>
+                )}
               </div>
 
               {/* Name */}
@@ -317,17 +341,21 @@ export function AssetFormPage() {
               {/* Asset Type */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">
-                  Tipo de Activo
+                  Tipo de Activo <span className="text-red-400">*</span>
                 </label>
-                <input
-                  type="text"
+                <select
                   value={formData.assetType}
                   onChange={(e) =>
                     setFormData({ ...formData, assetType: e.target.value })
                   }
-                  placeholder="excavator"
-                  className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                  required
+                  className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="IMPLEMENTO">Implemento</option>
+                  <option value="HERRAMIENTA">Herramienta</option>
+                  <option value="VEHICULO">Vehículo</option>
+                  <option value="MAQUINARIA">Maquinaria</option>
+                </select>
               </div>
 
               {/* Acquisition Cost */}

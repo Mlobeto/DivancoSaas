@@ -172,6 +172,35 @@ export class AssetsController {
     }
   }
 
+  static async getNextCode(req: Request, res: Response, next: NextFunction) {
+    try {
+      const context = validateBusinessUnitContext(req, res);
+      if (!context) return;
+
+      const { assetType } = req.query;
+
+      if (!assetType || typeof assetType !== "string") {
+        return res.status(400).json({
+          success: false,
+          error: "assetType query parameter is required",
+        });
+      }
+
+      const nextCode = await assetService.getNextAvailableCode(
+        context.tenantId,
+        context.businessUnitId,
+        assetType,
+      );
+
+      res.json({
+        success: true,
+        data: { code: nextCode },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async updateAsset(req: Request, res: Response, next: NextFunction) {
     try {
       const context = validateBusinessUnitContext(req, res);
