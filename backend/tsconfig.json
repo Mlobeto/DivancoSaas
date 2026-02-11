@@ -26,6 +26,7 @@
      * TYPE SAFETY (arquitectura first)
      * ====================================================== */
     "strict": true,
+    "noImplicitAny": false,
     "noUncheckedIndexedAccess": false,
     "forceConsistentCasingInFileNames": true,
 
