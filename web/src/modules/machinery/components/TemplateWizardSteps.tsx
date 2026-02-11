@@ -467,11 +467,7 @@ function FieldEditorModal({
           </div>
 
           {/* Key - Hidden from UI but auto-generated from label */}
-          <input
-            type="hidden"
-            value={formData.key}
-            name="key"
-          />
+          <input type="hidden" value={formData.key} name="key" />
 
           {/* Type & Section */}
           <div className="grid grid-cols-2 gap-4">
