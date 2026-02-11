@@ -368,30 +368,20 @@ export class QuotationService {
           },
         });
 
-        // 3. Actualizar ubicación de los activos
+        // 3. Actualizar estado de los activos a "rented"
         const assetIds = quotation.items
           .filter((item) => item.assetId)
           .map((item) => item.assetId!);
 
-        if (assetIds.length > 0) {
-          // Actualizar ubicación
-          await tx.asset.updateMany({
-            where: {
-              id: { in: assetIds },
-            },
-            data: {
-              currentLocation: quotation.notes || "En obra",
-            },
-          });
-
-          // Actualizar estado a través de AssetState (si existe)
-          for (const assetId of assetIds) {
-            await tx.assetState.updateMany({
-              where: { assetId },
-              data: { currentState: "rented" },
-            });
-          }
-        }
+        await tx.asset.updateMany({
+          where: {
+            id: { in: assetIds },
+          },
+          data: {
+            status: "rented",
+            currentLocation: quotation.notes || "En obra",
+          },
+        });
       }
 
       // 4. Actualizar estado de cotización
