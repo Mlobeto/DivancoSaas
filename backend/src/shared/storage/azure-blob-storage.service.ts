@@ -50,7 +50,7 @@ export class AzureBlobStorageService {
     // Extraer account name y key del connection string para SAS tokens
     const accountNameMatch = connectionString.match(/AccountName=([^;]+)/);
     const accountKeyMatch = connectionString.match(/AccountKey=([^;]+)/);
-    
+
     if (accountNameMatch && accountKeyMatch) {
       this.accountName = accountNameMatch[1];
       this.accountKey = accountKeyMatch[1];
@@ -124,7 +124,9 @@ export class AzureBlobStorageService {
     }
 
     if (!this.accountName || !this.accountKey) {
-      console.warn("⚠️  Account credentials not available, returning direct URL");
+      console.warn(
+        "⚠️  Account credentials not available, returning direct URL",
+      );
       const blockBlobClient =
         this.defaultContainerClient.getBlockBlobClient(blobName);
       return blockBlobClient.url;
@@ -141,7 +143,9 @@ export class AzureBlobStorageService {
 
     // Definir permisos y tiempo de expiración
     const startsOn = new Date();
-    const expiresOn = new Date(startsOn.getTime() + expiresInMinutes * 60 * 1000);
+    const expiresOn = new Date(
+      startsOn.getTime() + expiresInMinutes * 60 * 1000,
+    );
 
     // Generar SAS token
     const sasToken = generateBlobSASQueryParameters(
