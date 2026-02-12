@@ -1618,6 +1618,403 @@ async function main() {
   console.log("");
 
   // ============================================
+  // 9. CLIENTES PARA TESTING
+  // ============================================
+  console.log("👥 Creando clientes de prueba...");
+
+  const clientsData = [
+    {
+      name: "Constructora Los Andes S.A.S.",
+      displayName: "Constructora Los Andes",
+      type: "COMPANY",
+      email: "contacto@losandes.com",
+      phone: "+57 1 234 5678",
+      countryCode: "CO",
+    },
+    {
+      name: "Obras e Infraestructura Pacifico Ltda",
+      displayName: "Pacifico Infraestructura",
+      type: "COMPANY",
+      email: "info@pacifico.com",
+      phone: "+57 2 345 6789",
+      countryCode: "CO",
+    },
+    {
+      name: "Ingeniería y Construcciones del Caribe",
+      displayName: "Ingeniería Caribe",
+      type: "COMPANY",
+      email: "ingenieria@caribe.com",
+      phone: "+57 5 456 7890",
+      countryCode: "CO",
+    },
+    {
+      name: "Juan Pérez Construcciones",
+      displayName: "JP Construcciones",
+      type: "PERSON",
+      email: "juan.perez@construcciones.com",
+      phone: "+57 310 123 4567",
+      countryCode: "CO",
+    },
+  ];
+
+  const createdClients = [];
+  for (const clientData of clientsData) {
+    const client = await prisma.client.create({
+      data: {
+        tenantId: demoTenant.id,
+        name: clientData.name,
+        displayName: clientData.displayName,
+        type: clientData.type as any,
+        email: clientData.email,
+        phone: clientData.phone,
+        countryCode: clientData.countryCode,
+      },
+    });
+
+    // Asociar cliente a la unidad de negocio de alquiler
+    await prisma.clientBusinessUnit.create({
+      data: {
+        tenantId: demoTenant.id,
+        clientId: client.id,
+        businessUnitId: rentalBU.id,
+      },
+    });
+
+    createdClients.push(clientData.name);
+  }
+
+  console.log(
+    `✅ ${createdClients.length} clientes creados y asociados a la BU de alquiler`,
+  );
+  console.log("");
+
+  // ============================================
+  // 10. PROVEEDORES PARA COMPRAS
+  // ============================================
+  console.log("🏭 Creando proveedores de prueba...");
+
+  const suppliersData = [
+    {
+      code: "PROV-001",
+      name: "Repuestos y Herramientas del Norte S.A.",
+      tradeName: "Repuestos Norte",
+      taxId: "900123456-7",
+      email: "ventas@repuestosnorte.com",
+      phone: "+57 1 567 8901",
+      website: "www.repuestosnorte.com",
+      address: "Calle 100 #15-20",
+      city: "Bogotá",
+      state: "Cundinamarca",
+      country: "Colombia",
+      zipCode: "110111",
+      paymentTerms: "30 días",
+      currency: "COP",
+      creditLimit: 50000000,
+    },
+    {
+      code: "PROV-002",
+      name: "Implementos y Maquinaria Industrial Ltda",
+      tradeName: "IMI Ltda",
+      taxId: "900234567-8",
+      email: "info@imi.com.co",
+      phone: "+57 4 678 9012",
+      website: "www.imi.com.co",
+      address: "Carrera 50 #25-30",
+      city: "Medellín",
+      state: "Antioquia",
+      country: "Colombia",
+      zipCode: "050001",
+      paymentTerms: "45 días",
+      currency: "COP",
+      creditLimit: 80000000,
+    },
+    {
+      code: "PROV-003",
+      name: "Suministros para Construcción del Pacífico",
+      tradeName: "Suministros Pacífico",
+      taxId: "900345678-9",
+      email: "contacto@suministrospacifico.com",
+      phone: "+57 2 789 0123",
+      website: "www.suministrospacifico.com",
+      address: "Avenida 6N #25-50",
+      city: "Cali",
+      state: "Valle del Cauca",
+      country: "Colombia",
+      zipCode: "760001",
+      paymentTerms: "Contado",
+      currency: "COP",
+      creditLimit: 30000000,
+    },
+    {
+      code: "PROV-004",
+      name: "Distribuidora de Equipos y Andamios Costa S.A.",
+      tradeName: "Andamios Costa",
+      taxId: "900456789-0",
+      email: "ventas@andamioscosta.com",
+      phone: "+57 5 890 1234",
+      website: "www.andamioscosta.com",
+      address: "Carrera 54 #70-120",
+      city: "Barranquilla",
+      state: "Atlántico",
+      country: "Colombia",
+      zipCode: "080001",
+      paymentTerms: "15 días",
+      currency: "COP",
+      creditLimit: 40000000,
+    },
+  ];
+
+  const createdSuppliers = [];
+  for (const supplierData of suppliersData) {
+    const supplier = await prisma.supplier.create({
+      data: {
+        tenantId: demoTenant.id,
+        businessUnitId: rentalBU.id,
+        code: supplierData.code,
+        name: supplierData.name,
+        tradeName: supplierData.tradeName,
+        taxId: supplierData.taxId,
+        email: supplierData.email,
+        phone: supplierData.phone,
+        website: supplierData.website,
+        address: supplierData.address,
+        city: supplierData.city,
+        state: supplierData.state,
+        country: supplierData.country,
+        zipCode: supplierData.zipCode,
+        paymentTerms: supplierData.paymentTerms,
+        currency: supplierData.currency,
+        creditLimit: supplierData.creditLimit,
+        status: "ACTIVE",
+      },
+    });
+
+    createdSuppliers.push(supplierData.code);
+  }
+
+  console.log(`✅ ${createdSuppliers.length} proveedores creados`);
+  console.log("");
+
+  // ============================================
+  // 11. TEMPLATES DE IMPLEMENTOS
+  // ============================================
+  console.log("🔧 Creando templates de implementos para alquiler...");
+
+  const implementTemplatesData = [
+    {
+      name: "Andamio Tubular Metálico",
+      category: "IMPLEMENT",
+      description:
+        "Andamio tubular modular de acero galvanizado para alturas hasta 12m",
+      icon: "construction",
+      requiresPreventiveMaintenance: true,
+      requiresDocumentation: true,
+      customFields: [
+        {
+          name: "altura_maxima",
+          label: "Altura Máxima (m)",
+          type: "number",
+          required: true,
+        },
+        {
+          name: "capacidad_carga",
+          label: "Capacidad de Carga (kg)",
+          type: "number",
+          required: true,
+        },
+        {
+          name: "numero_cuerpos",
+          label: "Número de Cuerpos",
+          type: "number",
+          required: false,
+        },
+        {
+          name: "certificacion",
+          label: "Certificación de Seguridad",
+          type: "text",
+          required: true,
+        },
+      ],
+    },
+    {
+      name: "Cerca Temporal Metálica",
+      category: "IMPLEMENT",
+      description:
+        "Panel de cerca temporal de acero para delimitación de obras",
+      icon: "fence",
+      requiresPreventiveMaintenance: false,
+      requiresDocumentation: false,
+      customFields: [
+        { name: "largo", label: "Largo (m)", type: "number", required: true },
+        { name: "alto", label: "Alto (m)", type: "number", required: true },
+        { name: "material", label: "Material", type: "text", required: true },
+        { name: "color", label: "Color", type: "text", required: false },
+      ],
+    },
+    {
+      name: "Cinta Métrica Profesional",
+      category: "TOOL",
+      description: "Cinta métrica de acero de 50m para mediciones topográficas",
+      icon: "ruler",
+      requiresPreventiveMaintenance: false,
+      requiresDocumentation: false,
+      customFields: [
+        {
+          name: "longitud",
+          label: "Longitud (m)",
+          type: "number",
+          required: true,
+        },
+        {
+          name: "material_cinta",
+          label: "Material",
+          type: "text",
+          required: true,
+        },
+        { name: "marca", label: "Marca", type: "text", required: false },
+      ],
+    },
+    {
+      name: "Casco de Seguridad Profesional",
+      category: "TOOL",
+      description:
+        "Casco de seguridad industrial certificado para construcción",
+      icon: "hardhat",
+      requiresPreventiveMaintenance: false,
+      requiresDocumentation: true,
+      customFields: [
+        { name: "talla", label: "Talla", type: "text", required: true },
+        { name: "color", label: "Color", type: "text", required: true },
+        {
+          name: "certificacion",
+          label: "Certificación",
+          type: "text",
+          required: true,
+        },
+        {
+          name: "fecha_fabricacion",
+          label: "Fecha de Fabricación",
+          type: "date",
+          required: false,
+        },
+      ],
+    },
+    {
+      name: "Escalera de Aluminio Extensible",
+      category: "IMPLEMENT",
+      description:
+        "Escalera extensible de aluminio de 6m con certificación de seguridad",
+      icon: "ladder",
+      requiresPreventiveMaintenance: true,
+      requiresDocumentation: true,
+      customFields: [
+        {
+          name: "altura_extendida",
+          label: "Altura Extendida (m)",
+          type: "number",
+          required: true,
+        },
+        {
+          name: "altura_plegada",
+          label: "Altura Plegada (m)",
+          type: "number",
+          required: true,
+        },
+        {
+          name: "peso_maximo",
+          label: "Peso Máximo Soportado (kg)",
+          type: "number",
+          required: true,
+        },
+        {
+          name: "numero_peldanos",
+          label: "Número de Peldaños",
+          type: "number",
+          required: true,
+        },
+      ],
+    },
+    {
+      name: "Carretilla Industrial",
+      category: "TOOL",
+      description: "Carretilla de obra de acero reforzado con rueda neumática",
+      icon: "truck",
+      requiresPreventiveMaintenance: false,
+      requiresDocumentation: false,
+      customFields: [
+        {
+          name: "capacidad",
+          label: "Capacidad (kg)",
+          type: "number",
+          required: true,
+        },
+        {
+          name: "tipo_rueda",
+          label: "Tipo de Rueda",
+          type: "text",
+          required: true,
+        },
+        {
+          name: "material_cuba",
+          label: "Material de la Cuba",
+          type: "text",
+          required: true,
+        },
+      ],
+    },
+    {
+      name: "Señalización de Obra",
+      category: "IMPLEMENT",
+      description: "Kit de señalización vial para obras: conos, vallas, cintas",
+      icon: "construction",
+      requiresPreventiveMaintenance: false,
+      requiresDocumentation: false,
+      customFields: [
+        {
+          name: "cantidad_conos",
+          label: "Cantidad de Conos",
+          type: "number",
+          required: true,
+        },
+        {
+          name: "cantidad_vallas",
+          label: "Cantidad de Vallas",
+          type: "number",
+          required: true,
+        },
+        {
+          name: "metros_cinta",
+          label: "Metros de Cinta",
+          type: "number",
+          required: false,
+        },
+      ],
+    },
+  ];
+
+  const createdTemplates = [];
+  for (const templateData of implementTemplatesData) {
+    const template = await prisma.assetTemplate.create({
+      data: {
+        businessUnitId: rentalBU.id,
+        name: templateData.name,
+        category: templateData.category as any,
+        description: templateData.description,
+        icon: templateData.icon,
+        requiresPreventiveMaintenance:
+          templateData.requiresPreventiveMaintenance,
+        requiresDocumentation: templateData.requiresDocumentation,
+        customFields: templateData.customFields,
+      },
+    });
+
+    createdTemplates.push(templateData.name);
+  }
+
+  console.log(`✅ ${createdTemplates.length} templates de implementos creados`);
+  console.log("");
+
+  // ============================================
   console.log("🎉 SEED COMPLETADO EXITOSAMENTE\n");
   console.log(`📊 Resumen:`);
   console.log(`   - ${roles.length} roles creados`);
@@ -1625,6 +2022,11 @@ async function main() {
   console.log(`   - ${permissions.length} permisos granulares`);
   console.log(`   - ${totalRolePerms} asignaciones rol-permiso`);
   console.log(`   - ${intents.length} intenciones base`);
+  console.log(`   - ${createdClients.length} clientes creados`);
+  console.log(`   - ${createdSuppliers.length} proveedores creados`);
+  console.log(
+    `   - ${createdTemplates.length} templates de implementos creados`,
+  );
   console.log("=".repeat(50));
 }
 

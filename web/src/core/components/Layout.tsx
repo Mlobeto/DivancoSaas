@@ -15,7 +15,8 @@ interface LayoutProps {
 
 export function Layout({ children, title, subtitle, actions }: LayoutProps) {
   const location = useLocation();
-  const { user, tenant, businessUnit, setAuth, clearAuth } = useAuthStore();
+  const { user, tenant, businessUnit, role, setAuth, clearAuth } =
+    useAuthStore();
   const [showBuSelector, setShowBuSelector] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -288,12 +289,43 @@ export function Layout({ children, title, subtitle, actions }: LayoutProps) {
 
                 {/* User Dropdown */}
                 {showUserMenu && (
-                  <div className="absolute top-full right-0 mt-2 w-64 bg-dark-800 border border-dark-700 rounded-lg shadow-xl z-50">
+                  <div className="absolute top-full right-0 mt-2 w-72 bg-dark-800 border border-dark-700 rounded-lg shadow-xl z-50">
                     <div className="p-4 border-b border-dark-700">
                       <div className="font-medium text-white">
                         {user?.firstName} {user?.lastName}
                       </div>
                       <div className="text-sm text-dark-400">{user?.email}</div>
+                      {role && (
+                        <div className="mt-2 px-2 py-1 bg-dark-700 rounded text-xs inline-block text-primary-400">
+                          {role}
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-4 border-b border-dark-700 space-y-2">
+                      <div>
+                        <div className="text-xs text-dark-500 mb-1">Tenant</div>
+                        <div className="text-sm text-white font-medium">
+                          {tenant?.name}
+                        </div>
+                        <div className="text-xs text-dark-400">
+                          Plan: {tenant?.plan}
+                        </div>
+                      </div>
+                      {businessUnit && (
+                        <div>
+                          <div className="text-xs text-dark-500 mb-1">
+                            Business Unit
+                          </div>
+                          <div className="text-sm text-white font-medium">
+                            {businessUnit.name}
+                          </div>
+                          {businessUnit.slug && (
+                            <div className="text-xs text-dark-400">
+                              {businessUnit.slug}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                     <div className="p-2">
                       <button
