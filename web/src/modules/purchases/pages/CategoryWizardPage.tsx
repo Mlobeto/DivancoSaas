@@ -92,8 +92,10 @@ export function CategoryWizardPage() {
 
   return (
     <Layout
-      title={id ? "Editar Categoría" : "Nueva Categoría"}
-      subtitle={`Paso ${step === "basic" ? "1" : step === "config" ? "2" : "3"} de 3`}
+      title={
+        id ? "Editar Categoría de Suministro" : "Nueva Categoría de Suministro"
+      }
+      subtitle={`Paso ${step === "basic" ? "1" : step === "config" ? "2" : "3"} de 3 · Define cómo gestionar implementos, insumos, repuestos y más`}
       actions={
         <button
           onClick={() => navigate("/purchases/categories")}

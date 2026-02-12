@@ -43,7 +43,7 @@ const CATEGORY_COLORS = [
 const CATEGORY_TYPE_INFO = {
   [SupplyCategoryType.CONSUMABLE]: {
     label: "Consumible",
-    description: "Insumos que se gastan (lubricantes, filtros, tintas)",
+    description: "Suministros que se consumen (lubricantes, filtros, tintas)",
     icon: "🛢️",
   },
   [SupplyCategoryType.SPARE_PART]: {
@@ -68,7 +68,7 @@ const CATEGORY_TYPE_INFO = {
   },
   [SupplyCategoryType.OTHER]: {
     label: "Otro",
-    description: "Otros tipos de insumos",
+    description: "Otros tipos de suministros",
     icon: "📋",
   },
 };
@@ -224,7 +224,7 @@ export function BasicInfoStep({
         <textarea
           className="input"
           rows={3}
-          placeholder="Describe esta categoría de insumos..."
+          placeholder="Describe esta categoría (por ejemplo: tipos de suministros que incluye)..."
           value={formData.description || ""}
           onChange={(e) =>
             setFormData({ ...formData, description: e.target.value })
@@ -500,8 +500,8 @@ export function PreviewStep({
       {/* Info  Box */}
       <div className="bg-blue-900/20 border border-blue-800 rounded-lg p-4">
         <p className="text-sm text-blue-300">
-          ℹ️ Una vez creada, podrás asignar esta categoría a tus insumos en el
-          módulo de inventario
+          ℹ️ Una vez creada, podrás asignar esta categoría a tus suministros
+          (implementos, insumos, repuestos) en el módulo de inventario
         </p>
       </div>
     </div>

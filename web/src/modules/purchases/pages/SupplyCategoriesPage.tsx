@@ -73,7 +73,7 @@ export function SupplyCategoriesPage() {
   const handleDelete = async (id: string, name: string) => {
     if (
       window.confirm(
-        `¿Eliminar la categoría "${name}"?\n\nAdvertencia: No podrás eliminarla si hay insumos asignados.`,
+        `¿Eliminar la categoría "${name}"?\n\nAdvertencia: No podrás eliminarla si hay suministros asignados.`,
       )
     ) {
       deleteMutation.mutate(id);
@@ -82,7 +82,7 @@ export function SupplyCategoriesPage() {
 
   if (isLoading) {
     return (
-      <Layout title="Categorías de Insumos">
+      <Layout title="Categorías de Suministros">
         <div className="p-8 text-center">
           <div className="text-4xl mb-4">⏳</div>
           <p className="text-dark-400">Cargando categorías...</p>
@@ -93,8 +93,8 @@ export function SupplyCategoriesPage() {
 
   return (
     <Layout
-      title="Categorías de Insumos"
-      subtitle={`${categories.length} categoría${categories.length !== 1 ? "s" : ""} configurada${categories.length !== 1 ? "s" : ""}`}
+      title="Categorías de Suministros"
+      subtitle={`${categories.length} categoría${categories.length !== 1 ? "s" : ""} configurada${categories.length !== 1 ? "s" : ""} · Implementos, Insumos, Repuestos y más`}
       actions={
         <button
           onClick={() => navigate("/purchases/categories/new")}
@@ -160,7 +160,8 @@ export function SupplyCategoriesPage() {
                   No hay categorías configuradas
                 </h3>
                 <p className="text-dark-400 mb-6">
-                  Crea tu primera categoría para organizar tus insumos
+                  Crea tu primera categoría para organizar tus suministros
+                  (implementos, insumos, repuestos, etc.)
                 </p>
                 <button
                   onClick={() => navigate("/purchases/categories/new")}
