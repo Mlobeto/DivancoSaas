@@ -719,6 +719,7 @@ model AssetTemplate {
   icon        String? // Emoji o nombre de ícono
 
   requiresPreventiveMaintenance Boolean @default(false)
+  requiresDocumentation         Boolean @default(false) // Si requiere SOAT, Seguro, Certificaciones, etc.
 
   // Array de definiciones de campos personalizados
   customFields Json // CustomField[]

@@ -68,6 +68,7 @@ export interface AssetTemplate {
   description?: string;
   icon?: string;
   requiresPreventiveMaintenance: boolean;
+  requiresDocumentation: boolean;
   customFields: CustomField[];
   createdAt: string;
   updatedAt: string;
@@ -82,6 +83,7 @@ export interface CreateTemplateInput {
   description?: string;
   icon?: string;
   requiresPreventiveMaintenance: boolean;
+  requiresDocumentation: boolean;
   customFields: CustomField[];
 }
 
@@ -90,6 +92,7 @@ export interface UpdateTemplateInput {
   description?: string;
   icon?: string;
   requiresPreventiveMaintenance?: boolean;
+  requiresDocumentation?: boolean;
   customFields?: CustomField[];
 }
 

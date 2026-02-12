@@ -46,7 +46,7 @@ export function BasicInfoStep({
       <h2 className="text-xl font-semibold text-white border-b border-dark-700 pb-3">
         📋 Información Básica
       </h2>
-      {/* Name */}
+     
       <div>
         <label className="label">Nombre de la Plantilla *</label>
         <input
@@ -139,6 +139,27 @@ export function BasicInfoStep({
         />
         <label htmlFor="requiresMaintenance" className="text-sm cursor-pointer">
           Requiere mantenimiento preventivo
+        </label>
+      </div>
+
+      {/* Requires Documentation */}
+      <div className="flex items-center gap-3">
+        <input
+          type="checkbox"
+          id="requiresDocumentation"
+          checked={formData.requiresDocumentation}
+          onChange={(e) =>
+            setFormData({
+              ...formData,
+              requiresDocumentation: e.target.checked,
+            })
+          }
+        />
+        <label
+          htmlFor="requiresDocumentation"
+          className="text-sm cursor-pointer"
+        >
+          Requiere documentación (SOAT, Seguro, Certificaciones, etc.)
         </label>
       </div>
     </div>
@@ -819,6 +840,9 @@ export function PreviewStep({ formData }: { formData: CreateTemplateInput }) {
                   <div className="text-green-400">
                     ✓ Requiere mantenimiento preventivo
                   </div>
+                )}
+                {formData.requiresDocumentation && (
+                  <div className="text-blue-400">📄 Requiere documentación</div>
                 )}
               </div>
             </div>

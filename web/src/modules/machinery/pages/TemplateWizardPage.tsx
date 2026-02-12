@@ -29,6 +29,7 @@ export function TemplateWizardPage() {
     description: "",
     icon: "",
     requiresPreventiveMaintenance: false,
+    requiresDocumentation: false,
     customFields: [],
   });
 
@@ -48,6 +49,7 @@ export function TemplateWizardPage() {
         icon: existingTemplate.icon || "",
         requiresPreventiveMaintenance:
           existingTemplate.requiresPreventiveMaintenance,
+        requiresDocumentation: existingTemplate.requiresDocumentation || false,
         customFields: existingTemplate.customFields,
       });
     }
