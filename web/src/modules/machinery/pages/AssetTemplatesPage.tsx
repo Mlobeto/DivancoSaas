@@ -14,6 +14,55 @@ import {
   AssetCategoryLabels,
 } from "@/modules/machinery/services/asset-template.service";
 import { useNavigate } from "react-router-dom";
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  FileText,
+  AlertCircle,
+  Construction,
+  Truck,
+  HardHat,
+  Wrench,
+  Hammer,
+  Drill,
+  Box,
+  Package,
+  Factory,
+  PackageOpen,
+  Container,
+  Ruler,
+  Fence,
+  Pickaxe,
+} from "lucide-react";
+
+// Helper para renderizar iconos
+const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+  construction: Construction,
+  truck: Truck,
+  hardhat: HardHat,
+  wrench: Wrench,
+  hammer: Hammer,
+  drill: Drill,
+  box: Box,
+  package: Package,
+  factory: Factory,
+  packageopen: PackageOpen,
+  container: Container,
+  ruler: Ruler,
+  fence: Fence,
+  pickaxe: Pickaxe,
+};
+
+const renderIcon = (iconName?: string | null) => {
+  if (!iconName) return null;
+  const IconComponent = iconMap[iconName.toLowerCase()];
+  if (IconComponent) {
+    return <IconComponent className="w-8 h-8 text-white" />;
+  }
+  // Fallback para emojis u otros textos
+  return <div className="text-3xl">{iconName}</div>;
+};
 
 export function AssetTemplatesPage() {
   const queryClient = useQueryClient();
@@ -239,9 +288,9 @@ export function AssetTemplatesPage() {
               >
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    {template.icon && (
-                      <div className="text-3xl">{template.icon}</div>
-                    )}
+                    <div className="flex items-center justify-center w-12 h-12">
+                      {renderIcon(template.icon)}
+                    </div>
                     <div>
                       <h3 className="font-semibold text-lg">{template.name}</h3>
                       <span
