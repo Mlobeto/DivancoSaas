@@ -387,8 +387,6 @@ function FieldEditorModal({
       section: "Información General",
       order: 0,
       required: false,
-      placeholder: "",
-      helperText: "",
     },
   );
 
@@ -566,7 +564,7 @@ function FieldEditorModal({
                   <input
                     type="text"
                     className="input"
-                    placeholder={formData.placeholder || "Escribe aquí..."}
+                    placeholder="Escribe aquí..."
                     disabled
                   />
                 )}
@@ -574,7 +572,7 @@ function FieldEditorModal({
                   <textarea
                     className="input"
                     rows={3}
-                    placeholder={formData.placeholder || "Escribe aquí..."}
+                    placeholder="Escribe aquí..."
                     disabled
                   />
                 )}
@@ -582,7 +580,7 @@ function FieldEditorModal({
                   <input
                     type="number"
                     className="input"
-                    placeholder={formData.placeholder || "0"}
+                    placeholder="0"
                     disabled
                   />
                 )}
@@ -615,52 +613,12 @@ function FieldEditorModal({
                 {formData.type === FieldType.BOOLEAN && (
                   <div className="flex items-center gap-2">
                     <input type="checkbox" disabled />
-                    <span className="text-sm">
-                      {formData.placeholder || "Sí/No"}
-                    </span>
+                    <span className="text-sm">Sí/No</span>
                   </div>
-                )}
-                {formData.helperText && (
-                  <p className="text-xs text-dark-400 mt-1">
-                    {formData.helperText}
-                  </p>
                 )}
               </div>
             </div>
           )}
-
-          {/* Placeholder & Helper */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Placeholder
-              </label>
-              <input
-                type="text"
-                className="input"
-                placeholder="Texto de ayuda en el campo..."
-                value={formData.placeholder}
-                onChange={(e) =>
-                  setFormData({ ...formData, placeholder: e.target.value })
-                }
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Texto de ayuda
-              </label>
-              <input
-                type="text"
-                className="input"
-                placeholder="Información adicional..."
-                value={formData.helperText}
-                onChange={(e) =>
-                  setFormData({ ...formData, helperText: e.target.value })
-                }
-              />
-            </div>
-          </div>
 
           {/* Required */}
           <div className="flex items-center gap-3">
@@ -902,11 +860,6 @@ export function PreviewStep({ formData }: { formData: CreateTemplateInput }) {
                         )}
                       </label>
                       {renderFieldPreview(field)}
-                      {field.helperText && (
-                        <p className="text-xs text-dark-500 mt-1">
-                          {field.helperText}
-                        </p>
-                      )}
                     </div>
                   ))}
                 </div>
