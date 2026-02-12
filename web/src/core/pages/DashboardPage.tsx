@@ -1,6 +1,19 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "@/store/auth.store";
 import { dashboardService } from "@/core/services/dashboard.service";
+import {
+  Box,
+  ShoppingCart,
+  Users,
+  Archive,
+  Layout,
+  AlertCircle,
+  Building2,
+  FileText,
+  DollarSign,
+  List,
+  UserPlus,
+} from "lucide-react";
 
 export function DashboardPage() {
   const { user, tenant, businessUnit, role } = useAuthStore();
@@ -257,75 +270,75 @@ export function DashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
             {/* Inventario y Activos */}
             <div className="card bg-dark-800 border-primary-800">
-              <h4 className="text-sm font-semibold text-primary-400 mb-3">
-                📦 INVENTARIO Y ACTIVOS
+              <h4 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+                <Box className="w-4 h-4" /> INVENTARIO Y ACTIVOS
               </h4>
               <div className="space-y-2">
                 <a
                   href="/machinery"
-                  className="block px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm"
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm"
                 >
-                  📊 Activos →
+                  <Archive className="w-4 h-4" /> Activos →
                 </a>
                 <a
                   href="/machinery/templates"
-                  className="block px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm"
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm"
                 >
-                  📋 Plantillas →
+                  <Layout className="w-4 h-4" /> Plantillas →
                 </a>
                 <a
                   href="/machinery/alerts"
-                  className="block px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm"
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm"
                 >
-                  🚨 Alertas de Documentación →
+                  <AlertCircle className="w-4 h-4" /> Alertas de Documentación →
                 </a>
               </div>
             </div>
 
             {/* Compras y Proveedores */}
             <div className="card bg-dark-800 border-blue-800">
-              <h4 className="text-sm font-semibold text-blue-400 mb-3">
-                🛍️ COMPRAS Y PROVEEDORES
+              <h4 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+                <ShoppingCart className="w-4 h-4" /> COMPRAS Y PROVEEDORES
               </h4>
               <div className="space-y-2">
                 <a
                   href="/suppliers"
-                  className="block px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm"
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm"
                 >
-                  🏭 Proveedores →
+                  <Building2 className="w-4 h-4" /> Proveedores →
                 </a>
                 <a
                   href="/purchase-orders"
-                  className="block px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm"
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm"
                 >
-                  📝 Órdenes de Compra →
+                  <FileText className="w-4 h-4" /> Órdenes de Compra →
                 </a>
                 <a
                   href="/purchases/quotes"
-                  className="block px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm"
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm"
                 >
-                  💰 Cotizaciones →
+                  <DollarSign className="w-4 h-4" /> Cotizaciones →
                 </a>
               </div>
             </div>
 
             {/* Clientes */}
             <div className="card bg-dark-800 border-green-800">
-              <h4 className="text-sm font-semibold text-green-400 mb-3">
-                👥 CLIENTES
+              <h4 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+                <Users className="w-4 h-4" /> CLIENTES
               </h4>
               <div className="space-y-2">
                 <a
                   href="/clients"
-                  className="block px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm"
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm"
                 >
-                  📋 Lista de Clientes →
+                  <List className="w-4 h-4" /> Lista de Clientes →
                 </a>
                 <a
                   href="/clients/new"
-                  className="block px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm"
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm"
                 >
-                  ➕ Nuevo Cliente →
+                  <UserPlus className="w-4 h-4" /> Nuevo Cliente →
                 </a>
               </div>
             </div>

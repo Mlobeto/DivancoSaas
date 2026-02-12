@@ -4,6 +4,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useAuthStore } from "@/store/auth.store";
 import { businessUnitService } from "@/core/services/businessUnit.service";
 import type { BusinessUnit } from "@/core/types/api.types";
+import { LayoutDashboard, Box, ShoppingCart, Users } from "lucide-react";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -48,12 +49,12 @@ export function Layout({ children, title, subtitle, actions }: LayoutProps) {
   const menuItems = [
     {
       label: "Dashboard",
-      icon: "📊",
+      icon: LayoutDashboard,
       path: "/dashboard",
     },
     {
       label: "Maquinaria",
-      icon: "🔧",
+      icon: Box,
       path: "/machinery",
       subItems: [
         { label: "Plantillas", path: "/machinery/templates" },
@@ -62,7 +63,7 @@ export function Layout({ children, title, subtitle, actions }: LayoutProps) {
     },
     {
       label: "Compras",
-      icon: "🛒",
+      icon: ShoppingCart,
       path: "/purchases",
       subItems: [
         { label: "Categorías", path: "/purchases/categories" },
@@ -72,7 +73,7 @@ export function Layout({ children, title, subtitle, actions }: LayoutProps) {
     },
     {
       label: "Clientes",
-      icon: "👥",
+      icon: Users,
       path: "/clients",
     },
   ];
@@ -138,42 +139,47 @@ export function Layout({ children, title, subtitle, actions }: LayoutProps) {
 
               {/* Desktop Navigation */}
               <div className="hidden lg:flex items-center gap-1 ml-8">
-                {menuItems.map((item) => (
-                  <div key={item.path} className="relative group">
-                    <Link
-                      to={item.path}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                        isActive(item.path)
-                          ? "bg-primary-600 text-white"
-                          : "text-dark-300 hover:text-white hover:bg-dark-700"
-                      }`}
-                    >
-                      <span>{item.icon}</span>
-                      <span className="text-sm font-medium">{item.label}</span>
-                    </Link>
+                {menuItems.map((item) => {
+                  const IconComponent = item.icon;
+                  return (
+                    <div key={item.path} className="relative group">
+                      <Link
+                        to={item.path}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                          isActive(item.path)
+                            ? "bg-primary-600 text-white"
+                            : "text-dark-300 hover:text-white hover:bg-dark-700"
+                        }`}
+                      >
+                        <IconComponent className="w-4 h-4" />
+                        <span className="text-sm font-medium">
+                          {item.label}
+                        </span>
+                      </Link>
 
-                    {/* Dropdown for subitems */}
-                    {item.subItems && (
-                      <div className="absolute top-full left-0 mt-1 w-48 bg-dark-800 border border-dark-700 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
-                        <div className="py-2">
-                          {item.subItems.map((subItem) => (
-                            <Link
-                              key={subItem.path}
-                              to={subItem.path}
-                              className={`block px-4 py-2 text-sm transition-colors ${
-                                location.pathname === subItem.path
-                                  ? "bg-dark-700 text-primary-400"
-                                  : "text-dark-300 hover:bg-dark-700 hover:text-white"
-                              }`}
-                            >
-                              {subItem.label}
-                            </Link>
-                          ))}
+                      {/* Dropdown for subitems */}
+                      {item.subItems && (
+                        <div className="absolute top-full left-0 mt-1 w-48 bg-dark-800 border border-dark-700 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
+                          <div className="py-2">
+                            {item.subItems.map((subItem) => (
+                              <Link
+                                key={subItem.path}
+                                to={subItem.path}
+                                className={`block px-4 py-2 text-sm transition-colors ${
+                                  location.pathname === subItem.path
+                                    ? "bg-dark-700 text-primary-400"
+                                    : "text-dark-300 hover:bg-dark-700 hover:text-white"
+                                }`}
+                              >
+                                {subItem.label}
+                              </Link>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -321,42 +327,45 @@ export function Layout({ children, title, subtitle, actions }: LayoutProps) {
         {showMobileMenu && (
           <div className="lg:hidden border-t border-dark-700 bg-dark-800">
             <div className="px-4 py-4 space-y-1">
-              {menuItems.map((item) => (
-                <div key={item.path}>
-                  <Link
-                    to={item.path}
-                    onClick={() => setShowMobileMenu(false)}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                      isActive(item.path)
-                        ? "bg-primary-600 text-white"
-                        : "text-dark-300 hover:text-white hover:bg-dark-700"
-                    }`}
-                  >
-                    <span className="text-xl">{item.icon}</span>
-                    <span className="font-medium">{item.label}</span>
-                  </Link>
+              {menuItems.map((item) => {
+                const IconComponent = item.icon;
+                return (
+                  <div key={item.path}>
+                    <Link
+                      to={item.path}
+                      onClick={() => setShowMobileMenu(false)}
+                      className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                        isActive(item.path)
+                          ? "bg-primary-600 text-white"
+                          : "text-dark-300 hover:text-white hover:bg-dark-700"
+                      }`}
+                    >
+                      <IconComponent className="w-5 h-5" />
+                      <span className="font-medium">{item.label}</span>
+                    </Link>
 
-                  {/* Mobile Subitems */}
-                  {item.subItems && (
-                    <div className="ml-8 mt-1 space-y-1">
-                      {item.subItems.map((subItem) => (
-                        <Link
-                          key={subItem.path}
-                          to={subItem.path}
-                          onClick={() => setShowMobileMenu(false)}
-                          className={`block px-4 py-2 rounded-lg text-sm transition-colors ${
-                            location.pathname === subItem.path
-                              ? "bg-dark-700 text-primary-400"
-                              : "text-dark-400 hover:text-white hover:bg-dark-700"
-                          }`}
-                        >
-                          {subItem.label}
-                        </Link>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
+                    {/* Mobile Subitems */}
+                    {item.subItems && (
+                      <div className="ml-8 mt-1 space-y-1">
+                        {item.subItems.map((subItem) => (
+                          <Link
+                            key={subItem.path}
+                            to={subItem.path}
+                            onClick={() => setShowMobileMenu(false)}
+                            className={`block px-4 py-2 rounded-lg text-sm transition-colors ${
+                              location.pathname === subItem.path
+                                ? "bg-dark-700 text-primary-400"
+                                : "text-dark-400 hover:text-white hover:bg-dark-700"
+                            }`}
+                          >
+                            {subItem.label}
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}

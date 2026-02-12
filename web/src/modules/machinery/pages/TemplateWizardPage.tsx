@@ -7,6 +7,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Layout } from "@/core/components/Layout";
+import { X, Save } from "lucide-react";
 import {
   assetTemplateService,
   type CreateTemplateInput,
@@ -87,20 +88,23 @@ export function TemplateWizardPage() {
         <div className="flex gap-3">
           <button
             onClick={() => navigate("/machinery/templates")}
-            className="btn-ghost"
+            className="btn-ghost flex items-center gap-2"
           >
-            ✕ Cancelar
+            <X className="w-4 h-4" /> Cancelar
           </button>
           <button
             onClick={handleSubmit}
-            className="btn-primary"
+            className="btn-primary flex items-center gap-2"
             disabled={saveMutation.isPending || !canSave}
           >
-            {saveMutation.isPending
-              ? "Guardando..."
-              : id
-                ? "💾 Actualizar"
-                : "💾 Crear Plantilla"}
+            {saveMutation.isPending ? (
+              "Guardando..."
+            ) : (
+              <>
+                <Save className="w-4 h-4" />
+                {id ? "Actualizar" : "Crear Plantilla"}
+              </>
+            )}
           </button>
         </div>
       }

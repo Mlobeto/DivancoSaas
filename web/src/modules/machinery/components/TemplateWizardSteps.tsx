@@ -4,6 +4,29 @@
  */
 
 import { useState } from "react";
+import {
+  FileText,
+  Settings,
+  Edit,
+  Trash,
+  Eye,
+  Plus,
+  FileSignature,
+  Truck,
+  Wrench,
+  Hammer,
+  Drill,
+  Construction,
+  Box,
+  Package,
+  Factory,
+  HardHat,
+  PackageOpen,
+  Container,
+  Ruler,
+  Fence,
+  Pickaxe,
+} from "lucide-react";
 import type {
   CreateTemplateInput,
   CustomField,
@@ -20,16 +43,20 @@ import {
 // ============================================
 
 const COMMON_ICONS = [
-  "🏗️",
-  "🚜",
-  "🚛",
-  "🏢",
-  "⚙️",
-  "🔧",
-  "📦",
-  "🎯",
-  "🏭",
-  "🛠️",
+  { icon: Construction, name: "construction" },
+  { icon: Truck, name: "truck" },
+  { icon: HardHat, name: "hardhat" },
+  { icon: Wrench, name: "wrench" },
+  { icon: Hammer, name: "hammer" },
+  { icon: Drill, name: "drill" },
+  { icon: Box, name: "box" },
+  { icon: Package, name: "package" },
+  { icon: Factory, name: "factory" },
+  { icon: PackageOpen, name: "packageopen" },
+  { icon: Container, name: "container" },
+  { icon: Ruler, name: "ruler" },
+  { icon: Fence, name: "fence" },
+  { icon: Pickaxe, name: "pickaxe" },
 ];
 
 export function BasicInfoStep({
@@ -43,10 +70,10 @@ export function BasicInfoStep({
 
   return (
     <div className="card space-y-6">
-      <h2 className="text-xl font-semibold text-white border-b border-dark-700 pb-3">
-        📋 Información Básica
+      <h2 className="text-xl font-semibold text-white border-b border-dark-700 pb-3 flex items-center gap-2">
+        <FileText className="w-5 h-5" /> Información Básica
       </h2>
-     
+
       <div>
         <label className="label">Nombre de la Plantilla *</label>
         <input
@@ -85,19 +112,19 @@ export function BasicInfoStep({
       {/* Icon */}
       <div>
         <label className="label">Icono</label>
-        <div className="grid grid-cols-5 md:grid-cols-10 gap-2 mb-3">
-          {COMMON_ICONS.map((icon) => (
+        <div className="grid grid-cols-5 md:grid-cols-7 gap-2 mb-3">
+          {COMMON_ICONS.map(({ icon: IconComponent, name }) => (
             <button
-              key={icon}
+              key={name}
               type="button"
-              className={`p-3 text-2xl rounded border-2 transition ${
-                formData.icon === icon
-                  ? "border-primary-500 bg-primary-900/20"
-                  : "border-dark-700 hover:border-dark-600"
+              className={`p-3 rounded border-2 transition flex items-center justify-center ${
+                formData.icon === name
+                  ? "border-primary-500 bg-primary-900/20 text-primary-400"
+                  : "border-dark-700 hover:border-dark-600 text-white"
               }`}
-              onClick={() => setFormData({ ...formData, icon })}
+              onClick={() => setFormData({ ...formData, icon: name })}
             >
-              {icon}
+              <IconComponent className="w-6 h-6" />
             </button>
           ))}
         </div>
@@ -105,7 +132,7 @@ export function BasicInfoStep({
           <input
             type="text"
             className="input flex-1"
-            placeholder="O escribe tu propio emoji..."
+            placeholder="O escribe un nombre de icono personalizado..."
             value={customIcon}
             onChange={(e) => setCustomIcon(e.target.value)}
           />
@@ -275,21 +302,24 @@ export function CustomFieldsStep({
   return (
     <div className="space-y-6">
       <div className="card">
-        <h2 className="text-xl font-semibold text-white border-b border-dark-700 pb-3 mb-6">
-          ⚙️ Campos Personalizados
+        <h2 className="text-xl font-semibold text-white border-b border-dark-700 pb-3 mb-6 flex items-center gap-2">
+          <Settings className="w-5 h-5" /> Campos Personalizados
         </h2>
         <div className="flex items-center justify-between mb-6">
           <p className="text-dark-400 text-sm">
             Define los campos que se solicitarán al crear este tipo de activo
           </p>
-          <button onClick={handleAddField} className="btn-primary">
-            + Agregar Campo
+          <button
+            onClick={handleAddField}
+            className="btn-primary flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" /> Agregar Campo
           </button>
         </div>
 
         {formData.customFields.length === 0 ? (
           <div className="text-center py-12">
-            <div className="text-5xl mb-4">📝</div>
+            <FileSignature className="w-16 h-16 mx-auto mb-4 text-dark-500" />
             <p className="text-dark-400 mb-4">
               No hay campos configurados todavía
             </p>
@@ -305,7 +335,7 @@ export function CustomFieldsStep({
                 className="border border-dark-700 rounded-lg p-4"
               >
                 <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                  <span className="text-primary-400">📋</span>
+                  <FileText className="w-5 h-5 text-primary-400" />
                   {sectionName}
                 </h3>
 
@@ -350,15 +380,15 @@ export function CustomFieldsStep({
                       <div className="flex gap-2">
                         <button
                           onClick={() => handleEditField(field)}
-                          className="btn-ghost text-sm px-3"
+                          className="btn-ghost text-sm px-3 flex items-center gap-1"
                         >
-                          ✏️
+                          <Edit className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleDeleteField(field.key)}
-                          className="btn-ghost text-red-400 hover:bg-red-900/20 text-sm px-3"
+                          className="btn-ghost text-red-400 hover:bg-red-900/20 text-sm px-3 flex items-center gap-1"
                         >
-                          🗑️
+                          <Trash className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
@@ -506,19 +536,17 @@ function FieldEditorModal({
                   })
                 }
               >
-                <option value={FieldType.TEXT}>📝 Texto corto</option>
+                <option value={FieldType.TEXT}>Texto corto</option>
                 <option value={FieldType.TEXTAREA}>
-                  📄 Texto largo (párrafo)
+                  Texto largo (párrafo)
                 </option>
-                <option value={FieldType.NUMBER}>🔢 Número</option>
-                <option value={FieldType.DATE}>📅 Fecha</option>
-                <option value={FieldType.SELECT}>
-                  ✅ Selección (una opción)
-                </option>
+                <option value={FieldType.NUMBER}>Número</option>
+                <option value={FieldType.DATE}>Fecha</option>
+                <option value={FieldType.SELECT}>Selección (una opción)</option>
                 <option value={FieldType.MULTISELECT}>
-                  ☑️ Selección múltiple
+                  Selección múltiple
                 </option>
-                <option value={FieldType.BOOLEAN}>🔘 Sí/No (checkbox)</option>
+                <option value={FieldType.BOOLEAN}>Sí/No (checkbox)</option>
               </select>
               <p className="text-xs text-dark-500 mt-1">
                 {formData.type === FieldType.TEXT && "Ej: Marca, Modelo, Serie"}
@@ -571,8 +599,9 @@ function FieldEditorModal({
           {/* Preview Box */}
           {formData.label && (
             <div className="bg-primary-900/10 border border-primary-800 rounded-lg p-4">
-              <p className="text-xs text-primary-400 font-semibold mb-2">
-                👁️ VISTA PREVIA - Así se verá en el formulario:
+              <p className="text-xs text-primary-400 font-semibold mb-2 flex items-center gap-2">
+                <Eye className="w-4 h-4" /> VISTA PREVIA - Así se verá en el
+                formulario:
               </p>
               <div>
                 <label className="block text-sm font-medium mb-2">
