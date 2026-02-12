@@ -894,19 +894,29 @@ export class AssetsController {
         businessUnitId: context.businessUnitId,
       });
 
-      // Actualizar asset con URL de imagen
+      // Generar URL con SAS token (válido por 24 horas)
+      const sasUrl = await azureBlobStorageService.generateSasUrl(
+        uploadResult.blobName,
+        1440, // 24 horas
+      );
+
+      // Actualizar asset con blobName (no la URL completa)
+      // La URL con SAS token se generará dinámicamente al recuperar
       const updatedAsset = await assetService.uploadMainImage(
         context.tenantId,
         context.businessUnitId,
         assetId,
-        uploadResult.url,
+        uploadResult.blobName, // Guardar solo el blobName
       );
 
       res.json({
         success: true,
         data: {
-          asset: updatedAsset,
-          imageUrl: uploadResult.url,
+          asset: {
+            ...updatedAsset,
+            imageUrl: sasUrl, // Devolver URL con SAS token al cliente
+          },
+          imageUrl: sasUrl,
         },
       });
     } catch (error) {

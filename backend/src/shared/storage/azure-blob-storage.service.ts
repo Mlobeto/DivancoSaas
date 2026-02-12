@@ -4,7 +4,13 @@
  * Usado para: PDFs de cotizaciones, contratos, documentos firmados
  */
 
-import { BlobServiceClient, ContainerClient } from "@azure/storage-blob";
+import {
+  BlobServiceClient,
+  ContainerClient,
+  BlobSASPermissions,
+  generateBlobSASQueryParameters,
+  StorageSharedKeyCredential,
+} from "@azure/storage-blob";
 import { v4 as uuidv4 } from "uuid";
 
 export interface UploadFileParams {
@@ -27,6 +33,8 @@ export class AzureBlobStorageService {
   private blobServiceClient?: BlobServiceClient;
   private containerName: string;
   private defaultContainerClient?: ContainerClient;
+  private accountName?: string;
+  private accountKey?: string;
 
   constructor() {
     const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
@@ -39,6 +47,15 @@ export class AzureBlobStorageService {
       return;
     }
 
+    // Extraer account name y key del connection string para SAS tokens
+    const accountNameMatch = connectionString.match(/AccountName=([^;]+)/);
+    const accountKeyMatch = connectionString.match(/AccountKey=([^;]+)/);
+    
+    if (accountNameMatch && accountKeyMatch) {
+      this.accountName = accountNameMatch[1];
+      this.accountKey = accountKeyMatch[1];
+    }
+
     this.blobServiceClient =
       BlobServiceClient.fromConnectionString(connectionString);
     this.defaultContainerClient = this.blobServiceClient.getContainerClient(
@@ -47,6 +64,7 @@ export class AzureBlobStorageService {
 
     console.log(
       `✅ Azure Blob Storage initialized: container="${this.containerName}"`,
+    );
     );
   }
 
@@ -106,13 +124,40 @@ export class AzureBlobStorageService {
       throw new Error("Azure Blob Storage not configured");
     }
 
+    if (!this.accountName || !this.accountKey) {
+      console.warn("⚠️  Account credentials not available, returning direct URL");
+      const blockBlobClient =
+        this.defaultContainerClient.getBlockBlobClient(blobName);
+      return blockBlobClient.url;
+    }
+
     const blockBlobClient =
       this.defaultContainerClient.getBlockBlobClient(blobName);
 
-    // TODO: Implementar generación de SAS token
-    // Por ahora retornamos URL directa
-    // En producción, usar: blockBlobClient.generateSasUrl()
-    return blockBlobClient.url;
+    // Crear credenciales compartidas
+    const sharedKeyCredential = new StorageSharedKeyCredential(
+      this.accountName,
+      this.accountKey,
+    );
+
+    // Definir permisos y tiempo de expiración
+    const startsOn = new Date();
+    const expiresOn = new Date(startsOn.getTime() + expiresInMinutes * 60 * 1000);
+
+    // Generar SAS token
+    const sasToken = generateBlobSASQueryParameters(
+      {
+        containerName: this.containerName,
+        blobName: blobName,
+        permissions: BlobSASPermissions.parse("r"), // Read only
+        startsOn,
+        expiresOn,
+      },
+      sharedKeyCredential,
+    ).toString();
+
+    // Retornar URL con SAS token
+    return `${blockBlobClient.url}?${sasToken}`;
   }
 
   /**

@@ -14,9 +14,43 @@ import {
   PaginatedResponse,
   DecommissionAssetDTO,
 } from "../types/asset.types";
+import { azureBlobStorageService } from "../../../shared/storage/azure-blob-storage.service";
 
 export class AssetService {
   constructor(private readonly prisma: PrismaClient) {}
+
+  /**
+   * Enrich asset with SAS URL for image
+   * Converts blobName to temporary SAS URL (24 hours)
+   */
+  private async enrichAssetWithSasUrl(asset: Asset): Promise<Asset> {
+    if (asset.imageUrl && !asset.imageUrl.startsWith("http")) {
+      // Si imageUrl no es una URL completa, es un blobName - generar SAS URL
+      try {
+        const sasUrl = await azureBlobStorageService.generateSasUrl(
+          asset.imageUrl,
+          1440, // 24 horas
+        );
+        return { ...asset, imageUrl: sasUrl };
+      } catch (error) {
+        console.error(
+          `Failed to generate SAS URL for asset ${asset.id}:`,
+          error,
+        );
+        // Mantener el blobName si falla
+      }
+    }
+    return asset;
+  }
+
+  /**
+   * Enrich multiple assets with SAS URLs
+   */
+  private async enrichAssetsWithSasUrls(assets: Asset[]): Promise<Asset[]> {
+    return Promise.all(
+      assets.map((asset) => this.enrichAssetWithSasUrl(asset)),
+    );
+  }
 
   /**
    * Create a new asset
@@ -81,7 +115,7 @@ export class AssetService {
     businessUnitId: string,
     assetId: string,
   ): Promise<Asset | null> {
-    return this.prisma.asset.findFirst({
+    const asset = await this.prisma.asset.findFirst({
       where: {
         id: assetId,
         tenantId,
@@ -103,6 +137,11 @@ export class AssetService {
         },
       },
     });
+
+    if (!asset) return null;
+
+    // Enrich with SAS URL
+    return this.enrichAssetWithSasUrl(asset);
   }
 
   /**
@@ -149,8 +188,11 @@ export class AssetService {
       this.prisma.asset.count({ where }),
     ]);
 
+    // Enrich all assets with SAS URLs
+    const enrichedAssets = await this.enrichAssetsWithSasUrls(assets);
+
     return {
-      data: assets,
+      data: enrichedAssets,
       meta: {
         total,
         page,
