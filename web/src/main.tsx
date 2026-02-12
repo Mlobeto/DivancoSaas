@@ -141,6 +141,10 @@ createRoot(document.getElementById("root")!).render(
           />
           {/* Purchases Module Routes */}
           <Route
+            path="/purchases"
+            element={<Navigate to="/purchase-orders" replace />}
+          />
+          <Route
             path="/suppliers"
             element={
               <ProtectedRoute>
