@@ -31,8 +31,8 @@ WORKDIR /app
 COPY package*.json ./
 COPY prisma ./prisma/
 
-# Instalar dependencias
-RUN npm ci --only=production && \
+# Instalar TODAS las dependencias (necesitamos typescript para build)
+RUN npm ci && \
     npm cache clean --force
 
 # Generar Prisma Client
