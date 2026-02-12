@@ -23,6 +23,8 @@ import {
   PurchaseOrdersPage,
   SupplyCategoriesPage,
   CategoryWizardPage,
+  SuppliesPage,
+  SupplyFormPage,
 } from "@/modules/purchases";
 import {
   ClientsPage,
@@ -181,6 +183,31 @@ createRoot(document.getElementById("root")!).render(
             element={
               <ProtectedRoute>
                 <CategoryWizardPage />
+              </ProtectedRoute>
+            }
+          />
+          {/* Supplies Routes */}
+          <Route
+            path="/supplies"
+            element={
+              <ProtectedRoute>
+                <SuppliesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/supplies/new"
+            element={
+              <ProtectedRoute>
+                <SupplyFormPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/supplies/:id/edit"
+            element={
+              <ProtectedRoute>
+                <SupplyFormPage />
               </ProtectedRoute>
             }
           />

@@ -45,6 +45,46 @@ export interface SupplyCategoryFilters {
 }
 
 // ============================================
+// SUPPLY TYPES
+// ============================================
+
+export interface CreateSupplyDTO {
+  code?: string;
+  name: string;
+  unit: string; // litros, unidades, kg, metros, etc.
+  categoryId?: string;
+  costPerUnit?: number;
+  minStock?: number;
+  maxStock?: number;
+  sku?: string;
+  barcode?: string;
+  notes?: string;
+}
+
+export interface UpdateSupplyDTO {
+  code?: string;
+  name?: string;
+  unit?: string;
+  categoryId?: string;
+  costPerUnit?: number;
+  minStock?: number;
+  maxStock?: number;
+  sku?: string;
+  barcode?: string;
+  notes?: string;
+  isActive?: boolean;
+}
+
+export interface SupplyFilters {
+  categoryId?: string;
+  search?: string; // Busca en code, name, sku, barcode
+  isActive?: boolean;
+  lowStock?: boolean; // Filtra supplies con stock < minStock
+  page?: number;
+  limit?: number;
+}
+
+// ============================================
 // SUPPLIER TYPES
 // ============================================
 

@@ -9,6 +9,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/core/components/Layout";
 import { supplyCategoryService } from "../services/supply-category.service";
 import { SupplyCategoryType } from "../types/supply-category.types";
+import { Boxes } from "lucide-react";
 
 const CATEGORY_TYPE_LABELS = {
   [SupplyCategoryType.CONSUMABLE]: "Consumible",
@@ -135,7 +136,9 @@ export function SupplyCategoriesPage() {
         {/* Empty State */}
         {filteredCategories.length === 0 && (
           <div className="card text-center py-12">
-            <div className="text-6xl mb-4">📦</div>
+            <div className="mb-4 flex justify-center">
+              <Boxes className="w-16 h-16 text-dark-500" />
+            </div>
             {searchTerm || filterType !== "ALL" ? (
               <>
                 <h3 className="text-xl font-bold mb-2">

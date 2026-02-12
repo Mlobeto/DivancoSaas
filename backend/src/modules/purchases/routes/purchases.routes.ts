@@ -8,6 +8,7 @@ import { SupplierController } from "../controllers/supplier.controller";
 import { QuoteController } from "../controllers/quote.controller";
 import { PurchaseOrderController } from "../controllers/purchase-order.controller";
 import { SupplyCategoryController } from "../controllers/supply-category.controller";
+import { SupplyController } from "../controllers/supply.controller";
 import { authenticate } from "@core/middlewares/auth.middleware";
 
 const router = Router();
@@ -38,6 +39,21 @@ router.patch(
   "/supply-categories/:categoryId/toggle-active",
   SupplyCategoryController.toggleActive,
 );
+
+// ============================================
+// SUPPLIES (SUMINISTROS)
+// ============================================
+
+router.post("/supplies", SupplyController.createSupply);
+router.get("/supplies", SupplyController.listSupplies);
+router.get("/supplies/:supplyId", SupplyController.getSupply);
+router.patch("/supplies/:supplyId", SupplyController.updateSupply);
+router.delete("/supplies/:supplyId", SupplyController.deleteSupply);
+router.patch(
+  "/supplies/:supplyId/toggle-active",
+  SupplyController.toggleActive,
+);
+router.post("/supplies/:supplyId/adjust-stock", SupplyController.adjustStock);
 
 // ============================================
 // SUPPLIERS

@@ -68,6 +68,7 @@ export function Layout({ children, title, subtitle, actions }: LayoutProps) {
       path: "/purchases",
       subItems: [
         { label: "Categorías", path: "/purchases/categories" },
+        { label: "Suministros", path: "/supplies" },
         { label: "Proveedores", path: "/suppliers" },
         { label: "Órdenes", path: "/purchase-orders" },
       ],
