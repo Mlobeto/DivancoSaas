@@ -13,7 +13,7 @@ PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = 'true'
 PUPPETEER_EXECUTABLE_PATH = '/nix/store/*/bin/chromium'
 
 [phases.build]
-cmds = ['npm run build']
+cmds = ['echo "No build needed - using tsx"']
 
 [start]
 cmd = 'npm run start:prod'
