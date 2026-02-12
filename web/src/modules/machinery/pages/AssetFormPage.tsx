@@ -87,6 +87,17 @@ export function AssetFormPage() {
     }
   }, [asset]);
 
+  // Auto-configure fields based on selected template
+  useEffect(() => {
+    if (selectedTemplate && !isEditMode) {
+      setFormData((prev) => ({
+        ...prev,
+        // Si el template requiere mantenimiento preventivo, automáticamente requiere historia clínica
+        requiresClinic: selectedTemplate.requiresPreventiveMaintenance,
+      }));
+    }
+  }, [selectedTemplate, isEditMode]);
+
   // Fetch suggested code when assetType changes
   useEffect(() => {
     if (!isEditMode && formData.assetType && !manuallyEditedCode) {
@@ -293,6 +304,33 @@ export function AssetFormPage() {
                     La plantilla no se puede cambiar
                   </p>
                 )}
+                {selectedTemplate && !isEditMode && (
+                  <div className="mt-3 p-3 bg-[#2b2b2b] border border-[#0696d7]/30 rounded">
+                    <p className="text-xs text-[#9e9e9e] mb-2 font-semibold">
+                      Configuraciones heredadas del template:
+                    </p>
+                    <ul className="space-y-1 text-xs text-[#e0e0e0]">
+                      {selectedTemplate.requiresPreventiveMaintenance && (
+                        <li className="flex items-center gap-2">
+                          <span className="text-[#4caf50]">✓</span>
+                          Requiere historia clínica de mantenimiento
+                        </li>
+                      )}
+                      {selectedTemplate.requiresDocumentation && (
+                        <li className="flex items-center gap-2">
+                          <span className="text-[#4caf50]">✓</span>
+                          Requiere documentación (SOAT, Seguro, Certificaciones)
+                        </li>
+                      )}
+                      {!selectedTemplate.requiresPreventiveMaintenance &&
+                        !selectedTemplate.requiresDocumentation && (
+                          <li className="text-[#9e9e9e]">
+                            Sin configuraciones especiales
+                          </li>
+                        )}
+                    </ul>
+                  </div>
+                )}
               </div>
 
               {/* Code */}
@@ -464,19 +502,29 @@ export function AssetFormPage() {
                     type="checkbox"
                     id="requiresClinic"
                     checked={formData.requiresClinic}
+                    disabled={selectedTemplate?.requiresPreventiveMaintenance}
                     onChange={(e) =>
                       setFormData({
                         ...formData,
                         requiresClinic: e.target.checked,
                       })
                     }
-                    className="w-4 h-4 bg-gray-900 border-gray-700 rounded text-blue-600 focus:ring-2 focus:ring-blue-500"
+                    className="w-4 h-4 bg-gray-900 border-gray-700 rounded text-blue-600 focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                   <label
                     htmlFor="requiresClinic"
-                    className="text-sm text-gray-300 cursor-pointer"
+                    className={`text-sm cursor-pointer ${
+                      selectedTemplate?.requiresPreventiveMaintenance
+                        ? "text-gray-400"
+                        : "text-gray-300"
+                    }`}
                   >
                     Requiere historia clínica de mantenimiento
+                    {selectedTemplate?.requiresPreventiveMaintenance && (
+                      <span className="ml-2 text-xs text-primary-400">
+                        (configurado por template)
+                      </span>
+                    )}
                   </label>
                 </div>
               </div>
