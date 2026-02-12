@@ -41,11 +41,7 @@ RUN npx prisma generate
 # Copiar código fuente
 COPY . .
 
-# Build TypeScript
-RUN npm run build
-
-# Debug: verificar que dist/ se creó
-RUN ls -la && ls -la dist/ || echo "ERROR: dist/ no existe"
+# NO compilamos TypeScript, usamos tsx en producción
 
 # ============================================
 # Imagen de producción
@@ -81,9 +77,9 @@ WORKDIR /app
 
 # Copiar desde builder
 COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/src ./src
 
 # Usuario no-root por seguridad
 RUN groupadd -r nodejs && useradd -r -g nodejs nodejs
@@ -100,6 +96,9 @@ EXPOSE 3000
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=30s --retries=3 \
     CMD node -e "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+
+# Comando de inicio
+CMD ["npm", "run", "start:prod"]
 
 # Start command
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
