@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 
 export function DashboardPage() {
-  const { user, tenant, businessUnit, role } = useAuthStore();
+  const { tenant, businessUnit } = useAuthStore();
   const [showTenantStats, setShowTenantStats] = useState(false);
   const [showBuStats, setShowBuStats] = useState(false);
 

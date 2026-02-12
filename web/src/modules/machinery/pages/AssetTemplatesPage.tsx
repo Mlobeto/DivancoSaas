@@ -15,11 +15,6 @@ import {
 } from "@/modules/machinery/services/asset-template.service";
 import { useNavigate } from "react-router-dom";
 import {
-  Plus,
-  Pencil,
-  Trash2,
-  FileText,
-  AlertCircle,
   Construction,
   Truck,
   HardHat,
