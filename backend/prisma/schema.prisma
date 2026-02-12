@@ -728,8 +728,9 @@ model AssetTemplate {
   updatedAt DateTime @updatedAt
 
   // Relations
-  businessUnit BusinessUnit @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
-  assets       Asset[]
+  businessUnit       BusinessUnit        @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
+  assets             Asset[]
+  purchaseOrderItems PurchaseOrderItem[]
 
   @@unique([businessUnitId, name])
   @@index([businessUnitId])
@@ -755,6 +756,15 @@ model Asset {
   assetType       String // String libre: machine, implement, vehicle, etc (deprecated, usar template.category)
   acquisitionCost Decimal?
   origin          String?
+
+  // ============================================
+  // ORIGEN DE COMPRA (Integración con Purchase Orders)
+  // ============================================
+  purchaseOrderId String? // Orden de compra de origen (si fue comprado)
+  supplierId      String? // Proveedor del activo
+  purchaseDate    DateTime? // Fecha de compra
+  purchasePrice   Decimal? // Precio de compra (puede diferir de acquisitionCost por impuestos/envío)
+
   currentLocation String? // Ubicación actual del activo (obra, taller, bodega)
 
   // Imagen principal (foto de portada del activo)
@@ -774,6 +784,8 @@ model Asset {
   tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   businessUnit       BusinessUnit        @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
   template           AssetTemplate?      @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  purchaseOrder      PurchaseOrder?      @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
+  supplier           Supplier?           @relation(fields: [supplierId], references: [id], onDelete: SetNull)
   state              AssetState?
   maintenanceRecords MaintenanceRecord[]
   usages             AssetUsage[]
@@ -787,11 +799,15 @@ model Asset {
   maintenanceEvents  MaintenanceEvent[]
   stockTransactions  StockTransaction[]
   quotationItems     QuotationItem[]
+  generatedFromItems PurchaseOrderItem[] @relation("GeneratedAsset")
+  purchaseOrderItems PurchaseOrderItem[]
 
   @@unique([businessUnitId, code])
   @@index([tenantId, businessUnitId])
   @@index([assetType])
   @@index([templateId])
+  @@index([purchaseOrderId])
+  @@index([supplierId])
   @@map("assets")
 }
 
@@ -1316,6 +1332,7 @@ model Supplier {
   quotes         SupplyQuote[]
   purchaseOrders PurchaseOrder[]
   accountEntries SupplierAccountEntry[]
+  assets         Asset[]
 
   @@unique([tenantId, businessUnitId, code])
   @@index([tenantId, businessUnitId])
@@ -1443,9 +1460,10 @@ model PurchaseOrder {
   businessUnit BusinessUnit @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
   supplier     Supplier     @relation(fields: [supplierId], references: [id], onDelete: Cascade)
 
-  items          PurchaseOrderItem[]
-  accountEntries SupplierAccountEntry[]
-  transactions   StockTransaction[]
+  items           PurchaseOrderItem[]
+  accountEntries  SupplierAccountEntry[]
+  transactions    StockTransaction[]
+  generatedAssets Asset[]
 
   @@unique([tenantId, businessUnitId, code])
   @@index([tenantId, businessUnitId])
@@ -1473,13 +1491,26 @@ model PurchaseOrderItem {
 
   receivedQty Decimal @default(0)
 
+  // ============================================
+  // INTEGRACIÓN CON MÓDULO DE MAQUINARIA
+  // ============================================
+  // Si este item es un activo (equipamiento), se puede crear automáticamente
+  assetTemplateId  String? // Template del activo a crear (opcional)
+  createsAsset     Boolean @default(false) // Si true, al recibir se crea el activo
+  generatedAssetId String? // ID del activo creado (una vez recibido)
+
   notes String?
 
-  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
-  supply        Supply        @relation(fields: [supplyId], references: [id], onDelete: Cascade)
+  purchaseOrder  PurchaseOrder  @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  supply         Supply         @relation(fields: [supplyId], references: [id], onDelete: Cascade)
+  assetTemplate  AssetTemplate? @relation(fields: [assetTemplateId], references: [id], onDelete: SetNull)
+  generatedAsset Asset?         @relation("GeneratedAsset", fields: [generatedAssetId], references: [id], onDelete: SetNull)
+  asset          Asset?         @relation(fields: [assetId], references: [id])
+  assetId        String?
 
   @@index([purchaseOrderId])
   @@index([supplyId])
+  @@index([assetTemplateId])
   @@map("purchase_order_items")
 }
 

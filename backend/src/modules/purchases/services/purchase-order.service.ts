@@ -18,12 +18,15 @@ import {
   PurchaseOrderFilters,
 } from "../types/purchases.types";
 import { SupplierService } from "./supplier.service";
+import { AssetService } from "../../assets/services/asset.service";
 
 export class PurchaseOrderService {
   private supplierService: SupplierService;
+  private assetService: AssetService;
 
   constructor(private prisma: PrismaClient) {
     this.supplierService = new SupplierService(prisma);
+    this.assetService = new AssetService(prisma);
   }
 
   /**
@@ -89,6 +92,9 @@ export class PurchaseOrderService {
         quantity: item.quantity,
         unitPrice: item.unitPrice,
         totalPrice,
+        createsAsset: item.createsAsset ?? false,
+        assetTemplateId: item.assetTemplateId,
+        notes: item.notes,
       });
     }
 
@@ -274,6 +280,8 @@ export class PurchaseOrderService {
         unitPrice: data.unitPrice,
         totalPrice,
         notes: data.notes,
+        createsAsset: data.createsAsset ?? false,
+        assetTemplateId: data.assetTemplateId,
       },
       include: {
         supply: true,
@@ -472,6 +480,73 @@ export class PurchaseOrderService {
           createdBy,
         },
       });
+
+      // ============================================
+      // CREAR ACTIVOS AUTOMÁTICAMENTE SI ESTÁ MARCADO
+      // ============================================
+      if (orderItem.createsAsset && orderItem.assetTemplateId) {
+        // Obtener template del activo
+        const template = await this.prisma.assetTemplate.findUnique({
+          where: { id: orderItem.assetTemplateId },
+        });
+
+        if (!template) {
+          console.error(
+            `Asset template ${orderItem.assetTemplateId} not found`,
+          );
+          continue; // No fallar toda la recepción por esto
+        }
+
+        // Crear tantos activos como unidades recibidas
+        const qtyToCreate = Math.floor(Number(receivedItem.receivedQty));
+        const createdAssetIds: string[] = [];
+
+        for (let i = 0; i < qtyToCreate; i++) {
+          // Obtener siguiente código disponible según la categoría del template
+          const nextCode = await this.assetService.getNextAvailableCode(
+            template.category,
+          );
+
+          // Crear el activo
+          const asset = await this.assetService.createAsset(
+            order.tenantId,
+            order.businessUnitId,
+            {
+              code: nextCode,
+              name: `${template.name} #${i + 1}`,
+              assetType: template.category,
+              acquisitionCost: Number(orderItem.unitPrice),
+              origin: `Compra OC ${order.code}`,
+              currentLocation: "Bodega", // Default al recibir
+              requiresOperator: false,
+              requiresTracking: true,
+              requiresClinic: template.requiresPreventiveMaintenance,
+              templateId: template.id,
+              customData: {}, // Se puede completar después
+              purchaseOrderId: orderId,
+              supplierId: order.supplierId,
+              purchaseDate: data.receivedDate || new Date(),
+              purchasePrice: Number(orderItem.unitPrice),
+            },
+          );
+
+          createdAssetIds.push(asset.id);
+        }
+
+        // Actualizar el item con el ID del primer activo creado
+        if (createdAssetIds.length > 0) {
+          await this.prisma.purchaseOrderItem.update({
+            where: { id: orderItem.id },
+            data: {
+              generatedAssetId: createdAssetIds[0],
+            },
+          });
+
+          console.log(
+            `✅ Created ${createdAssetIds.length} assets from PO ${order.code}`,
+          );
+        }
+      }
     }
 
     // Actualizar estado de la orden

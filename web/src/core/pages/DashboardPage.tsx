@@ -254,19 +254,81 @@ export function DashboardPage() {
             permite activar módulos según las necesidades de cada Business Unit,
             con datos completamente aislados y workflows configurables.
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mt-4">
-            <a href="/machinery" className="btn-primary">
-              🔧 Maquinaria →
-            </a>
-            <a href="/suppliers" className="btn-primary">
-              🏢 Proveedores →
-            </a>
-            <a href="/purchase-orders" className="btn-primary">
-              📦 Órdenes de Compra →
-            </a>
-            <a href="/purchases/categories" className="btn-primary">
-              📋 Categorías →
-            </a>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+            {/* Inventario y Activos */}
+            <div className="card bg-dark-800 border-primary-800">
+              <h4 className="text-sm font-semibold text-primary-400 mb-3">
+                📦 INVENTARIO Y ACTIVOS
+              </h4>
+              <div className="space-y-2">
+                <a
+                  href="/machinery"
+                  className="block px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm"
+                >
+                  📊 Activos →
+                </a>
+                <a
+                  href="/machinery/templates"
+                  className="block px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm"
+                >
+                  📋 Plantillas →
+                </a>
+                <a
+                  href="/machinery/alerts"
+                  className="block px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm"
+                >
+                  🚨 Alertas de Documentación →
+                </a>
+              </div>
+            </div>
+
+            {/* Compras y Proveedores */}
+            <div className="card bg-dark-800 border-blue-800">
+              <h4 className="text-sm font-semibold text-blue-400 mb-3">
+                🛍️ COMPRAS Y PROVEEDORES
+              </h4>
+              <div className="space-y-2">
+                <a
+                  href="/suppliers"
+                  className="block px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm"
+                >
+                  🏭 Proveedores →
+                </a>
+                <a
+                  href="/purchase-orders"
+                  className="block px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm"
+                >
+                  📝 Órdenes de Compra →
+                </a>
+                <a
+                  href="/purchases/quotes"
+                  className="block px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm"
+                >
+                  💰 Cotizaciones →
+                </a>
+              </div>
+            </div>
+
+            {/* Clientes */}
+            <div className="card bg-dark-800 border-green-800">
+              <h4 className="text-sm font-semibold text-green-400 mb-3">
+                👥 CLIENTES
+              </h4>
+              <div className="space-y-2">
+                <a
+                  href="/clients"
+                  className="block px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm"
+                >
+                  📋 Lista de Clientes →
+                </a>
+                <a
+                  href="/clients/new"
+                  className="block px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm"
+                >
+                  ➕ Nuevo Cliente →
+                </a>
+              </div>
+            </div>
           </div>
         </div>
       </div>

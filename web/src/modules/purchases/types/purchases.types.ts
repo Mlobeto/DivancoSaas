@@ -216,6 +216,12 @@ export interface PurchaseOrderItem {
   unitPrice: number;
   receivedQty: number;
   notes?: string;
+
+  // Integración con módulo de activos
+  createsAsset?: boolean; // Si true, al recibir se crea el activo
+  assetTemplateId?: string; // Template del activo a crear
+  generatedAssetId?: string; // ID del activo creado (una vez recibido)
+
   createdAt: string;
   updatedAt: string;
   supply?: {
@@ -252,6 +258,9 @@ export interface CreatePurchaseOrderDTO {
     supplyId: string;
     quantity: number;
     unitPrice: number;
+    createsAsset?: boolean;
+    assetTemplateId?: string;
+    notes?: string;
   }>;
 }
 

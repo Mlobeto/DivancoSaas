@@ -14,6 +14,15 @@ export interface CreateAssetDTO {
   requiresOperator?: boolean;
   requiresTracking?: boolean;
   requiresClinic?: boolean; // Requiere historia clínica de mantenimiento
+
+  // Integración con compras
+  templateId?: string; // Template del activo
+  customData?: any; // Datos del template
+  imageUrl?: string;
+  purchaseOrderId?: string; // Orden de compra origen
+  supplierId?: string; // Proveedor
+  purchaseDate?: Date; // Fecha de compra
+  purchasePrice?: number; // Precio de compra
 }
 
 export interface UpdateAssetDTO {
@@ -25,6 +34,11 @@ export interface UpdateAssetDTO {
   requiresOperator?: boolean;
   requiresTracking?: boolean;
   requiresClinic?: boolean;
+  customData?: any;
+  imageUrl?: string;
+  supplierId?: string;
+  purchaseDate?: Date;
+  purchasePrice?: number;
 }
 
 export interface AssetFilters {

@@ -207,12 +207,18 @@ export interface AddPurchaseOrderItemDTO {
   quantity: number;
   unitPrice: number;
   notes?: string;
+
+  // Integración con módulo de activos
+  createsAsset?: boolean; // Si true, al recibir se crea el activo
+  assetTemplateId?: string; // Template del activo a crear
 }
 
 export interface UpdatePurchaseOrderItemDTO {
   quantity?: number;
   unitPrice?: number;
   notes?: string;
+  createsAsset?: boolean;
+  assetTemplateId?: string;
 }
 
 export interface ReceivePurchaseOrderDTO {

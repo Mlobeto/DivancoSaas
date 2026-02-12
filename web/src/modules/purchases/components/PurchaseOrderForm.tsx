@@ -7,6 +7,7 @@ import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { purchaseOrderService } from "../services/purchase-order.service";
 import { supplierService } from "../services/supplier.service";
+import { assetTemplateService } from "@/modules/machinery/services/asset-template.service";
 import {
   PurchaseOrder,
   CreatePurchaseOrderDTO,
@@ -25,6 +26,8 @@ interface OrderItem {
   supplyId: string;
   quantity: number;
   unitPrice: number;
+  createsAsset?: boolean;
+  assetTemplateId?: string;
   tempId?: string;
 }
 
@@ -53,6 +56,8 @@ export function PurchaseOrderForm({
       supplyId: item.supplyId,
       quantity: item.quantity,
       unitPrice: item.unitPrice,
+      createsAsset: item.createsAsset ?? false,
+      assetTemplateId: item.assetTemplateId,
     })) || [],
   );
 
@@ -60,6 +65,8 @@ export function PurchaseOrderForm({
     supplyId: "",
     quantity: 0,
     unitPrice: 0,
+    createsAsset: false,
+    assetTemplateId: "",
   });
 
   // Fetch suppliers
@@ -67,6 +74,12 @@ export function PurchaseOrderForm({
     queryKey: ["suppliers", "active"],
     queryFn: () =>
       supplierService.list({ status: SupplierStatus.ACTIVE, limit: 100 }),
+  });
+
+  // Fetch asset templates (para el selector)
+  const { data: templatesData } = useQuery({
+    queryKey: ["asset-templates"],
+    queryFn: () => assetTemplateService.list(),
   });
 
   const createMutation = useMutation({
@@ -91,7 +104,13 @@ export function PurchaseOrderForm({
     const dataToSubmit: CreatePurchaseOrderDTO = {
       ...formData,
       expectedDate: formData.expectedDate || undefined,
-      items,
+      items: items.map((item) => ({
+        supplyId: item.supplyId,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        createsAsset: item.createsAsset,
+        assetTemplateId: item.assetTemplateId,
+      })),
     };
 
     if (isEditing && order) {
@@ -123,8 +142,19 @@ export function PurchaseOrderForm({
       return;
     }
 
+    if (newItem.createsAsset && !newItem.assetTemplateId) {
+      alert("Por favor seleccione una plantilla de activo");
+      return;
+    }
+
     setItems((prev) => [...prev, { ...newItem, tempId: `temp-${Date.now()}` }]);
-    setNewItem({ supplyId: "", quantity: 0, unitPrice: 0 });
+    setNewItem({
+      supplyId: "",
+      quantity: 0,
+      unitPrice: 0,
+      createsAsset: false,
+      assetTemplateId: "",
+    });
   };
 
   const handleRemoveItem = (index: number) => {
@@ -255,10 +285,11 @@ export function PurchaseOrderForm({
         {items.length > 0 ? (
           <div className="space-y-2">
             <div className="grid grid-cols-12 gap-2 text-sm font-semibold text-gray-400 px-3">
-              <div className="col-span-5">Insumo ID</div>
+              <div className="col-span-4">Insumo ID</div>
               <div className="col-span-2 text-right">Cantidad</div>
               <div className="col-span-2 text-right">Precio Unit.</div>
               <div className="col-span-2 text-right">Subtotal</div>
+              <div className="col-span-1 text-center">Activo</div>
               <div className="col-span-1"></div>
             </div>
 
@@ -267,8 +298,13 @@ export function PurchaseOrderForm({
                 key={item.tempId || index}
                 className="grid grid-cols-12 gap-2 items-center bg-gray-800/40 rounded p-3"
               >
-                <div className="col-span-5 text-sm text-gray-300 font-mono">
-                  {item.supplyId}
+                <div className="col-span-4 text-sm text-gray-300">
+                  <span className="font-mono">{item.supplyId}</span>
+                  {item.createsAsset && (
+                    <span className="ml-2 text-xs bg-primary-900/30 text-primary-400 px-2 py-0.5 rounded">
+                      \u2728 Crea activo
+                    </span>
+                  )}
                 </div>
                 <div className="col-span-2 text-right text-gray-300">
                   {item.quantity.toFixed(2)}
@@ -279,6 +315,16 @@ export function PurchaseOrderForm({
                 <div className="col-span-2 text-right text-blue-400 font-semibold">
                   ${(item.quantity * item.unitPrice).toFixed(2)}
                 </div>
+                <div className="col-span-1 text-center">
+                  {item.createsAsset && (
+                    <span
+                      className="text-primary-400 text-lg"
+                      title="Crea activo al recibir"
+                    >
+                      \u2705
+                    </span>
+                  )}
+                </div>
                 <div className="col-span-1 text-right">
                   {!isEditing && (
                     <button
@@ -287,7 +333,7 @@ export function PurchaseOrderForm({
                       className="text-red-400 hover:text-red-300 text-sm"
                       disabled={isLoading}
                     >
-                      ✕
+                      \u2715
                     </button>
                   )}
                 </div>
@@ -315,66 +361,125 @@ export function PurchaseOrderForm({
             <h4 className="text-sm font-semibold text-gray-300 mb-3">
               Agregar Item
             </h4>
-            <div className="grid grid-cols-12 gap-3">
-              <div className="col-span-5">
-                <input
-                  type="text"
-                  placeholder="ID del Insumo"
-                  value={newItem.supplyId}
-                  onChange={(e) =>
-                    setNewItem((prev) => ({
-                      ...prev,
-                      supplyId: e.target.value,
-                    }))
-                  }
-                  className="form-input"
-                  disabled={isLoading}
-                />
+            <div className="space-y-3">
+              {/* Primera fila: Insumo, Cantidad, Precio, Botón */}
+              <div className="grid grid-cols-12 gap-3">
+                <div className="col-span-5">
+                  <input
+                    type="text"
+                    placeholder="ID del Insumo"
+                    value={newItem.supplyId}
+                    onChange={(e) =>
+                      setNewItem((prev) => ({
+                        ...prev,
+                        supplyId: e.target.value,
+                      }))
+                    }
+                    className="form-input"
+                    disabled={isLoading}
+                  />
+                </div>
+                <div className="col-span-2">
+                  <input
+                    type="number"
+                    placeholder="Cantidad"
+                    value={newItem.quantity || ""}
+                    onChange={(e) =>
+                      setNewItem((prev) => ({
+                        ...prev,
+                        quantity: parseFloat(e.target.value) || 0,
+                      }))
+                    }
+                    className="form-input"
+                    disabled={isLoading}
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+                <div className="col-span-3">
+                  <input
+                    type="number"
+                    placeholder="Precio Unitario"
+                    value={newItem.unitPrice || ""}
+                    onChange={(e) =>
+                      setNewItem((prev) => ({
+                        ...prev,
+                        unitPrice: parseFloat(e.target.value) || 0,
+                      }))
+                    }
+                    className="form-input"
+                    disabled={isLoading}
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <button
+                    type="button"
+                    onClick={handleAddItem}
+                    className="btn-primary w-full"
+                    disabled={isLoading}
+                  >
+                    Agregar
+                  </button>
+                </div>
               </div>
-              <div className="col-span-2">
-                <input
-                  type="number"
-                  placeholder="Cantidad"
-                  value={newItem.quantity || ""}
-                  onChange={(e) =>
-                    setNewItem((prev) => ({
-                      ...prev,
-                      quantity: parseFloat(e.target.value) || 0,
-                    }))
-                  }
-                  className="form-input"
-                  disabled={isLoading}
-                  min="0"
-                  step="0.01"
-                />
+
+              {/* Segunda fila: Checkbox de crear activo */}
+              <div className="flex items-start gap-3 pt-2 border-t border-gray-700">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={newItem.createsAsset}
+                    onChange={(e) =>
+                      setNewItem((prev) => ({
+                        ...prev,
+                        createsAsset: e.target.checked,
+                        assetTemplateId: e.target.checked
+                          ? prev.assetTemplateId
+                          : "",
+                      }))
+                    }
+                    className="w-4 h-4 text-primary-600 bg-gray-700 border-gray-600 rounded focus:ring-primary-500"
+                    disabled={isLoading}
+                  />
+                  <span className="text-sm text-gray-300">
+                    ✨ Crear activo autom\u00e1ticamente al recibir
+                  </span>
+                </label>
               </div>
-              <div className="col-span-3">
-                <input
-                  type="number"
-                  placeholder="Precio Unitario"
-                  value={newItem.unitPrice || ""}
-                  onChange={(e) =>
-                    setNewItem((prev) => ({
-                      ...prev,
-                      unitPrice: parseFloat(e.target.value) || 0,
-                    }))
-                  }
-                  className="form-input"
-                  disabled={isLoading}
-                  min="0"
-                  step="0.01"
-                />
-              </div>
-              <div className="col-span-2">
-                <button
-                  type="button"
-                  onClick={handleAddItem}
-                  className="btn-primary w-full"
-                  disabled={isLoading}
-                >
-                  Agregar
-                </button>
-              </div>
+
+              {/* Selector de template (solo si checkbox est\u00e1 marcado) */}
+              {newItem.createsAsset && (
+                <div className="pl-7">
+                  <label className="form-label">
+                    Plantilla del Activo <span className="text-red-400">*</span>
+                  </label>
+                  <select
+                    value={newItem.assetTemplateId}
+                    onChange={(e) =>
+                      setNewItem((prev) => ({
+                        ...prev,
+                        assetTemplateId: e.target.value,
+                      }))
+                    }
+                    className="form-input"
+                    disabled={isLoading}
+                    required={newItem.createsAsset}
+                  >
+                    <option value="">Seleccionar plantilla...</option>
+                    {templatesData?.data?.map((template: any) => (
+                      <option key={template.id} value={template.id}>
+                        {template.icon} {template.name} ({template.category})
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-400 mt-1">
+                    \ud83d\udca1 Se crear\u00e1n {newItem.quantity} activo(s)
+                    usando esta plantilla
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         )}

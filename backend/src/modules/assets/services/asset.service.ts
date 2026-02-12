@@ -39,6 +39,15 @@ export class AssetService {
         requiresOperator: data.requiresOperator ?? false,
         requiresTracking: data.requiresTracking ?? false,
         requiresClinic: data.requiresClinic ?? false,
+        // Campos de template
+        templateId: data.templateId,
+        customData: data.customData,
+        imageUrl: data.imageUrl,
+        // Campos de compra
+        purchaseOrderId: data.purchaseOrderId,
+        supplierId: data.supplierId,
+        purchaseDate: data.purchaseDate,
+        purchasePrice: data.purchasePrice,
       },
       include: {
         state: true,
