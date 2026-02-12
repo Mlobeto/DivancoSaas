@@ -4,7 +4,7 @@
  */
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { Layout } from "@/core/components/Layout";
 import { useAuthStore } from "@/store/auth.store";
@@ -12,12 +12,15 @@ import {
   assetsService,
   type Asset,
 } from "@/modules/machinery/services/assets.service";
-import { AlertCircle, FileText, Settings, Plus } from "lucide-react";
+import { AlertCircle, FileText, Settings, Plus, Upload } from "lucide-react";
+import { CSVImportUpload } from "@/shared/components/CSVImportUpload";
 
 export function AssetsListPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { tenant, businessUnit } = useAuthStore();
   const [search, setSearch] = useState("");
+  const [showImportModal, setShowImportModal] = useState(false);
 
   // Fetch assets
   const { data: assets, isLoading } = useQuery({
@@ -34,6 +37,13 @@ export function AssetsListPage() {
           asset.name.toLowerCase().includes(search.toLowerCase())
         : true,
     ) || [];
+
+  const handleImport = async (file: File) => {
+    const result = await assetsService.importCSV(file);
+    // Invalidar query para refrescar la lista
+    queryClient.invalidateQueries({ queryKey: ["assets"] });
+    return result;
+  };
 
   if (!tenant || !businessUnit) {
     return (
@@ -56,6 +66,13 @@ export function AssetsListPage() {
       subtitle={`Maquinaria, equipos e implementos - ${businessUnit.name}`}
       actions={
         <>
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="autocad-btn-secondary flex items-center gap-2"
+          >
+            <Upload className="w-4 h-4" />
+            Importar CSV
+          </button>
           <button
             onClick={() => navigate("/machinery/alerts")}
             className="autocad-btn-secondary flex items-center gap-2"
@@ -238,6 +255,18 @@ export function AssetsListPage() {
           </div>
         )}
       </div>
+
+      {/* CSV Import Modal */}
+      {showImportModal && (
+        <CSVImportUpload
+          title="Importar Assets desde CSV"
+          description="Sube un archivo CSV con tus implementos y maquinaria. Descarga la plantilla para ver el formato requerido."
+          templateName="import_assets_initial.csv"
+          templateUrl="/templates/import_assets_initial.csv"
+          onImport={handleImport}
+          onClose={() => setShowImportModal(false)}
+        />
+      )}
     </Layout>
   );
 }

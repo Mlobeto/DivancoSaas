@@ -10,6 +10,7 @@ import { MaintenanceService } from "../services/maintenance.service";
 import { UsageService } from "../services/usage.service";
 import { AttachmentService } from "../services/attachment.service";
 import { DocumentTypeService } from "../services/document-type.service";
+import { AssetImportService } from "../services/asset-import.service";
 import { PrismaClient } from "@prisma/client";
 import { azureBlobStorageService } from "@shared/storage/azure-blob-storage.service";
 import multer from "multer";
@@ -20,6 +21,7 @@ const maintenanceService = new MaintenanceService(prisma);
 const usageService = new UsageService(prisma);
 const attachmentService = new AttachmentService(prisma);
 const documentTypeService = new DocumentTypeService(prisma);
+const assetImportService = new AssetImportService(prisma);
 
 /**
  * Helper to validate business unit context
@@ -243,6 +245,36 @@ export class AssetsController {
       res.json({
         success: true,
         message: "Asset deleted successfully",
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Import assets from CSV
+   */
+  static async importCSV(req: Request, res: Response, next: NextFunction) {
+    try {
+      const context = validateBusinessUnitContext(req, res);
+      if (!context) return;
+
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          error: "No file uploaded",
+        });
+      }
+
+      const result = await assetImportService.importFromCSV(
+        req.file.buffer,
+        context.tenantId,
+        context.businessUnitId,
+      );
+
+      res.json({
+        success: result.success,
+        data: result,
       });
     } catch (error) {
       next(error);
@@ -1331,3 +1363,27 @@ export const uploadDocuments = multer({
     }
   },
 });
+
+/**
+ * Multer configuration for CSV import
+ */
+const csvUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === "text/csv" || file.originalname.endsWith(".csv")) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only CSV files are allowed"));
+    }
+  },
+});
+
+/**
+ * Get CSV upload middleware
+ */
+export function getCSVUploadMiddleware() {
+  return csvUpload.single("file");
+}

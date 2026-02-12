@@ -15,6 +15,7 @@ import {
   AssetsController,
   upload,
   uploadDocuments,
+  getCSVUploadMiddleware,
 } from "./controllers/assets.controller";
 import { RentalController } from "./controllers/rental.controller";
 import { SupplyController } from "./controllers/supply.controller";
@@ -36,6 +37,11 @@ export class AssetsModule implements ModuleContract {
     router.use("/templates", assetTemplateRoutes);
 
     // ========== ASSETS ==========
+    router.post(
+      "/assets/import",
+      getCSVUploadMiddleware(),
+      AssetsController.importCSV,
+    );
     router.post("/assets", AssetsController.createAsset);
     router.get("/assets/next-code", AssetsController.getNextCode); // Before :assetId to avoid conflict
     router.get("/assets", AssetsController.listAssets);

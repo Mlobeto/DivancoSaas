@@ -220,6 +220,97 @@
 
 /**
  * @swagger
+ * components:
+ *   schemas:
+ *     AssetImportResult:
+ *       type: object
+ *       properties:
+ *         success:
+ *           type: boolean
+ *           example: true
+ *         created:
+ *           type: integer
+ *           example: 15
+ *         errors:
+ *           type: array
+ *           items:
+ *             type: object
+ *             properties:
+ *               row:
+ *                 type: integer
+ *                 example: 3
+ *               error:
+ *                 type: string
+ *                 example: "Template con código 'ANDAMIO-TUB' no encontrado"
+ *               data:
+ *                 type: object
+ *         summary:
+ *           type: string
+ *           example: "✅ 15 assets importados exitosamente"
+ */
+
+/**
+ * @swagger
+ * /modules/assets/assets/import:
+ *   post:
+ *     tags: [Assets]
+ *     summary: Import assets from CSV file
+ *     description: Bulk import assets from CSV. Required columns&#58; name, templateName. Optional&#58; code, acquisitionCost, origin, currentLocation, notes
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - file
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *                 description: CSV file with assets data
+ *           example:
+ *             file: "import_assets_initial.csv"
+ *     responses:
+ *       200:
+ *         description: Import completed (may include partial errors)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   $ref: '#/components/schemas/AssetImportResult'
+ *             examples:
+ *               success:
+ *                 value:
+ *                   success: true
+ *                   data:
+ *                     success: true
+ *                     created: 8
+ *                     errors: []
+ *                     summary: "✅ 8 assets importados exitosamente"
+ *               partial:
+ *                 value:
+ *                   success: false
+ *                   data:
+ *                     success: false
+ *                     created: 5
+ *                     errors:
+ *                       - row: 3
+ *                         error: "Template con código 'INVALID' no encontrado"
+ *                         data: { code: "IMP-003", name: "Invalid Asset" }
+ *                     summary: "⚠️ 5 assets importados, 1 error"
+ *       400:
+ *         description: No file uploaded or invalid CSV format
+ */
+
+/**
+ * @swagger
  * /modules/assets/assets:
  *   post:
  *     tags: [Assets]

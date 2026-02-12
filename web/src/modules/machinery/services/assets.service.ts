@@ -283,4 +283,41 @@ export const assetsService = {
       );
     }
   },
+
+  /**
+   * Import assets from CSV file
+   */
+  async importCSV(file: File): Promise<ImportResult> {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await api.post<ApiResponse<ImportResult>>(
+      "/modules/assets/assets/import",
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      },
+    );
+
+    if (!response.data.success) {
+      throw new Error(
+        response.data.error?.message || "Failed to import assets from CSV",
+      );
+    }
+
+    return response.data.data!;
+  },
 };
+
+export interface ImportResult {
+  success: boolean;
+  created: number;
+  errors: Array<{
+    row: number;
+    error: string;
+    data?: any;
+  }>;
+  summary: string;
+}

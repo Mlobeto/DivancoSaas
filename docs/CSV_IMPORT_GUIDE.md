@@ -89,7 +89,7 @@ Registra cada activo físico individual (retroexcavadoras, andamios, vehículos,
 
 - `code` - Código único del activo (ej: IMP-001, RET-045)
 - `name` - Nombre descriptivo
-- `templateCode` - Código de la plantilla (debe existir previamente)
+- `templateName` - Nombre de la plantilla de activo (debe existir previamente)
 
 **Campos opcionales:**
 
@@ -191,9 +191,9 @@ El sistema validará:
 
 ### Activos
 
-- ✅ Código único por BusinessUnit
-- ✅ Template existe (templateCode válido)
-- ✅ Código cumple con convención (prefijo del template)
+- ✅ Nombre no vacío
+- ✅ Template existe (templateName válido)
+- ✅ Código único si se proporciona manualmente
 - ✅ acquisitionCost >= 0 (si se proporciona)
 
 ---
