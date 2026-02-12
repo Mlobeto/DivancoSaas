@@ -82,14 +82,13 @@ export function SupplyCategoriesPage() {
       deleteMutation.mutate(id);
     }
   };
-const handleImport = async (file: File) => {
+  const handleImport = async (file: File) => {
     const result = await supplyCategoryService.importCSV(file);
     // Invalidar query para refrescar la lista
     queryClient.invalidateQueries({ queryKey: ["supply-categories"] });
     return result;
   };
 
-  
   if (isLoading) {
     return (
       <Layout title="Categorías de Suministros">
@@ -99,7 +98,14 @@ const handleImport = async (file: File) => {
         </div>
       </Layout>
     );
-  }div className="flex gap-3">
+  }
+
+  return (
+    <Layout
+      title="Categorías de Suministros"
+      subtitle={`${categories.length} categoría${categories.length !== 1 ? "s" : ""} configurada${categories.length !== 1 ? "s" : ""} · Implementos, Insumos, Repuestos y más`}
+      actions={
+        <div className="flex gap-3">
           <button
             onClick={() => setShowImportModal(true)}
             className="btn-secondary flex items-center gap-2"
@@ -113,14 +119,7 @@ const handleImport = async (file: File) => {
           >
             + Nueva Categoría
           </button>
-        </div`${categories.length} categoría${categories.length !== 1 ? "s" : ""} configurada${categories.length !== 1 ? "s" : ""} · Implementos, Insumos, Repuestos y más`}
-      actions={
-        <button
-          onClick={() => navigate("/purchases/categories/new")}
-          className="btn-primary"
-        >
-          + Nueva Categoría
-        </button>
+        </div>
       }
     >
       <div className="p-8">
@@ -350,7 +349,7 @@ const handleImport = async (file: File) => {
           </div>
         </div>
       </div>
-      
+
       {/* Import Modal */}
       {showImportModal && (
         <CSVImportUpload
