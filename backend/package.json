@@ -5,9 +5,9 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc",
+    "build": "tsc && tsc-alias",
     "start": "tsx src/index.ts",
-    "start:prod": "npm run build && prisma migrate deploy && node dist/index.js",
+    "start:prod": "npm run build && prisma migrate deploy && node -r tsconfig-paths/register dist/index.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
@@ -75,6 +75,7 @@
     "prisma": "6.19.2",
     "supertest": "^7.2.2",
     "ts-jest": "^29.2.5",
+    "tsc-alias": "^1.8.10",
     "tsx": "^4.19.2"
   }
 }
