@@ -44,6 +44,9 @@ COPY . .
 # Build TypeScript
 RUN npm run build
 
+# Debug: verificar que dist/ se creó
+RUN ls -la && ls -la dist/ || echo "ERROR: dist/ no existe"
+
 # ============================================
 # Imagen de producción
 # ============================================
