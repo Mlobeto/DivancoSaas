@@ -65,7 +65,6 @@ export class AzureBlobStorageService {
     console.log(
       `✅ Azure Blob Storage initialized: container="${this.containerName}"`,
     );
-    );
   }
 
   /**
