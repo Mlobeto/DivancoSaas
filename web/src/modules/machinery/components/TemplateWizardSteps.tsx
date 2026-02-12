@@ -471,7 +471,12 @@ function FieldEditorModal({
           {/* Type & Section */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-2">Tipo *</label>
+              <label className="block text-sm font-medium mb-2">
+                Tipo de campo *
+                <span className="text-xs text-dark-400 ml-2 font-normal">
+                  (tipo de dato a capturar)
+                </span>
+              </label>
               <select
                 className="input"
                 value={formData.type}
@@ -482,17 +487,43 @@ function FieldEditorModal({
                   })
                 }
               >
-                {Object.entries(FieldTypeLabels).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
+                <option value={FieldType.TEXT}>📝 Texto corto</option>
+                <option value={FieldType.TEXTAREA}>
+                  📄 Texto largo (párrafo)
+                </option>
+                <option value={FieldType.NUMBER}>🔢 Número</option>
+                <option value={FieldType.DATE}>📅 Fecha</option>
+                <option value={FieldType.SELECT}>
+                  ✅ Selección (una opción)
+                </option>
+                <option value={FieldType.MULTISELECT}>
+                  ☑️ Selección múltiple
+                </option>
+                <option value={FieldType.BOOLEAN}>🔘 Sí/No (checkbox)</option>
               </select>
+              <p className="text-xs text-dark-500 mt-1">
+                {formData.type === FieldType.TEXT && "Ej: Marca, Modelo, Serie"}
+                {formData.type === FieldType.TEXTAREA &&
+                  "Ej: Observaciones, Descripción"}
+                {formData.type === FieldType.NUMBER &&
+                  "Ej: Potencia, Peso, Capacidad"}
+                {formData.type === FieldType.DATE &&
+                  "Ej: Fecha de compra, Último mantenimiento"}
+                {formData.type === FieldType.SELECT &&
+                  "Ej: Estado (Nuevo/Usado), Color"}
+                {formData.type === FieldType.MULTISELECT &&
+                  "Ej: Accesorios incluidos"}
+                {formData.type === FieldType.BOOLEAN &&
+                  "Ej: Tiene garantía, Requiere calibración"}
+              </p>
             </div>
 
             <div>
               <label className="block text-sm font-medium mb-2">
                 Sección *
+                <span className="text-xs text-dark-400 ml-2 font-normal">
+                  (agrupa campos visualmente)
+                </span>
               </label>
               <input
                 type="text"
@@ -502,10 +533,101 @@ function FieldEditorModal({
                 onChange={(e) =>
                   setFormData({ ...formData, section: e.target.value })
                 }
+                list="section-suggestions"
                 required
               />
+              <datalist id="section-suggestions">
+                <option value="Información General" />
+                <option value="Datos Técnicos" />
+                <option value="Características" />
+                <option value="Documentación" />
+                <option value="Mantenimiento" />
+              </datalist>
+              <p className="text-xs text-dark-500 mt-1">
+                Los campos de la misma sección se mostrarán juntos
+              </p>
             </div>
           </div>
+
+          {/* Preview Box */}
+          {formData.label && (
+            <div className="bg-primary-900/10 border border-primary-800 rounded-lg p-4">
+              <p className="text-xs text-primary-400 font-semibold mb-2">
+                👁️ VISTA PREVIA - Así se verá en el formulario:
+              </p>
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  {formData.label}
+                  {formData.required && (
+                    <span className="text-red-400"> *</span>
+                  )}
+                </label>
+                {formData.type === FieldType.TEXT && (
+                  <input
+                    type="text"
+                    className="input"
+                    placeholder={formData.placeholder || "Escribe aquí..."}
+                    disabled
+                  />
+                )}
+                {formData.type === FieldType.TEXTAREA && (
+                  <textarea
+                    className="input"
+                    rows={3}
+                    placeholder={formData.placeholder || "Escribe aquí..."}
+                    disabled
+                  />
+                )}
+                {formData.type === FieldType.NUMBER && (
+                  <input
+                    type="number"
+                    className="input"
+                    placeholder={formData.placeholder || "0"}
+                    disabled
+                  />
+                )}
+                {formData.type === FieldType.DATE && (
+                  <input type="date" className="input" disabled />
+                )}
+                {formData.type === FieldType.SELECT && (
+                  <select className="input" disabled>
+                    <option>Seleccionar...</option>
+                    {formData.validations?.options?.slice(0, 3).map((opt) => (
+                      <option key={opt}>{opt}</option>
+                    ))}
+                  </select>
+                )}
+                {formData.type === FieldType.MULTISELECT && (
+                  <div className="space-y-2">
+                    {(
+                      formData.validations?.options?.slice(0, 3) || [
+                        "Opción 1",
+                        "Opción 2",
+                      ]
+                    ).map((opt) => (
+                      <div key={opt} className="flex items-center gap-2">
+                        <input type="checkbox" disabled />
+                        <span className="text-sm">{opt}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {formData.type === FieldType.BOOLEAN && (
+                  <div className="flex items-center gap-2">
+                    <input type="checkbox" disabled />
+                    <span className="text-sm">
+                      {formData.placeholder || "Sí/No"}
+                    </span>
+                  </div>
+                )}
+                {formData.helperText && (
+                  <p className="text-xs text-dark-400 mt-1">
+                    {formData.helperText}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Placeholder & Helper */}
           <div className="grid grid-cols-2 gap-4">
@@ -565,18 +687,18 @@ function FieldEditorModal({
           </div>
 
           {showValidations && (
-            <div className="space-y-4 p-4 bg-dark-700/50 rounded-lg">
+            <div className="space-y-4 p-4 bg-dark-700/50 rounded-lg border border-dark-600">
               {/* Options for SELECT */}
               {(formData.type === FieldType.SELECT ||
                 formData.type === FieldType.MULTISELECT) && (
                 <div>
                   <label className="block text-sm font-medium mb-2">
-                    Opciones (una por línea) *
+                    Opciones disponibles (una por línea) *
                   </label>
                   <textarea
                     className="input font-mono"
-                    rows={4}
-                    placeholder="Opción 1&#10;Opción 2&#10;Opción 3"
+                    rows={5}
+                    placeholder="Aluminio&#10;Acero inoxidable&#10;Fibra de vidrio&#10;Madera tratada"
                     value={formData.validations?.options?.join("\n") || ""}
                     onChange={(e) =>
                       setFormData({
@@ -585,12 +707,19 @@ function FieldEditorModal({
                           ...formData.validations,
                           options: e.target.value
                             .split("\n")
-                            .map((o) => o.trim())
-                            .filter((o) => o),
+                            .filter((o) => o.trim() !== ""),
                         },
                       })
                     }
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.stopPropagation();
+                      }
+                    }}
                   />
+                  <p className="text-xs text-dark-400 mt-1">
+                    💡 Presiona Enter para agregar una nueva opción
+                  </p>
                 </div>
               )}
 
