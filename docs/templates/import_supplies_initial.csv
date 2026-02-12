@@ -1,0 +1,8 @@
+code,name,categoryCode,sku,barcode,unit,costPerUnit,currentStock,minStock,maxStock,description
+SUM-0001,Andamio Tubular 2m,IMPLEMENTOS,AND-TUB-2M,7501234567890,unidades,350000,0,5,20,Andamio tubular metálico de 2 metros de altura
+SUM-0002,Cemento Argos 50kg,MATERIALES,CEM-ARG-50,7501234567891,bultos,35000,250,100,500,Cemento gris uso general
+SUM-0003,Tornillos 3/4 pulgada,FERRETERIA,TOR-34,7501234567892,unidades,150,5000,1000,10000,Tornillos galvanizados 3/4 pulgada
+SUM-0004,Aceite Motor 15W40,LUBRICANTES,ACE-15W40,7501234567893,litros,25000,80,20,200,Aceite mineral para motores diesel
+SUM-0005,Arena de río lavada,MATERIALES,ARE-RIO,7501234567894,metros cúbicos,45000,15,5,50,Arena lavada para construcción
+SUM-0006,Varilla corrugada 1/2,ACERO,VAR-12,7501234567895,unidades,28000,120,50,300,Varilla de acero corrugada 1/2 pulgada
+SUM-0007,Pintura blanca 20L,PINTURAS,PIN-BLA-20L,7501234567896,galones,180000,30,10,100,Pintura vinílica blanca para exteriores

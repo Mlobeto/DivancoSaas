@@ -17,8 +17,10 @@ import {
   Pencil,
   Trash2,
   Archive,
+  Upload,
 } from "lucide-react";
 import type { Supply } from "../types/supply.types";
+import { CSVImportUpload } from "@/shared/components/CSVImportUpload";
 
 export function SuppliesPage() {
   const navigate = useNavigate();
@@ -27,6 +29,7 @@ export function SuppliesPage() {
   const [filterCategory, setFilterCategory] = useState<string>("ALL");
   const [showInactive, setShowInactive] = useState(false);
   const [showLowStock, setShowLowStock] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
 
   // Fetch supplies
   const { data: suppliesResponse, isLoading } = useQuery({
@@ -88,6 +91,13 @@ export function SuppliesPage() {
     await toggleActiveMutation.mutateAsync(supply.id);
   };
 
+  const handleImport = async (file: File) => {
+    const result = await supplyService.importCSV(file);
+    // Invalidar query para refrescar la lista
+    queryClient.invalidateQueries({ queryKey: ["supplies"] });
+    return result;
+  };
+
   if (isLoading) {
     return (
       <Layout title="Suministros">
@@ -104,13 +114,22 @@ export function SuppliesPage() {
       title="Suministros"
       subtitle={`${supplies.length} suministro${supplies.length !== 1 ? "s" : ""} en catálogo · Productos comprables`}
       actions={
-        <button
-          onClick={() => navigate("/supplies/new")}
-          className="btn-primary flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          Nuevo Suministro
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="btn-secondary flex items-center gap-2"
+          >
+            <Upload className="w-4 h-4" />
+            Importar CSV
+          </button>
+          <button
+            onClick={() => navigate("/supplies/new")}
+            className="btn-primary flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Nuevo Suministro
+          </button>
+        </div>
       }
     >
       <div className="p-8">
@@ -359,6 +378,18 @@ export function SuppliesPage() {
           </div>
         )}
       </div>
+
+      {/* CSV Import Modal */}
+      {showImportModal && (
+        <CSVImportUpload
+          title="Importar Suministros desde CSV"
+          description="Sube un archivo CSV con tus suministros. Descarga la plantilla para ver el formato requerido."
+          templateName="import_supplies_initial.csv"
+          templateUrl="/templates/import_supplies_initial.csv"
+          onImport={handleImport}
+          onClose={() => setShowImportModal(false)}
+        />
+      )}
     </Layout>
   );
 }

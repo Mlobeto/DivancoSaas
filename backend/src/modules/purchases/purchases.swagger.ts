@@ -1019,3 +1019,174 @@
  *       404:
  *         description: Supply not found
  */
+
+/**
+ * @swagger
+ * /modules/purchases/supply-categories/import:
+ *   post:
+ *     summary: Import supply categories from CSV
+ *     description: Bulk import categories from CSV file. Creates categories in batch with validation.
+ *     tags: [Supply Categories]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: header
+ *         name: X-Tenant-Id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - in: header
+ *         name: X-Business-Unit-Id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - file
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *                 description: CSV file with categories (max 5MB)
+ *           example:
+ *             columns: "code,name,type,description,color,icon,requiresStockControl,allowNegativeStock"
+ *             sample: "IMPLEMENTOS,Implementos de Construcción,TOOL,Andamios y estructuras,#3B82F6,wrench,true,false"
+ *     responses:
+ *       200:
+ *         description: Import completed (may include partial errors)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                   description: "true if all records imported successfully, false if there were errors"
+ *                 created:
+ *                   type: integer
+ *                   example: 5
+ *                   description: "Number of categories successfully created"
+ *                 errors:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       row:
+ *                         type: integer
+ *                         example: 3
+ *                       error:
+ *                         type: string
+ *                         example: "Category with code 'IMPLEMENTOS' already exists"
+ *                       data:
+ *                         type: object
+ *                 summary:
+ *                   type: string
+ *                   example: "Imported 5 of 6 categories. 1 errors."
+ *       400:
+ *         description: Invalid file or validation errors
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 error:
+ *                   type: string
+ *                   example: "CSV file is required"
+ */
+
+/**
+ * @swagger
+ * /modules/purchases/supplies/import:
+ *   post:
+ *     summary: Import supplies from CSV
+ *     description: Bulk import supplies from CSV file. Validates category references and creates supplies in batch.
+ *     tags: [Supplies]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: header
+ *         name: X-Tenant-Id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - in: header
+ *         name: X-Business-Unit-Id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - file
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *                 description: CSV file with supplies (max 5MB)
+ *           example:
+ *             columns: "code,name,categoryCode,sku,barcode,unit,costPerUnit,currentStock,minStock,maxStock,description"
+ *             sample: "SUM-0001,Andamio Tubular 2m,IMPLEMENTOS,AND-TUB-2M,7501234567890,unidades,350000,0,5,20,Andamio tubular metálico"
+ *             note: "If 'code' is empty, it will be auto-generated (SUM-XXXX)"
+ *     responses:
+ *       200:
+ *         description: Import completed (may include partial errors)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                   description: "true if all records imported successfully, false if there were errors"
+ *                 created:
+ *                   type: integer
+ *                   example: 7
+ *                   description: "Number of supplies successfully created"
+ *                 errors:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       row:
+ *                         type: integer
+ *                         example: 5
+ *                       error:
+ *                         type: string
+ *                         example: "Category with code 'MATERIALES' not found"
+ *                       data:
+ *                         type: object
+ *                 summary:
+ *                   type: string
+ *                   example: "Imported 7 of 8 supplies. 1 errors."
+ *       400:
+ *         description: Invalid file or validation errors
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 error:
+ *                   type: string
+ *                   example: "CSV file is required"
+ */

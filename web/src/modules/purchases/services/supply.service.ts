@@ -111,4 +111,25 @@ export const supplyService = {
     });
     return data.data;
   },
+
+  /**
+   * Import supplies from CSV file
+   */
+  async importCSV(file: File): Promise<{
+    success: boolean;
+    created: number;
+    errors: Array<{ row: number; error: string; data?: any }>;
+    summary: string;
+  }> {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const { data } = await apiClient.post(`${BASE_URL}/import`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+
+    return data;
+  },
 };

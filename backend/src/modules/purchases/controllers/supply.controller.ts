@@ -6,9 +6,27 @@
 import { Request, Response, NextFunction } from "express";
 import { PrismaClient } from "@prisma/client";
 import { SupplyService } from "../services/supply.service";
+import { SupplyImportService } from "../services/supply-import.service";
+import multer from "multer";
 
 const prisma = new PrismaClient();
 const supplyService = new SupplyService(prisma);
+const importService = new SupplyImportService(prisma);
+
+// Configure multer for file upload (memory storage)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB max
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === "text/csv" || file.originalname.endsWith(".csv")) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only CSV files are allowed"));
+    }
+  },
+});
 
 /**
  * Helper para validar contexto de BusinessUnit
@@ -236,5 +254,42 @@ export class SupplyController {
     } catch (error) {
       next(error);
     }
+  }
+
+  /**
+   * Importar suministros desde CSV
+   * POST /api/v1/modules/purchases/supplies/import
+   */
+  static async importCSV(req: Request, res: Response, next: NextFunction) {
+    try {
+      const context = validateBusinessUnitContext(req, res);
+      if (!context) return;
+
+      if (!req.file) {
+        res.status(400).json({
+          success: false,
+          error: "CSV file is required",
+        });
+        return;
+      }
+
+      const result = await importService.importFromCSV(
+        context.tenantId,
+        context.businessUnitId,
+        req.file.buffer,
+      );
+
+      const statusCode = result.success ? 200 : 400;
+      res.status(statusCode).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get multer upload middleware
+   */
+  static getUploadMiddleware() {
+    return upload.single("file");
   }
 }

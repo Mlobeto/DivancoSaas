@@ -1,0 +1,6 @@
+code,name,category,codePrefix,requiresPreventiveMaintenance,description,customFields
+ANDAMIO-TUB,Andamio Tubular,IMPLEMENT,IMP,true,Andamio tubular metálico estándar,"altura:2 metros|material:Acero galvanizado|capacidad:200 kg"
+RETRO-CAT320,Retroexcavadora CAT 320,MACHINE,RET,true,Retroexcavadora Caterpillar modelo 320,"marca:Caterpillar|modelo:320|potencia:120 HP|peso:20 ton"
+COMP-MANUAL,Compactadora Manual,TOOL,COM,true,Compactadora de suelo manual tipo plancha,"marca:Honda|potencia:5.5 HP|peso:90 kg"
+VEH-CAMIONETA,Camioneta Carga,VEHICLE,VEH,true,Camioneta tipo pickup para carga,"capacidad:1000 kg|combustible:Diesel|puertas:4"
+MEZC-CONC,Mezcladora de Concreto,MACHINE,MEZ,true,Mezcladora eléctrica de concreto,"capacidad:180 litros|voltaje:220V|motor:2 HP"

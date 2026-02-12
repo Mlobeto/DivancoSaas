@@ -9,7 +9,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/core/components/Layout";
 import { supplyCategoryService } from "../services/supply-category.service";
 import { SupplyCategoryType } from "../types/supply-category.types";
-import { Boxes } from "lucide-react";
+import { Boxes, Upload } from "lucide-react";
+import { CSVImportUpload } from "@/shared/components/CSVImportUpload";
 
 const CATEGORY_TYPE_LABELS = {
   [SupplyCategoryType.CONSUMABLE]: "Consumible",
@@ -27,6 +28,7 @@ export function SupplyCategoriesPage() {
     "ALL",
   );
   const [searchTerm, setSearchTerm] = useState("");
+  const [showImportModal, setShowImportModal] = useState(false);
 
   // Fetch categories
   const { data: categories = [], isLoading } = useQuery({
@@ -80,7 +82,14 @@ export function SupplyCategoriesPage() {
       deleteMutation.mutate(id);
     }
   };
+const handleImport = async (file: File) => {
+    const result = await supplyCategoryService.importCSV(file);
+    // Invalidar query para refrescar la lista
+    queryClient.invalidateQueries({ queryKey: ["supply-categories"] });
+    return result;
+  };
 
+  
   if (isLoading) {
     return (
       <Layout title="Categorías de Suministros">
@@ -90,12 +99,21 @@ export function SupplyCategoriesPage() {
         </div>
       </Layout>
     );
-  }
-
-  return (
-    <Layout
-      title="Categorías de Suministros"
-      subtitle={`${categories.length} categoría${categories.length !== 1 ? "s" : ""} configurada${categories.length !== 1 ? "s" : ""} · Implementos, Insumos, Repuestos y más`}
+  }div className="flex gap-3">
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="btn-secondary flex items-center gap-2"
+          >
+            <Upload className="w-4 h-4" />
+            Importar CSV
+          </button>
+          <button
+            onClick={() => navigate("/purchases/categories/new")}
+            className="btn-primary"
+          >
+            + Nueva Categoría
+          </button>
+        </div`${categories.length} categoría${categories.length !== 1 ? "s" : ""} configurada${categories.length !== 1 ? "s" : ""} · Implementos, Insumos, Repuestos y más`}
       actions={
         <button
           onClick={() => navigate("/purchases/categories/new")}
@@ -332,6 +350,18 @@ export function SupplyCategoriesPage() {
           </div>
         </div>
       </div>
+      
+      {/* Import Modal */}
+      {showImportModal && (
+        <CSVImportUpload
+          title="Importar Categorías de Suministros"
+          description="Carga un archivo CSV con tus categorías para importarlas en lote"
+          templateName="import_categories.csv"
+          templateUrl="/templates/import_categories.csv"
+          onImport={handleImport}
+          onClose={() => setShowImportModal(false)}
+        />
+      )}
     </Layout>
   );
 }

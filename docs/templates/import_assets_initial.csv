@@ -1,0 +1,9 @@
+code,name,templateCode,acquisitionCost,origin,currentLocation,notes
+IMP-001,Andamio Tubular #1,ANDAMIO-TUB,350000,Inventario inicial,Bodega Central,Comprado en 2024
+IMP-002,Andamio Tubular #2,ANDAMIO-TUB,350000,Inventario inicial,Bodega Central,Comprado en 2024
+IMP-003,Andamio Tubular #3,ANDAMIO-TUB,350000,Inventario inicial,Obra Paseo del Sol,En uso desde Enero 2026
+RET-001,Retroexcavadora CAT 320,RETRO-CAT320,85000000,Inventario inicial,Taller Principal,Requiere mantenimiento
+RET-002,Retroexcavadora CAT 320,RETRO-CAT320,85000000,Inventario inicial,Obra Santa Fe,En operación
+COM-001,Compactadora Manual Honda,COMP-MANUAL,1500000,Inventario inicial,Bodega Norte,Buen estado
+COM-002,Compactadora Manual Honda,COMP-MANUAL,1500000,Inventario inicial,Bodega Norte,Buen estado
+VEH-001,Camioneta Ford F-150 ABC123,VEH-CAMIONETA,45000000,Inventario inicial,Garaje,Placa ABC123

@@ -1,0 +1,7 @@
+code,name,type,description,color,icon,requiresStockControl,allowNegativeStock
+IMPLEMENTOS,Implementos de Construcción,TOOL,Andamios y estructuras auxiliares,#3B82F6,wrench,true,false
+MATERIALES,Materiales de Construcción,RAW_MATERIAL,Cemento arena y agregados,#10B981,package,true,false
+FERRETERIA,Ferretería General,SPARE_PART,Tornillos clavos y accesorios,#F59E0B,tool,true,false
+LUBRICANTES,Lubricantes y Aceites,CONSUMABLE,Aceites y lubricantes para maquinaria,#EF4444,droplet,true,false
+ACERO,Acero y Varillas,RAW_MATERIAL,Varillas perfiles y estructuras metálicas,#6366F1,box,true,false
+PINTURAS,Pinturas y Recubrimientos,CONSUMABLE,Pinturas barnices y selladores,#EC4899,paintbrush,true,false

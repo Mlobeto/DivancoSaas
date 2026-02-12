@@ -40,6 +40,13 @@ router.patch(
   SupplyCategoryController.toggleActive,
 );
 
+// Import route
+router.post(
+  "/supply-categories/import",
+  SupplyCategoryController.getUploadMiddleware(),
+  SupplyCategoryController.importCSV,
+);
+
 // ============================================
 // SUPPLIES (SUMINISTROS)
 // ============================================
@@ -54,6 +61,13 @@ router.patch(
   SupplyController.toggleActive,
 );
 router.post("/supplies/:supplyId/adjust-stock", SupplyController.adjustStock);
+
+// Import route
+router.post(
+  "/supplies/import",
+  SupplyController.getUploadMiddleware(),
+  SupplyController.importCSV,
+);
 
 // ============================================
 // SUPPLIERS
