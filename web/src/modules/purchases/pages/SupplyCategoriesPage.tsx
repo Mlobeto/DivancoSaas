@@ -159,15 +159,34 @@ export function SupplyCategoriesPage() {
                 <h3 className="text-xl font-bold mb-2">
                   No hay categorías configuradas
                 </h3>
-                <p className="text-dark-400 mb-6">
-                  Crea tu primera categoría para organizar tus suministros
-                  (implementos, insumos, repuestos, etc.)
+                <p className="text-dark-400 mb-4">
+                  Las <strong>categorías</strong> son etiquetas personalizadas
+                  para organizar tus suministros.
                 </p>
+                <div className="bg-dark-700/50 rounded-lg p-4 mb-6 max-w-2xl mx-auto text-left">
+                  <p className="text-sm text-dark-300 mb-2">
+                    💡 <strong>Ejemplo:</strong>
+                  </p>
+                  <ul className="text-sm text-dark-400 space-y-1 ml-4">
+                    <li>
+                      • Tipo CONSUMIBLE → Categorías: "Lubricantes", "Filtros",
+                      "Tintas"
+                    </li>
+                    <li>
+                      • Tipo REPUESTO → Categorías: "Neumáticos CAT", "Repuestos
+                      JCB"
+                    </li>
+                    <li>
+                      • Tipo HERRAMIENTA → Categorías: "Herramientas
+                      Eléctricas", "Manuales"
+                    </li>
+                  </ul>
+                </div>
                 <button
                   onClick={() => navigate("/purchases/categories/new")}
                   className="btn-primary"
                 >
-                  Crear Primera Categoría
+                  + Crear Primera Categoría
                 </button>
               </>
             )}

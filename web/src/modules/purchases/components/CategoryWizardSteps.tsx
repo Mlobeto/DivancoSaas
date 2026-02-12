@@ -118,7 +118,12 @@ export function BasicInfoStep({
 
       {/* Type */}
       <div>
-        <label className="label">Tipo de Categoría *</label>
+        <label className="label">
+          Tipo de Categoría *
+          <span className="text-xs text-dark-400 ml-2">
+            (Define cómo se comporta en el sistema)
+          </span>
+        </label>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {Object.values(SupplyCategoryType).map((type) => (
             <button
@@ -499,10 +504,23 @@ export function PreviewStep({
 
       {/* Info  Box */}
       <div className="bg-blue-900/20 border border-blue-800 rounded-lg p-4">
-        <p className="text-sm text-blue-300">
-          ℹ️ Una vez creada, podrás asignar esta categoría a tus suministros
-          (implementos, insumos, repuestos) en el módulo de inventario
+        <p className="text-sm text-blue-300 mb-2">
+          ℹ️ <strong>Tipos vs Categorías:</strong>
         </p>
+        <ul className="text-xs text-blue-200/80 space-y-1 ml-4">
+          <li>
+            • <strong>Tipo</strong> (6 fijos): Define cómo se comporta en el
+            sistema (inventario, tracking, etc.)
+          </li>
+          <li>
+            • <strong>Categoría</strong> (ilimitadas): Etiquetas personalizadas
+            para organizar TU negocio
+          </li>
+          <li>
+            • Ejemplo: Tipo "Consumible" puede tener categorías "Lubricantes",
+            "Filtros", "Tintas"
+          </li>
+        </ul>
       </div>
     </div>
   );
