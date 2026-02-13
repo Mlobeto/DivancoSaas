@@ -19,6 +19,14 @@ export interface CreateQuotationParams {
   clientId: string;
   assignedUserId?: string;
   validUntil: Date;
+
+  // Tipo de cotización (v4.0)
+  quotationType?: "time_based" | "service_based";
+  estimatedStartDate?: Date;
+  estimatedEndDate?: Date;
+  estimatedDays?: number;
+  serviceDescription?: string;
+
   items: QuotationItemInput[];
   taxRate?: number;
   currency?: string;
@@ -36,9 +44,23 @@ export interface QuotationItemInput {
   rentalDays?: number;
   rentalStartDate?: Date;
   rentalEndDate?: Date;
+
+  // v4.0: Nuevos campos
+  rentalPeriodType?: "hourly" | "daily" | "weekly" | "monthly";
+  standbyHours?: number; // Horas mínimas garantizadas (MACHINERY)
   operatorIncluded?: boolean; // Si incluir operador en el cálculo
+  operatorCostType?: "PER_DAY" | "PER_HOUR"; // Tipo de viáticos
+
+  // Override manual
   customUnitPrice?: number; // Override manual del precio unitario
   customOperatorCost?: number; // Override manual del costo del operador
+
+  // Desglose detallado (opcional)
+  basePrice?: number;
+  operatorCostAmount?: number;
+  maintenanceCost?: number;
+  discount?: number;
+  discountReason?: string;
 }
 
 export class QuotationService {
@@ -87,7 +109,7 @@ export class QuotationService {
     let calculatedOperatorCost = 0;
 
     if (asset.trackingType === "MACHINERY") {
-      // MACHINERY: precio por hora
+      // MACHINERY: precio por hora con STANDBY
       if (!asset.pricePerHour) {
         throw new Error(
           `Asset ${asset.code} does not have pricePerHour configured`,
@@ -95,22 +117,30 @@ export class QuotationService {
       }
 
       const rentalDays: number = item.rentalDays || 1;
-      const minDailyHours: number = asset.minDailyHours
-        ? Number(asset.minDailyHours)
-        : 8;
 
-      // Precio = días * horas mínimas * precio por hora
+      // v4.0: Usar standbyHours del item o minDailyHours del asset como fallback
+      const standbyHours: number =
+        item.standbyHours !== undefined
+          ? item.standbyHours
+          : asset.minDailyHours
+            ? Number(asset.minDailyHours)
+            : 8;
+
+      // Precio = días * standby horas * precio por hora
       const pricePerHour: number = asset.pricePerHour
         ? Number(asset.pricePerHour)
         : 0;
-      calculatedUnitPrice = rentalDays * minDailyHours * pricePerHour;
+      calculatedUnitPrice = rentalDays * standbyHours * pricePerHour;
 
       // Calcular costo del operador si se incluye
       if (item.operatorIncluded && asset.operatorCostRate) {
         const operatorRate: number = Number(asset.operatorCostRate);
-        if (asset.operatorCostType === "PER_HOUR") {
-          calculatedOperatorCost = rentalDays * minDailyHours * operatorRate;
-        } else if (asset.operatorCostType === "PER_DAY") {
+        // v4.0: Usar operatorCostType del item o del asset como fallback
+        const costType = item.operatorCostType || asset.operatorCostType;
+
+        if (costType === "PER_HOUR") {
+          calculatedOperatorCost = rentalDays * standbyHours * operatorRate;
+        } else if (costType === "PER_DAY") {
           calculatedOperatorCost = rentalDays * operatorRate;
         }
       }
@@ -204,6 +234,14 @@ export class QuotationService {
         totalAmount: new Decimal(totalAmount),
         currency: params.currency || "USD",
         validUntil: params.validUntil,
+
+        // v4.0: Tipo de cotización
+        quotationType: params.quotationType || "time_based",
+        estimatedStartDate: params.estimatedStartDate,
+        estimatedEndDate: params.estimatedEndDate,
+        estimatedDays: params.estimatedDays,
+        serviceDescription: params.serviceDescription,
+
         notes: params.notes,
         termsAndConditions: params.termsAndConditions,
         createdBy: params.createdBy,
@@ -232,6 +270,23 @@ export class QuotationService {
             rentalDays: item.rentalDays,
             rentalStartDate: item.rentalStartDate,
             rentalEndDate: item.rentalEndDate,
+
+            // v4.0: Nuevos campos
+            rentalPeriodType: item.rentalPeriodType,
+            standbyHours: item.standbyHours
+              ? new Decimal(item.standbyHours)
+              : null,
+            operatorCostType: item.operatorCostType,
+            basePrice: item.basePrice ? new Decimal(item.basePrice) : null,
+            operatorCostAmount: item.operatorCostAmount
+              ? new Decimal(item.operatorCostAmount)
+              : null,
+            maintenanceCost: item.maintenanceCost
+              ? new Decimal(item.maintenanceCost)
+              : null,
+            discount: item.discount ? new Decimal(item.discount) : null,
+            discountReason: item.discountReason,
+
             sortOrder: index,
           })),
         },

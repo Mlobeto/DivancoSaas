@@ -2049,6 +2049,19 @@ model Quotation {
   totalAmount Decimal @db.Decimal(12, 2)
   currency    String  @default("USD")
 
+  // ═══════════════════════════════════════
+  // TIPO DE COTIZACIÓN (v4.0)
+  // ═══════════════════════════════════════
+  quotationType String @default("time_based") // "time_based" | "service_based"
+
+  // Para cotizaciones con tiempo estimado (time_based)
+  estimatedStartDate DateTime?
+  estimatedEndDate   DateTime?
+  estimatedDays      Int?
+
+  // Para cotizaciones por servicio/trabajo (service_based)
+  serviceDescription String? @db.Text
+
   // Validez
   quotationDate DateTime @default(now())
   validUntil    DateTime
@@ -2116,10 +2129,30 @@ model QuotationItem {
   operatorCost           Decimal? @db.Decimal(10, 2) // Costo del operador (puede ser override)
   calculatedOperatorCost Decimal? @db.Decimal(10, 2) // Costo del operador calculado automáticamente
 
+  // ═══════════════════════════════════════
+  // RENTAL: Configuración avanzada (v4.0)
+  // ═══════════════════════════════════════
+
   // Específico de rental
   rentalDays      Int?
   rentalStartDate DateTime?
   rentalEndDate   DateTime?
+
+  // Tipo de período de renta
+  rentalPeriodType String? // "hourly" | "daily" | "weekly" | "monthly"
+
+  // STANDBY: Horas mínimas garantizadas (para MACHINERY)
+  standbyHours Decimal? @db.Decimal(5, 2) // Ej: 3.0 horas/día mínimas facturadas
+
+  // Tipo de costo del operador
+  operatorCostType String? // "PER_DAY" | "PER_HOUR"
+
+  // Desglose detallado de costos (opcional)
+  basePrice          Decimal? @db.Decimal(10, 2) // Precio base del asset solamente
+  operatorCostAmount Decimal? @db.Decimal(10, 2) // Costo del operador separado
+  maintenanceCost    Decimal? @db.Decimal(10, 2) // Costo de mantenimiento incluido
+  discount           Decimal? @db.Decimal(10, 2) // Descuento aplicado al item
+  discountReason     String? // Razón del descuento
 
   metadata  Json?
   sortOrder Int   @default(0)

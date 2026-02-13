@@ -1,7 +1,12 @@
 /**
  * QUOTATION TYPES
  * Tipos TypeScript para el sistema de cotizaciones
+ * v4.0 - Tipos de cotización, STANDBY, operador PER_DAY/PER_HOUR
  */
+
+export type QuotationType = "time_based" | "service_based";
+export type RentalPeriodType = "hourly" | "daily" | "weekly" | "monthly";
+export type OperatorCostType = "PER_DAY" | "PER_HOUR";
 
 export interface Quotation {
   id: string;
@@ -18,6 +23,14 @@ export interface Quotation {
   currency: string;
   quotationDate: Date;
   validUntil: Date;
+
+  // v4.0: Tipo de cotización
+  quotationType: QuotationType;
+  estimatedStartDate?: Date;
+  estimatedEndDate?: Date;
+  estimatedDays?: number;
+  serviceDescription?: string;
+
   templateId?: string;
   pdfUrl?: string;
   signedPdfUrl?: string;
@@ -55,6 +68,17 @@ export interface QuotationItem {
   rentalDays?: number;
   rentalStartDate?: Date;
   rentalEndDate?: Date;
+
+  // v4.0: Nuevos campos
+  rentalPeriodType?: RentalPeriodType;
+  standbyHours?: number;
+  operatorCostType?: OperatorCostType;
+  basePrice?: number;
+  operatorCostAmount?: number;
+  maintenanceCost?: number;
+  discount?: number;
+  discountReason?: string;
+
   sortOrder: number;
 
   // Relaciones
@@ -75,6 +99,14 @@ export interface CreateQuotationDTO {
   clientId: string;
   assignedUserId?: string;
   validUntil: string;
+
+  // v4.0: Tipo de cotización
+  quotationType?: QuotationType;
+  estimatedStartDate?: string;
+  estimatedEndDate?: string;
+  estimatedDays?: number;
+  serviceDescription?: string;
+
   items: QuotationItemDTO[];
   taxRate?: number;
   currency?: string;
@@ -90,10 +122,23 @@ export interface QuotationItemDTO {
   rentalDays?: number;
   rentalStartDate?: string;
   rentalEndDate?: string;
+
+  // v4.0: Nuevos campos
+  rentalPeriodType?: RentalPeriodType;
+  standbyHours?: number;
   operatorIncluded?: boolean;
+  operatorCostType?: OperatorCostType;
+
   unitPrice?: number;
   customUnitPrice?: number;
   customOperatorCost?: number;
+
+  // Desglose detallado (opcional)
+  basePrice?: number;
+  operatorCostAmount?: number;
+  maintenanceCost?: number;
+  discount?: number;
+  discountReason?: string;
 }
 
 export interface UpdateQuotationItemPriceDTO {
