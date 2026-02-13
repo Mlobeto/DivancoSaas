@@ -7,6 +7,7 @@
 import Handlebars from "handlebars";
 import puppeteer, { PDFOptions } from "puppeteer";
 import prisma from "@config/database";
+import { azureBlobStorageService } from "@shared/storage/azure-blob-storage.service";
 
 // ============================================
 // TYPES
@@ -238,9 +239,6 @@ export class TemplateService {
     tenantId: string,
     businessUnitId: string,
   ): Promise<string> {
-    const { azureBlobStorageService } =
-      await import("@shared/storage/azure-blob-storage.service");
-
     // Upload to Azure Blob Storage
     const result = await azureBlobStorageService.uploadFile({
       file: file.buffer,
