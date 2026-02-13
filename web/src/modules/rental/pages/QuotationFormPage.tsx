@@ -9,6 +9,7 @@ import { QuotationTypeSelector } from "../components/QuotationTypeSelector";
 import { AssetSearchInput } from "../components/AssetSearchInput";
 import { QuotationItemCard } from "../components/QuotationItemCard";
 import { QuotationSummary } from "../components/QuotationSummary";
+import { TemplateSelector } from "../components/TemplateSelector";
 
 export function QuotationFormPage() {
   const navigate = useNavigate();
@@ -36,6 +37,8 @@ export function QuotationFormPage() {
     setNotes,
     terms,
     setTerms,
+    templateId,
+    setTemplateId,
 
     // Asset search
     assetSearch,
@@ -110,6 +113,12 @@ export function QuotationFormPage() {
             </select>
           </div>
         </div>
+
+        {/* Template Selector */}
+        <TemplateSelector
+          templateId={templateId}
+          onTemplateChange={setTemplateId}
+        />
 
         {/* Asset Search & Items */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200/50 p-6">

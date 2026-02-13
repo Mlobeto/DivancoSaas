@@ -76,6 +76,7 @@ export function useQuotationForm() {
   const [terms, setTerms] = useState(
     "• Los precios incluyen IVA\n• El pago se realizará 50% adelanto, 50% contra entrega\n• Los equipos deben ser devueltos en las mismas condiciones",
   );
+  const [templateId, setTemplateId] = useState<string | undefined>(undefined);
 
   // Asset search state
   const [assetSearch, setAssetSearch] = useState("");
@@ -300,6 +301,7 @@ export function useQuotationForm() {
         taxRate,
         notes,
         terms,
+        templateId, // v4.0: Plantilla para generar PDF
 
         // v4.0: Tipo de cotización
         quotationType,
@@ -371,6 +373,8 @@ export function useQuotationForm() {
     setNotes,
     terms,
     setTerms,
+    templateId,
+    setTemplateId,
 
     // Asset search
     assetSearch,

@@ -7,6 +7,17 @@ import { templateService } from "../services/template.service";
 import { Template, TemplateType } from "../types/quotation.types";
 import { Edit, Trash2, Eye, CheckCircle, XCircle } from "lucide-react";
 
+// Helper to get template type label in Spanish
+const getTemplateTypeLabel = (type: TemplateType): string => {
+  const labels: Record<TemplateType, string> = {
+    quotation: "Cotización",
+    contract: "Contrato",
+    contract_report: "Informe de Contrato",
+    attachment: "Adjunto",
+  };
+  return labels[type] || type;
+};
+
 export function QuotationTemplatesPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -15,8 +26,20 @@ export function QuotationTemplatesPage() {
 
   const { data: templates, isLoading } = useQuery({
     queryKey: ["templates", tenant?.id, businessUnit?.id, typeFilter],
-    queryFn: () => templateService.list(typeFilter ? { type: typeFilter } : {}),
+    queryFn: async () => {
+      try {
+        const result = await templateService.list(
+          typeFilter ? { type: typeFilter } : {},
+        );
+        return result || [];
+      } catch (err) {
+        console.error("Error loading templates:", err);
+        return [];
+      }
+    },
     enabled: !!tenant?.id && !!businessUnit?.id,
+    retry: 1,
+    staleTime: 30000,
   });
 
   const toggleActiveMutation = useMutation({
@@ -151,10 +174,8 @@ export function QuotationTemplatesPage() {
             <option value="">Todos los tipos</option>
             <option value="quotation">Cotización</option>
             <option value="contract">Contrato</option>
-            <option value="invoice">Factura</option>
-            <option value="receipt">Recibo</option>
-            <option value="report">Reporte</option>
-            <option value="certificate">Certificado</option>
+            <option value="contract_report">Informe de Contrato</option>
+            <option value="attachment">Adjunto Personalizable</option>
           </select>
         </div>
       </div>
@@ -191,7 +212,7 @@ export function QuotationTemplatesPage() {
                     {template.name}
                   </h3>
                   <span className="text-xs text-dark-400 uppercase">
-                    {template.type}
+                    {getTemplateTypeLabel(template.type)}
                   </span>
                 </div>
                 <button

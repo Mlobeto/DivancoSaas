@@ -14,5 +14,7 @@ export * from "./services/template.service.ts";
 export { QuotationsListPage } from "./pages/QuotationsListPage.tsx";
 export { QuotationFormPage } from "./pages/QuotationFormPage.tsx";
 export { QuotationTemplatesPage } from "./pages/QuotationTemplatesPage.tsx";
+export { TemplateFormPage } from "./pages/TemplateFormPage.tsx";
+export { TemplatePreviewPage } from "./pages/TemplatePreviewPage.tsx";
 export { ContractsListPage } from "./pages/ContractsListPage.tsx";
 export { AccountsListPage } from "./pages/AccountsListPage.tsx";

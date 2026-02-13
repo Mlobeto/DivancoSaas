@@ -21,13 +21,18 @@ export const templateService = {
       type?: TemplateType;
     } = {},
   ): Promise<Template[]> {
-    const params = new URLSearchParams();
-    if (filters.type) params.append("type", filters.type);
+    try {
+      const params = new URLSearchParams();
+      if (filters.type) params.append("type", filters.type);
 
-    const response = await apiClient.get(
-      `${BASE_URL}/templates?${params.toString()}`,
-    );
-    return response.data.data;
+      const response = await apiClient.get(
+        `${BASE_URL}/templates?${params.toString()}`,
+      );
+      return response.data?.data || [];
+    } catch (error: any) {
+      console.error("Error fetching templates:", error);
+      throw error;
+    }
   },
 
   /**
@@ -71,6 +76,28 @@ export const templateService = {
     const response = await apiClient.put(`${BASE_URL}/templates/${id}`, {
       isActive,
     });
+    return response.data.data;
+  },
+
+  /**
+   * Upload logo image for template
+   */
+  async uploadLogo(
+    templateId: string,
+    file: File,
+  ): Promise<{ logoUrl: string }> {
+    const formData = new FormData();
+    formData.append("logo", file);
+
+    const response = await apiClient.post(
+      `${BASE_URL}/templates/${templateId}/logo`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      },
+    );
     return response.data.data;
   },
 };

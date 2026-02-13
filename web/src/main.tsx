@@ -35,6 +35,8 @@ import {
   QuotationsListPage,
   QuotationFormPage,
   QuotationTemplatesPage,
+  TemplateFormPage,
+  TemplatePreviewPage,
   ContractsListPage,
   AccountsListPage,
 } from "@/modules/rental";
@@ -274,6 +276,30 @@ createRoot(document.getElementById("root")!).render(
             element={
               <ProtectedRoute>
                 <QuotationTemplatesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/quotations/templates/new"
+            element={
+              <ProtectedRoute>
+                <TemplateFormPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/quotations/templates/:id/edit"
+            element={
+              <ProtectedRoute>
+                <TemplateFormPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/quotations/templates/:id/preview"
+            element={
+              <ProtectedRoute>
+                <TemplatePreviewPage />
               </ProtectedRoute>
             }
           />

@@ -28,14 +28,10 @@ export interface Template {
 }
 
 export type TemplateType =
-  | "quotation"
-  | "contract"
-  | "invoice"
-  | "receipt"
-  | "report"
-  | "certificate"
-  | "work_order"
-  | "delivery_note";
+  | "quotation" // Plantilla de cotización
+  | "contract" // Plantilla de contrato
+  | "contract_report" // Informe de estado de cuenta del contrato
+  | "attachment"; // Adjunto personalizable
 
 export interface TemplateVariable {
   name: string;
@@ -231,6 +227,40 @@ export class TemplateService {
         isActive: false,
       },
     });
+  }
+
+  /**
+   * Upload logo for template to Azure Blob Storage
+   */
+  async uploadTemplateLogo(
+    templateId: string,
+    file: Express.Multer.File,
+    tenantId: string,
+    businessUnitId: string,
+  ): Promise<string> {
+    const { azureBlobStorageService } =
+      await import("@shared/storage/azure-blob-storage.service");
+
+    // Upload to Azure Blob Storage
+    const result = await azureBlobStorageService.uploadFile({
+      file: file.buffer,
+      fileName: file.originalname,
+      contentType: file.mimetype,
+      folder: "templates",
+      tenantId,
+      businessUnitId,
+    });
+
+    // Generate SAS URL with long expiration (30 days) for logo access
+    const sasUrl = await azureBlobStorageService.generateSasUrl(
+      result.blobName,
+      43200, // 30 days in minutes
+    );
+
+    // Update template with SAS URL
+    await this.updateTemplate(templateId, { logoUrl: sasUrl });
+
+    return sasUrl;
   }
 
   /**

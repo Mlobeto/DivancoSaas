@@ -165,12 +165,10 @@ export interface Template {
 }
 
 export type TemplateType =
-  | "quotation"
-  | "contract"
-  | "invoice"
-  | "receipt"
-  | "report"
-  | "certificate";
+  | "quotation" // Plantilla de cotización
+  | "contract" // Plantilla de contrato
+  | "contract_report" // Informe de estado de cuenta del contrato
+  | "attachment"; // Adjunto personalizable
 
 export interface TemplateVariable {
   name: string;

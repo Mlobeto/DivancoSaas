@@ -4,6 +4,7 @@
  */
 
 import { Router } from "express";
+import multer from "multer";
 import { quotationController } from "./controllers/quotation.controller";
 import { contractController } from "./controllers/contract.controller";
 import { templateController } from "./controllers/template.controller";
@@ -11,9 +12,33 @@ import { accountController } from "./controllers/account.controller";
 import { usageReportController } from "./controllers/usage-report.controller";
 import { rentalController } from "./controllers/rental.controller";
 import { jobsController } from "./controllers/jobs.controller";
-// import { authMiddleware } from "@core/middlewares/auth.middleware";
+import { authenticate } from "@core/middlewares/auth.middleware";
 
 const router = Router();
+
+// Configure multer for logo upload
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 2 * 1024 * 1024, // 2MB max
+  },
+  fileFilter: (req, file, cb) => {
+    // Allow common image formats
+    const allowedMimes = [
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+      "image/gif",
+      "image/svg+xml",
+      "image/webp",
+    ];
+    if (allowedMimes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only image files (JPG, PNG, GIF, SVG, WEBP) are allowed"));
+    }
+  },
+});
 
 // ============================================
 // CLIENT ACCOUNTS (Cuentas Compartidas)
@@ -232,28 +257,51 @@ router.post(
 // TEMPLATES
 // ============================================
 
+// ============================================
+// TEMPLATES (Plantillas para PDFs)
+// ============================================
+
 // Listar plantillas
-router.get("/templates", templateController.list.bind(templateController));
+router.get(
+  "/templates",
+  authenticate,
+  templateController.list.bind(templateController),
+);
 
 // Obtener plantilla por ID
 router.get(
   "/templates/:id",
+  authenticate,
   templateController.getById.bind(templateController),
 );
 
 // Crear plantilla
-router.post("/templates", templateController.create.bind(templateController));
+router.post(
+  "/templates",
+  authenticate,
+  templateController.create.bind(templateController),
+);
 
 // Actualizar plantilla
 router.put(
   "/templates/:id",
+  authenticate,
   templateController.update.bind(templateController),
 );
 
 // Eliminar plantilla
 router.delete(
   "/templates/:id",
+  authenticate,
   templateController.delete.bind(templateController),
+);
+
+// Upload logo for template
+router.post(
+  "/templates/:id/logo",
+  authenticate,
+  upload.single("logo"),
+  templateController.uploadLogo.bind(templateController),
 );
 
 // ============================================
