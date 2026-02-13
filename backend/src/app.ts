@@ -66,6 +66,7 @@ import { AssetsModule } from "./modules/assets/assets.module";
 import { PurchasesModule } from "./modules/purchases/purchases.module";
 import { ClientsModule } from "./modules/clients/clients.module";
 import rentalModule from "./modules/rental/rental.module";
+import { initializeRentalJobs } from "./modules/rental/rental.jobs";
 
 export function createApp(): Application {
   const app = express();
@@ -79,6 +80,10 @@ export function createApp(): Application {
 
   const clientsModule = new ClientsModule();
   clientsModule.initialize();
+
+  // Initialize rental module cron jobs
+  console.log("[App] Inicializando cron jobs del módulo rental...");
+  initializeRentalJobs();
 
   // DEPENDENCY INJECTION: Inyectar resolvers/factories en el core  // DEPENDENCY INJECTION: Inyectar resolvers/factories en el core
   // El core nunca importa adapters, recibe las dependencias desde aquí

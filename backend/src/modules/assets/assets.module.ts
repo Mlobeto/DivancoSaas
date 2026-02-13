@@ -123,6 +123,16 @@ export class AssetsModule implements ModuleContract {
       AssetsController.deleteDocumentType,
     );
 
+    // ========== QUOTATION SUPPORT ==========
+    router.get(
+      "/assets/:assetId/availability",
+      AssetsController.getAssetAvailability,
+    );
+    router.get(
+      "/search-for-quotation",
+      AssetsController.searchAssetsForQuotation,
+    );
+
     // ========== RENTAL CONTRACTS ==========
     router.post("/rental/contracts", RentalController.createContract);
     router.get("/rental/contracts", RentalController.listContracts);

@@ -31,6 +31,13 @@ import {
   ClientDetailPage,
   ClientWizardPage,
 } from "@/modules/clients";
+import {
+  QuotationsListPage,
+  QuotationFormPage,
+  QuotationTemplatesPage,
+  ContractsListPage,
+  AccountsListPage,
+} from "@/modules/rental";
 
 // Core Services
 import { authService } from "@/core/services/auth.service";
@@ -244,6 +251,49 @@ createRoot(document.getElementById("root")!).render(
               </ProtectedRoute>
             }
           />
+
+          {/* Rental Module Routes */}
+          <Route
+            path="/quotations"
+            element={
+              <ProtectedRoute>
+                <QuotationsListPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/quotations/new"
+            element={
+              <ProtectedRoute>
+                <QuotationFormPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/quotations/templates"
+            element={
+              <ProtectedRoute>
+                <QuotationTemplatesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/rental/contracts"
+            element={
+              <ProtectedRoute>
+                <ContractsListPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/rental/accounts"
+            element={
+              <ProtectedRoute>
+                <AccountsListPage />
+              </ProtectedRoute>
+            }
+          />
+
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </BrowserRouter>

@@ -96,6 +96,42 @@ export class QuotationController {
   }
 
   /**
+   * Actualizar precios de items (override manual)
+   * PATCH /api/v1/rental/quotations/:id/update-prices
+   */
+  async updatePrices(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const quotationId = Array.isArray(id) ? id[0] : id;
+      const { itemUpdates } = req.body;
+
+      if (!Array.isArray(itemUpdates)) {
+        res.status(400).json({
+          success: false,
+          error: "itemUpdates must be an array",
+        });
+        return;
+      }
+
+      const quotation = await quotationService.updateQuotationItemPrices(
+        quotationId,
+        itemUpdates,
+      );
+
+      res.json({
+        success: true,
+        data: quotation,
+        message: "Prices updated successfully",
+      });
+    } catch (error: any) {
+      res.status(400).json({
+        success: false,
+        error: error.message,
+      });
+    }
+  }
+
+  /**
    * Generar PDF
    * POST /api/v1/rental/quotations/:id/generate-pdf
    */

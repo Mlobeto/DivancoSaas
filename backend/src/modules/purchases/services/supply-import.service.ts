@@ -188,7 +188,7 @@ export class SupplyImportService {
               barcode: record.barcode || undefined,
               unit: record.unit || undefined,
               costPerUnit: costPerUnit,
-              currentStock: currentStock,
+              stock: currentStock,
               minStock: minStock,
               maxStock: maxStock,
               description: record.description || undefined,

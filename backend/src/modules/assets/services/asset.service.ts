@@ -60,6 +60,17 @@ export class AssetService {
     businessUnitId: string,
     data: CreateAssetDTO,
   ): Promise<Asset> {
+    // Validaciones de pricing según trackingType
+    if (data.trackingType === "MACHINERY" && !data.pricePerHour) {
+      throw new Error("MACHINERY assets require pricePerHour");
+    }
+    if (data.trackingType === "TOOL" && !data.pricePerDay) {
+      throw new Error("TOOL assets require pricePerDay");
+    }
+    if (data.operatorCostType && !data.operatorCostRate) {
+      throw new Error("operatorCostType requires operatorCostRate");
+    }
+
     const asset = await this.prisma.asset.create({
       data: {
         tenantId,
@@ -82,6 +93,16 @@ export class AssetService {
         supplierId: data.supplierId,
         purchaseDate: data.purchaseDate,
         purchasePrice: data.purchasePrice,
+        // RENTAL: Tracking y precios
+        trackingType: data.trackingType,
+        pricePerHour: data.pricePerHour,
+        minDailyHours: data.minDailyHours,
+        pricePerKm: data.pricePerKm,
+        pricePerDay: data.pricePerDay,
+        pricePerWeek: data.pricePerWeek,
+        operatorCostType: data.operatorCostType,
+        operatorCostRate: data.operatorCostRate,
+        maintenanceCostDaily: data.maintenanceCostDaily,
       },
       include: {
         state: true,
@@ -211,6 +232,24 @@ export class AssetService {
     assetId: string,
     data: UpdateAssetDTO,
   ): Promise<Asset> {
+    // Validaciones de pricing si cambia trackingType
+    if (data.trackingType === "MACHINERY" && data.pricePerHour === undefined) {
+      const current = await this.prisma.asset.findUnique({
+        where: { id: assetId },
+      });
+      if (!current?.pricePerHour && data.pricePerHour === undefined) {
+        throw new Error("MACHINERY assets require pricePerHour");
+      }
+    }
+    if (data.trackingType === "TOOL" && data.pricePerDay === undefined) {
+      const current = await this.prisma.asset.findUnique({
+        where: { id: assetId },
+      });
+      if (!current?.pricePerDay && data.pricePerDay === undefined) {
+        throw new Error("TOOL assets require pricePerDay");
+      }
+    }
+
     const asset = await this.prisma.asset.update({
       where: {
         id: assetId,
@@ -224,6 +263,9 @@ export class AssetService {
           acquisitionCost: data.acquisitionCost,
         }),
         ...(data.origin !== undefined && { origin: data.origin }),
+        ...(data.currentLocation !== undefined && {
+          currentLocation: data.currentLocation,
+        }),
         ...(data.requiresOperator !== undefined && {
           requiresOperator: data.requiresOperator,
         }),
@@ -232,6 +274,44 @@ export class AssetService {
         }),
         ...(data.requiresClinic !== undefined && {
           requiresClinic: data.requiresClinic,
+        }),
+        ...(data.customData !== undefined && { customData: data.customData }),
+        ...(data.imageUrl !== undefined && { imageUrl: data.imageUrl }),
+        ...(data.supplierId !== undefined && { supplierId: data.supplierId }),
+        ...(data.purchaseDate !== undefined && {
+          purchaseDate: data.purchaseDate,
+        }),
+        ...(data.purchasePrice !== undefined && {
+          purchasePrice: data.purchasePrice,
+        }),
+        // RENTAL: Pricing fields
+        ...(data.trackingType !== undefined && {
+          trackingType: data.trackingType,
+        }),
+        ...(data.pricePerHour !== undefined && {
+          pricePerHour: data.pricePerHour,
+        }),
+        ...(data.minDailyHours !== undefined && {
+          minDailyHours: data.minDailyHours,
+        }),
+        ...(data.pricePerKm !== undefined && { pricePerKm: data.pricePerKm }),
+        ...(data.pricePerDay !== undefined && {
+          pricePerDay: data.pricePerDay,
+        }),
+        ...(data.pricePerWeek !== undefined && {
+          pricePerWeek: data.pricePerWeek,
+        }),
+        ...(data.pricePerMonth !== undefined && {
+          pricePerMonth: data.pricePerMonth,
+        }),
+        ...(data.operatorCostType !== undefined && {
+          operatorCostType: data.operatorCostType,
+        }),
+        ...(data.operatorCostRate !== undefined && {
+          operatorCostRate: data.operatorCostRate,
+        }),
+        ...(data.maintenanceCostDaily !== undefined && {
+          maintenanceCostDaily: data.maintenanceCostDaily,
         }),
       },
       include: {
@@ -529,5 +609,229 @@ export class AssetService {
 
     // Pad with zeros (3 digits minimum)
     return `${prefix}${nextNumber.toString().padStart(3, "0")}`;
+  }
+
+  /**
+   * Get asset availability for quotation/rental
+   * Checks if asset is currently in use
+   */
+  async getAssetAvailability(
+    tenantId: string,
+    businessUnitId: string,
+    assetId: string,
+  ): Promise<{
+    available: boolean;
+    status: "available" | "in_use" | "maintenance";
+    currentRental?: {
+      contractId: string;
+      estimatedReturnDate: Date | null;
+      clientName: string;
+    };
+  }> {
+    // Verificar si el asset existe y pertenece al tenant/BU
+    const asset = await this.prisma.asset.findFirst({
+      where: {
+        id: assetId,
+        tenantId,
+        businessUnitId,
+      },
+    });
+
+    if (!asset) {
+      throw new Error("Asset not found");
+    }
+
+    // Verificar si está en mantenimiento activo
+    const activeMaintenanceCount = await this.prisma.maintenanceRecord.count({
+      where: {
+        assetId,
+        endedAt: null, // Mantenimiento sin cerrar
+      },
+    });
+
+    if (activeMaintenanceCount > 0) {
+      return {
+        available: false,
+        status: "maintenance",
+      };
+    }
+
+    // Verificar si está en rental activo (AssetRental sin fecha de retorno)
+    const activeRental = await this.prisma.assetRental.findFirst({
+      where: {
+        assetId,
+        actualReturnDate: null, // No ha sido devuelto
+      },
+      include: {
+        contract: {
+          include: {
+            client: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (activeRental) {
+      return {
+        available: false,
+        status: "in_use",
+        currentRental: {
+          contractId: activeRental.contractId,
+          estimatedReturnDate: activeRental.estimatedReturnDate,
+          clientName: activeRental.contract.client.name,
+        },
+      };
+    }
+
+    // Disponible
+    return {
+      available: true,
+      status: "available",
+    };
+  }
+
+  /**
+   * Search assets for quotation with pricing and availability
+   * Incluye información de precios y disponibilidad
+   */
+  async searchAssetsForQuotation(
+    tenantId: string,
+    businessUnitId: string,
+    filters: {
+      search?: string;
+      trackingType?: "MACHINERY" | "TOOL";
+      includeUnavailable?: boolean;
+      page?: number;
+      limit?: number;
+    } = {},
+  ): Promise<{
+    data: Array<{
+      id: string;
+      code: string;
+      name: string;
+      trackingType: string | null;
+      imageUrl: string | null;
+      // Pricing MACHINERY
+      pricePerHour: number | null;
+      minDailyHours: number | null;
+      pricePerKm: number | null;
+      // Pricing TOOL
+      pricePerDay: number | null;
+      pricePerWeek: number | null;
+      pricePerMonth: number | null;
+      // Operator
+      operatorCostType: string | null;
+      operatorCostRate: number | null;
+      requiresOperator: boolean;
+      // Availability
+      availability: {
+        available: boolean;
+        status: "available" | "in_use" | "maintenance";
+        estimatedReturnDate?: Date | null;
+      };
+    }>;
+    meta: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+  }> {
+    const {
+      page = 1,
+      limit = 20,
+      search,
+      trackingType,
+      includeUnavailable = false,
+    } = filters;
+    const skip = (page - 1) * limit;
+
+    // Build where clause
+    const where: any = {
+      tenantId,
+      businessUnitId,
+      ...(trackingType && { trackingType }),
+      ...(search && {
+        OR: [
+          { name: { contains: search, mode: "insensitive" } },
+          { code: { contains: search, mode: "insensitive" } },
+        ],
+      }),
+    };
+
+    // Get assets
+    const [assets, total] = await Promise.all([
+      this.prisma.asset.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { name: "asc" },
+        select: {
+          id: true,
+          code: true,
+          name: true,
+          trackingType: true,
+          imageUrl: true,
+          pricePerHour: true,
+          minDailyHours: true,
+          pricePerKm: true,
+          pricePerDay: true,
+          pricePerWeek: true,
+          operatorCostType: true,
+          operatorCostRate: true,
+          requiresOperator: true,
+        },
+      }),
+      this.prisma.asset.count({ where }),
+    ]);
+
+    // Enrich with availability
+    const enrichedAssets = await Promise.all(
+      assets.map(async (asset) => {
+        const availability = await this.getAssetAvailability(
+          tenantId,
+          businessUnitId,
+          asset.id,
+        );
+
+        return {
+          ...asset,
+          pricePerHour: asset.pricePerHour ? Number(asset.pricePerHour) : null,
+          minDailyHours: asset.minDailyHours
+            ? Number(asset.minDailyHours)
+            : null,
+          pricePerKm: asset.pricePerKm ? Number(asset.pricePerKm) : null,
+          pricePerDay: asset.pricePerDay ? Number(asset.pricePerDay) : null,
+          pricePerWeek: asset.pricePerWeek ? Number(asset.pricePerWeek) : null,
+          pricePerMonth: null, // TODO: Agregar cuando esté en schema
+          operatorCostRate: asset.operatorCostRate
+            ? Number(asset.operatorCostRate)
+            : null,
+          availability,
+        };
+      }),
+    );
+
+    // Filter by availability if needed
+    let filteredAssets = enrichedAssets;
+    if (!includeUnavailable) {
+      filteredAssets = enrichedAssets.filter((a) => a.availability.available);
+    }
+
+    return {
+      data: filteredAssets,
+      meta: {
+        total: includeUnavailable ? total : filteredAssets.length,
+        page,
+        limit,
+        totalPages: Math.ceil(
+          (includeUnavailable ? total : filteredAssets.length) / limit,
+        ),
+      },
+    };
   }
 }

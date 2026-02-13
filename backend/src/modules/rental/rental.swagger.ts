@@ -1,10 +1,18 @@
 /**
  * @swagger
  * tags:
+ *   - name: Accounts
+ *     description: ClientAccount management (shared balance across contracts)
+ *   - name: Contracts
+ *     description: Rental contract management with withdrawal/return operations
+ *   - name: Usage Reports
+ *     description: Daily operator reports for machinery (mobile app)
+ *   - name: Rentals
+ *     description: Active asset rentals tracking
+ *   - name: Jobs
+ *     description: Manual execution of cron jobs (testing/admin)
  *   - name: Quotations
  *     description: Quotation management with digital signature support
- *   - name: Contracts
- *     description: Contract management generated from quotations
  *   - name: Templates
  *     description: Document template management for quotations and contracts
  */

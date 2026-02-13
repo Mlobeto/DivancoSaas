@@ -1314,6 +1314,86 @@ export class AssetsController {
       next(error);
     }
   }
+
+  // ========== QUOTATION SUPPORT ==========
+
+  /**
+   * Get asset availability
+   * GET /assets/:assetId/availability
+   */
+  static async getAssetAvailability(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      const context = validateBusinessUnitContext(req, res);
+      if (!context) return;
+
+      const assetId = validatePathParam(req, res, "assetId");
+      if (!assetId) return;
+
+      const availability = await assetService.getAssetAvailability(
+        context.tenantId,
+        context.businessUnitId,
+        assetId,
+      );
+
+      res.json({
+        success: true,
+        data: availability,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Search assets for quotation
+   * GET /search-for-quotation
+   */
+  static async searchAssetsForQuotation(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      const context = validateBusinessUnitContext(req, res);
+      if (!context) return;
+
+      // Extract query params
+      const search = req.query.search as string | undefined;
+      const trackingType = req.query.trackingType as
+        | "MACHINERY"
+        | "TOOL"
+        | undefined;
+      const includeUnavailable =
+        req.query.includeUnavailable === "true" ||
+        req.query.includeUnavailable === "1";
+      const page = req.query.page ? parseInt(req.query.page as string) : 1;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 20;
+
+      const result = await assetService.searchAssetsForQuotation(
+        context.tenantId,
+        context.businessUnitId,
+        {
+          search,
+          trackingType,
+          includeUnavailable,
+          page,
+          limit,
+        },
+      );
+
+      res.json({
+        success: true,
+        data: result.data,
+        meta: result.meta,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 // Configurar multer para imágenes de maquinarias (5MB)

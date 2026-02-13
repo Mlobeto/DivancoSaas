@@ -23,6 +23,28 @@ export interface CreateAssetDTO {
   supplierId?: string; // Proveedor
   purchaseDate?: Date; // Fecha de compra
   purchasePrice?: number; // Precio de compra
+
+  // ═══════════════════════════════════════
+  // RENTAL: Tipo de tracking y precios
+  // ═══════════════════════════════════════
+  trackingType?: "MACHINERY" | "TOOL" | null; // Tipo de activo para rental
+
+  // Para MACHINERY (maquinaria pesada con operario)
+  pricePerHour?: number; // ej: 625 ($/hora)
+  minDailyHours?: number; // ej: 3.0 (standby - mínimo horas/día)
+  pricePerKm?: number; // ej: 5 ($/km) - opcional para vehículos
+
+  // Para TOOL (herramientas/equipos sin operario)
+  pricePerDay?: number; // ej: 200 ($/día)
+  pricePerWeek?: number; // ej: 1200 ($/semana) - opcional
+  pricePerMonth?: number; // ej: 4500 ($/mes) - opcional
+
+  // Costos de operador (si aplica)
+  operatorCostType?: "PER_DAY" | "PER_HOUR" | null; // Tipo de cobro del operario
+  operatorCostRate?: number; // ej: 3000/día o 375/hora
+
+  // Costos de mantenimiento diario
+  maintenanceCostDaily?: number; // ej: 50 ($/día)
 }
 
 export interface UpdateAssetDTO {
@@ -39,6 +61,18 @@ export interface UpdateAssetDTO {
   supplierId?: string;
   purchaseDate?: Date;
   purchasePrice?: number;
+
+  // RENTAL: Precios y tracking
+  trackingType?: "MACHINERY" | "TOOL" | null;
+  pricePerHour?: number;
+  minDailyHours?: number;
+  pricePerKm?: number;
+  pricePerDay?: number;
+  pricePerWeek?: number;
+  pricePerMonth?: number;
+  operatorCostType?: "PER_DAY" | "PER_HOUR" | null;
+  operatorCostRate?: number;
+  maintenanceCostDaily?: number;
 }
 
 export interface AssetFilters {

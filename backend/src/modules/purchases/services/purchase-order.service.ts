@@ -504,6 +504,8 @@ export class PurchaseOrderService {
         for (let i = 0; i < qtyToCreate; i++) {
           // Obtener siguiente código disponible según la categoría del template
           const nextCode = await this.assetService.getNextAvailableCode(
+            order.tenantId,
+            order.businessUnitId,
             template.category,
           );
 

@@ -39,11 +39,20 @@ export class RentalService {
     businessUnitId: string,
     data: CreateRentalContractDTO,
   ): Promise<RentalContract> {
+    // Este método está obsoleto - usar contractService.createContract en su lugar
+    throw new Error(
+      "Method deprecated - use contractService.createContract instead",
+    );
+
+    /* Código obsoleto completo
     const contract = await this.prisma.rentalContract.create({
       data: {
         tenantId,
         businessUnitId,
         clientId: data.clientId,
+        clientAccountId: '', // Requerido
+        code: '', // Requerido
+        startDate: new Date(), // Requerido
         status: data.status || "DRAFT",
       },
     });
@@ -64,6 +73,7 @@ export class RentalService {
     });
 
     return contract;
+    */
   }
 
   /**

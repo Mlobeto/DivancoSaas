@@ -233,6 +233,9 @@ export interface CreatePurchaseOrderDTO {
     supplyId: string;
     quantity: number;
     unitPrice: number;
+    createsAsset?: boolean;
+    assetTemplateId?: string;
+    notes?: string;
   }>;
 }
 

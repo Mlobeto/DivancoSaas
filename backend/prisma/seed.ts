@@ -1806,7 +1806,7 @@ async function main() {
       category: "IMPLEMENT",
       description:
         "Andamio tubular modular de acero galvanizado para alturas hasta 12m",
-      icon: "construction",
+      icon: "🏗️",
       requiresPreventiveMaintenance: true,
       requiresDocumentation: true,
       customFields: [
@@ -1841,7 +1841,7 @@ async function main() {
       category: "IMPLEMENT",
       description:
         "Panel de cerca temporal de acero para delimitación de obras",
-      icon: "fence",
+      icon: "🚧",
       requiresPreventiveMaintenance: false,
       requiresDocumentation: false,
       customFields: [
@@ -1855,7 +1855,7 @@ async function main() {
       name: "Cinta Métrica Profesional",
       category: "TOOL",
       description: "Cinta métrica de acero de 50m para mediciones topográficas",
-      icon: "ruler",
+      icon: "📏",
       requiresPreventiveMaintenance: false,
       requiresDocumentation: false,
       customFields: [
@@ -1879,7 +1879,7 @@ async function main() {
       category: "TOOL",
       description:
         "Casco de seguridad industrial certificado para construcción",
-      icon: "hardhat",
+      icon: "⛑️",
       requiresPreventiveMaintenance: false,
       requiresDocumentation: true,
       customFields: [
@@ -1904,7 +1904,7 @@ async function main() {
       category: "IMPLEMENT",
       description:
         "Escalera extensible de aluminio de 6m con certificación de seguridad",
-      icon: "ladder",
+      icon: "🪜",
       requiresPreventiveMaintenance: true,
       requiresDocumentation: true,
       customFields: [
@@ -1938,7 +1938,7 @@ async function main() {
       name: "Carretilla Industrial",
       category: "TOOL",
       description: "Carretilla de obra de acero reforzado con rueda neumática",
-      icon: "truck",
+      icon: "🛒",
       requiresPreventiveMaintenance: false,
       requiresDocumentation: false,
       customFields: [
@@ -1966,7 +1966,7 @@ async function main() {
       name: "Señalización de Obra",
       category: "IMPLEMENT",
       description: "Kit de señalización vial para obras: conos, vallas, cintas",
-      icon: "construction",
+      icon: "🚦",
       requiresPreventiveMaintenance: false,
       requiresDocumentation: false,
       customFields: [

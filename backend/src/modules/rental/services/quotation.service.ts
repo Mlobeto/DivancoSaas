@@ -32,33 +32,164 @@ export interface QuotationItemInput {
   productId?: string;
   description: string;
   quantity: number;
-  unitPrice: number;
+  unitPrice?: number; // Opcional si se usa auto-cálculo
   rentalDays?: number;
   rentalStartDate?: Date;
   rentalEndDate?: Date;
+  operatorIncluded?: boolean; // Si incluir operador en el cálculo
+  customUnitPrice?: number; // Override manual del precio unitario
+  customOperatorCost?: number; // Override manual del costo del operador
 }
 
 export class QuotationService {
   /**
-   * Crear cotización
+   * Calcular precio automático de un item desde el asset
+   */
+  private async calculateItemPrice(
+    tenantId: string,
+    businessUnitId: string,
+    item: QuotationItemInput,
+  ): Promise<{
+    unitPrice: number;
+    calculatedUnitPrice: number;
+    operatorCost: number;
+    calculatedOperatorCost: number;
+    priceOverridden: boolean;
+    operatorIncluded: boolean;
+  }> {
+    // Si no hay assetId, usar precio manual
+    if (!item.assetId) {
+      return {
+        unitPrice: item.customUnitPrice || item.unitPrice || 0,
+        calculatedUnitPrice: 0,
+        operatorCost: 0,
+        calculatedOperatorCost: 0,
+        priceOverridden: false,
+        operatorIncluded: false,
+      };
+    }
+
+    // Obtener asset con precios
+    const asset = await prisma.asset.findFirst({
+      where: {
+        id: item.assetId,
+        tenantId,
+        businessUnitId,
+      },
+    });
+
+    if (!asset) {
+      throw new Error(`Asset ${item.assetId} not found`);
+    }
+
+    // Calcular precio según trackingType y rentalDays
+    let calculatedUnitPrice = 0;
+    let calculatedOperatorCost = 0;
+
+    if (asset.trackingType === "MACHINERY") {
+      // MACHINERY: precio por hora
+      if (!asset.pricePerHour) {
+        throw new Error(
+          `Asset ${asset.code} does not have pricePerHour configured`,
+        );
+      }
+
+      const rentalDays: number = item.rentalDays || 1;
+      const minDailyHours: number = asset.minDailyHours
+        ? Number(asset.minDailyHours)
+        : 8;
+
+      // Precio = días * horas mínimas * precio por hora
+      const pricePerHour: number = asset.pricePerHour
+        ? Number(asset.pricePerHour)
+        : 0;
+      calculatedUnitPrice = rentalDays * minDailyHours * pricePerHour;
+
+      // Calcular costo del operador si se incluye
+      if (item.operatorIncluded && asset.operatorCostRate) {
+        const operatorRate: number = Number(asset.operatorCostRate);
+        if (asset.operatorCostType === "PER_HOUR") {
+          calculatedOperatorCost = rentalDays * minDailyHours * operatorRate;
+        } else if (asset.operatorCostType === "PER_DAY") {
+          calculatedOperatorCost = rentalDays * operatorRate;
+        }
+      }
+    } else if (asset.trackingType === "TOOL") {
+      // TOOL: precio por día/semana/mes
+      const rentalDays = item.rentalDays || 1;
+
+      if (rentalDays >= 30 && asset.pricePerMonth) {
+        // Usar precio mensual
+        const months = Math.ceil(rentalDays / 30);
+        calculatedUnitPrice = months * Number(asset.pricePerMonth);
+      } else if (rentalDays >= 7 && asset.pricePerWeek) {
+        // Usar precio semanal
+        const weeks = Math.ceil(rentalDays / 7);
+        calculatedUnitPrice = weeks * Number(asset.pricePerWeek);
+      } else if (asset.pricePerDay) {
+        // Usar precio diario
+        calculatedUnitPrice = rentalDays * Number(asset.pricePerDay);
+      } else {
+        throw new Error(`Asset ${asset.code} does not have pricing configured`);
+      }
+
+      // TOOL no incluye operador típicamente
+      calculatedOperatorCost = 0;
+    }
+
+    // Determinar precio final y si fue overridden
+    const hasCustomPrice = item.customUnitPrice !== undefined;
+    const finalUnitPrice = hasCustomPrice
+      ? item.customUnitPrice!
+      : calculatedUnitPrice;
+
+    const hasCustomOperatorCost = item.customOperatorCost !== undefined;
+    const finalOperatorCost = hasCustomOperatorCost
+      ? item.customOperatorCost!
+      : calculatedOperatorCost;
+
+    return {
+      unitPrice: finalUnitPrice,
+      calculatedUnitPrice,
+      operatorCost: finalOperatorCost,
+      calculatedOperatorCost,
+      priceOverridden: hasCustomPrice,
+      operatorIncluded: item.operatorIncluded || false,
+    };
+  }
+
+  /**
+   * Crear cotización con auto-cálculo de precios
    */
   async createQuotation(params: CreateQuotationParams) {
-    // 1. Calcular totales
-    const subtotal = params.items.reduce(
-      (sum, item) => sum + item.quantity * item.unitPrice,
+    // 1. Calcular precios de cada item (con auto-cálculo si aplica)
+    const itemsWithPrices = await Promise.all(
+      params.items.map(async (item) => {
+        const pricing = await this.calculateItemPrice(
+          params.tenantId,
+          params.businessUnitId,
+          item,
+        );
+        return { ...item, ...pricing };
+      }),
+    );
+
+    // 2. Calcular totales
+    const subtotal = itemsWithPrices.reduce(
+      (sum, item) => sum + item.quantity * (item.unitPrice + item.operatorCost),
       0,
     );
     const taxRate = params.taxRate || 0;
     const taxAmount = subtotal * (taxRate / 100);
     const totalAmount = subtotal + taxAmount;
 
-    // 2. Generar código único
+    // 3. Generar código único
     const code = await this.generateQuotationCode(
       params.tenantId,
       params.businessUnitId,
     );
 
-    // 3. Crear cotización
+    // 4. Crear cotización con precios calculados
     const quotation = await prisma.quotation.create({
       data: {
         tenantId: params.tenantId,
@@ -77,13 +208,27 @@ export class QuotationService {
         termsAndConditions: params.termsAndConditions,
         createdBy: params.createdBy,
         items: {
-          create: params.items.map((item, index) => ({
+          create: itemsWithPrices.map((item, index) => ({
             assetId: item.assetId,
             productId: item.productId,
             description: item.description,
             quantity: item.quantity,
             unitPrice: new Decimal(item.unitPrice),
-            total: new Decimal(item.quantity * item.unitPrice),
+            total: new Decimal(
+              item.quantity * (item.unitPrice + item.operatorCost),
+            ),
+            calculatedUnitPrice:
+              item.calculatedUnitPrice > 0
+                ? new Decimal(item.calculatedUnitPrice)
+                : null,
+            priceOverridden: item.priceOverridden,
+            operatorIncluded: item.operatorIncluded,
+            operatorCost:
+              item.operatorCost > 0 ? new Decimal(item.operatorCost) : null,
+            calculatedOperatorCost:
+              item.calculatedOperatorCost > 0
+                ? new Decimal(item.calculatedOperatorCost)
+                : null,
             rentalDays: item.rentalDays,
             rentalStartDate: item.rentalStartDate,
             rentalEndDate: item.rentalEndDate,
@@ -92,13 +237,125 @@ export class QuotationService {
         },
       },
       include: {
-        items: true,
+        items: {
+          include: {
+            asset: true,
+          },
+        },
         client: true,
         assignedUser: true,
       },
     });
 
     return quotation;
+  }
+
+  /**
+   * Actualizar precios de items manualmente (override)
+   */
+  async updateQuotationItemPrices(
+    quotationId: string,
+    itemUpdates: Array<{
+      itemId: string;
+      customUnitPrice?: number;
+      customOperatorCost?: number;
+    }>,
+  ) {
+    // Verificar que la cotización existe y está en estado editable
+    const quotation = await prisma.quotation.findUnique({
+      where: { id: quotationId },
+      include: { items: true },
+    });
+
+    if (!quotation) {
+      throw new Error(`Quotation ${quotationId} not found`);
+    }
+
+    if (quotation.status !== "draft") {
+      throw new Error(
+        `Cannot update prices for quotation in status ${quotation.status}`,
+      );
+    }
+
+    // Actualizar cada item
+    await Promise.all(
+      itemUpdates.map(async (update) => {
+        const item = quotation.items.find((i) => i.id === update.itemId);
+        if (!item) {
+          throw new Error(`Item ${update.itemId} not found in quotation`);
+        }
+
+        // Calcular nuevo precio con override
+        const newUnitPrice =
+          update.customUnitPrice !== undefined
+            ? update.customUnitPrice
+            : Number(item.unitPrice);
+
+        const newOperatorCost =
+          update.customOperatorCost !== undefined
+            ? update.customOperatorCost
+            : Number(item.operatorCost || 0);
+
+        const newTotal = item.quantity * (newUnitPrice + newOperatorCost);
+
+        // Actualizar item
+        await prisma.quotationItem.update({
+          where: { id: update.itemId },
+          data: {
+            unitPrice: new Decimal(newUnitPrice),
+            operatorCost:
+              newOperatorCost > 0 ? new Decimal(newOperatorCost) : null,
+            total: new Decimal(newTotal),
+            priceOverridden:
+              update.customUnitPrice !== undefined
+                ? true
+                : item.priceOverridden,
+          },
+        });
+      }),
+    );
+
+    // Recalcular totales de la cotización
+    const updatedQuotation = await prisma.quotation.findUnique({
+      where: { id: quotationId },
+      include: { items: true },
+    });
+
+    if (!updatedQuotation) {
+      throw new Error("Failed to fetch updated quotation");
+    }
+
+    const newSubtotal = updatedQuotation.items.reduce(
+      (sum, item) => sum + Number(item.total),
+      0,
+    );
+    const taxRate = Number(updatedQuotation.taxRate);
+    const newTaxAmount = newSubtotal * (taxRate / 100);
+    const newTotalAmount = newSubtotal + newTaxAmount;
+
+    // Actualizar totales
+    await prisma.quotation.update({
+      where: { id: quotationId },
+      data: {
+        subtotal: new Decimal(newSubtotal),
+        taxAmount: new Decimal(newTaxAmount),
+        totalAmount: new Decimal(newTotalAmount),
+      },
+    });
+
+    // Retornar cotización actualizada
+    return prisma.quotation.findUnique({
+      where: { id: quotationId },
+      include: {
+        items: {
+          include: {
+            asset: true,
+          },
+        },
+        client: true,
+        assignedUser: true,
+      },
+    });
   }
 
   /**
@@ -342,12 +599,22 @@ export class QuotationService {
       let rentalContract = null;
 
       // 2. Si tiene activos de alquiler, crear RentalContract operativo
+      // TODO: Migrar a nuevo sistema de RentalContract con ClientAccount
       if (hasRentalAssets) {
+        // Por ahora, lanzar error indicando que debe usarse el nuevo flujo
+        throw new Error(
+          "Rental contracts must be created via POST /api/v1/rental/contracts with ClientAccount",
+        );
+
+        /* Código obsoleto - requiere migración
         rentalContract = await tx.rentalContract.create({
           data: {
             tenantId: quotation.tenantId,
             businessUnitId: quotation.businessUnitId,
             clientId: quotation.clientId,
+            clientAccountId: '', // REQUERIDO - debe obtener/crear ClientAccount
+            code: '', // REQUERIDO - debe generar código
+            startDate: startDate, // REQUERIDO
             status: "ACTIVE",
             contractAssets: {
               create: quotation.items
@@ -367,9 +634,12 @@ export class QuotationService {
             contractAssets: true,
           },
         });
+        */
+      }
 
-        // 3. Actualizar ubicación de los activos y emitir eventos
-        const assetIds = quotation.items
+      // 3. Actualizar ubicación de los activos y emitir eventos (comentado temporalmente)
+      /* Código obsoleto
+      const assetIds = quotation.items
           .filter((item) => item.assetId)
           .map((item) => item.assetId!);
 
@@ -399,7 +669,7 @@ export class QuotationService {
             },
           });
         }
-      }
+      */
 
       // 4. Actualizar estado de cotización
       await tx.quotation.update({

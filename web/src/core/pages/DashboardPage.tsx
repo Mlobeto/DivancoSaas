@@ -18,6 +18,10 @@ import {
   ChevronDown,
   ChevronUp,
   BarChart3,
+  FileSignature,
+  FilePlus,
+  Shapes,
+  Wallet,
 } from "lucide-react";
 
 export function DashboardPage() {
@@ -131,6 +135,45 @@ export function DashboardPage() {
                   className="flex items-center gap-2 px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm"
                 >
                   <UserPlus className="w-4 h-4" /> Nuevo Cliente →
+                </a>
+              </div>
+            </div>
+
+            {/* Cotizaciones y Contratos */}
+            <div className="card bg-dark-800 border-purple-800">
+              <h4 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+                <FileSignature className="w-4 h-4" /> COTIZACIONES Y CONTRATOS
+              </h4>
+              <div className="space-y-2">
+                <a
+                  href="/quotations"
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm"
+                >
+                  <List className="w-4 h-4" /> Lista de Cotizaciones →
+                </a>
+                <a
+                  href="/quotations/new"
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm"
+                >
+                  <FilePlus className="w-4 h-4" /> Nueva Cotización →
+                </a>
+                <a
+                  href="/quotations/templates"
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm"
+                >
+                  <Shapes className="w-4 h-4" /> Plantillas PDF →
+                </a>
+                <a
+                  href="/rental/contracts"
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm"
+                >
+                  <FileText className="w-4 h-4" /> Contratos de Renta →
+                </a>
+                <a
+                  href="/rental/accounts"
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm"
+                >
+                  <Wallet className="w-4 h-4" /> Estados de Cuenta →
                 </a>
               </div>
             </div>
