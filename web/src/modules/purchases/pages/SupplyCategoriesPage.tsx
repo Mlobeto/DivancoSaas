@@ -10,7 +10,7 @@ import { Layout } from "@/core/components/Layout";
 import { supplyCategoryService } from "../services/supply-category.service";
 import { SupplyCategoryType } from "../types/supply-category.types";
 import { Boxes, Upload } from "lucide-react";
-import { CSVImportUpload } from "@/shared/components/CSVImportUpload";
+import { CSVImportUpload } from "@/shared/components/CSVImportUpload.tsx";
 
 const CATEGORY_TYPE_LABELS = {
   [SupplyCategoryType.CONSUMABLE]: "Consumible",

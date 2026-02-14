@@ -20,7 +20,7 @@ import {
   Upload,
 } from "lucide-react";
 import type { Supply } from "../types/supply.types";
-import { CSVImportUpload } from "@/shared/components/CSVImportUpload";
+import { CSVImportUpload } from "@/shared/components/CSVImportUpload.tsx";
 
 export function SuppliesPage() {
   const navigate = useNavigate();

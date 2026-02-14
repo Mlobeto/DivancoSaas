@@ -13,7 +13,7 @@ import {
   type Asset,
 } from "@/modules/machinery/services/assets.service";
 import { AlertCircle, FileText, Settings, Plus, Upload } from "lucide-react";
-import { CSVImportUpload } from "@/shared/components/CSVImportUpload";
+import { CSVImportUpload } from "@/shared/components/CSVImportUpload.tsx";
 
 export function AssetsListPage() {
   const navigate = useNavigate();
