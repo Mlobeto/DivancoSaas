@@ -1,7 +1,7 @@
-backend
-mobile
-shared
-docs
-scripts
+/backend
+/mobile
+/shared
+/docs
+/scripts
 node_modules
 .git
