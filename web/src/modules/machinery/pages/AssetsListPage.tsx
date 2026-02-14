@@ -63,7 +63,7 @@ export function AssetsListPage() {
   return (
     <Layout
       title="Gestión de Activos"
-      subtitle={`Maquinaria, equipos e implementos - ${businessUnit.name}`}
+      subtitle={`Activos y equipos del negocio - ${businessUnit.name}`}
       actions={
         <>
           <button

@@ -155,11 +155,11 @@ export function AssetTemplatesPage() {
   return (
     <Layout
       title="Plantillas de Activos"
-      subtitle={`Configuración de tipos de maquinaria e implementos - ${businessUnit.name}`}
+      subtitle={`Configuración de plantillas de activos - ${businessUnit.name}`}
       actions={
         <>
           <button onClick={() => navigate("/machinery")} className="btn-ghost">
-            ← Maquinaria
+            ← Inventario
           </button>
           <button
             onClick={() => navigate("/machinery/templates/create")}

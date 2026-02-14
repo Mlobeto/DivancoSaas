@@ -54,7 +54,7 @@ export function Layout({ children, title, subtitle, actions }: LayoutProps) {
       path: "/dashboard",
     },
     {
-      label: "Maquinaria",
+      label: "Inventario",
       icon: Box,
       path: "/machinery",
       subItems: [
