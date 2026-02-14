@@ -157,3 +157,119 @@ export interface PaginatedResponse<T> {
     totalPages: number;
   };
 }
+
+// ============================================
+// BULK INVENTORY TYPES
+// ============================================
+
+export enum AssetManagementType {
+  UNIT = "UNIT", // Individual tracking - one DB row per physical unit
+  BULK = "BULK", // Quantity-based inventory - stock levels only
+}
+
+export interface StockLevelDTO {
+  id: string;
+  businessUnitId: string;
+  templateId: string;
+  quantityAvailable: number;
+  quantityReserved: number;
+  quantityRented: number;
+  location?: string;
+  pricePerDay?: number;
+  pricePerWeek?: number;
+  pricePerMonth?: number;
+  minStock?: number;
+  maxStock?: number;
+  notes?: string;
+}
+
+export interface AddStockDTO {
+  templateId: string;
+  quantity: number;
+  reason?: string;
+  reference?: string; // Purchase order, etc.
+  location?: string;
+}
+
+export interface ReserveStockDTO {
+  templateId: string;
+  quantity: number;
+  reference?: string; // Quotation ID
+  location?: string;
+}
+
+export interface RentOutStockDTO {
+  templateId: string;
+  quantity: number;
+  fromReserved?: boolean; // true = from reserved, false = from available
+  reference?: string; // Contract ID
+  location?: string;
+}
+
+export interface ReturnStockDTO {
+  templateId: string;
+  quantity: number;
+  reference?: string; // Contract ID
+  location?: string;
+}
+
+export interface AdjustStockDTO {
+  templateId: string;
+  quantityDelta: number; // Positive or negative adjustment
+  reason: string;
+  notes?: string;
+  location?: string;
+}
+
+export interface UpdateStockLevelDTO {
+  pricePerDay?: number;
+  pricePerWeek?: number;
+  pricePerMonth?: number;
+  minStock?: number;
+  maxStock?: number;
+  notes?: string;
+}
+
+export interface StockMovementDTO {
+  id: string;
+  stockLevelId: string;
+  type: StockMovementType;
+  quantity: number;
+  reason?: string;
+  reference?: string;
+  balanceAfter?: {
+    available: number;
+    reserved: number;
+    rented: number;
+  };
+  notes?: string;
+  createdAt: Date;
+  createdBy?: string;
+}
+
+export enum StockMovementType {
+  PURCHASE = "PURCHASE",
+  RENTAL_OUT = "RENTAL_OUT",
+  RENTAL_RETURN = "RENTAL_RETURN",
+  SALE = "SALE",
+  ADJUSTMENT = "ADJUSTMENT",
+  LOSS = "LOSS",
+  TRANSFER = "TRANSFER",
+  RESERVE = "RESERVE",
+  UNRESERVE = "UNRESERVE",
+}
+
+export interface StockStatsDTO {
+  totalTemplates: number;
+  totalAvailable: number;
+  totalReserved: number;
+  totalRented: number;
+  totalUnits: number;
+  lowStockCount: number;
+  lowStockItems: Array<{
+    templateId: string;
+    templateName: string;
+    available: number;
+    minStock: number;
+  }>;
+}

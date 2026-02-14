@@ -12,14 +12,15 @@
      * PROJECT STRUCTURE
      * ====================================================== */
     "outDir": "./dist",
-    "baseUrl": "./src",
+    "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"],
-      "@core/*": ["core/*"],
-      "@modules/*": ["modules/*"],
-      "@integrations/*": ["integrations/*"],
-      "@shared/*": ["shared/*"],
-      "@config/*": ["config/*"]
+      "@/*": ["src/*"],
+      "@core/*": ["src/core/*"],
+      "@modules/*": ["src/modules/*"],
+      "@integrations/*": ["src/integrations/*"],
+      "@shared/*": ["src/shared/*"],
+      "@config/*": ["src/config/*"],
+      "@divancosaas/shared": ["../shared/dist/index.d.ts"]
     },
 
     /* ======================================================

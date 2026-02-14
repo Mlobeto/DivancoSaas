@@ -37,7 +37,6 @@ model Tenant {
   subscriptions     PlatformSubscription[]
   auditLogs         AuditLog[]
   eventQueue        EventQueue[]
-  equipment         Equipment[]
   assets            Asset[]
   supplies          Supply[]
   rentalContracts   RentalContract[]
@@ -53,6 +52,9 @@ model Tenant {
   clientAccounts    ClientAccount[] // Cuentas de alquiler
   templates         Template[]
   quotations        Quotation[]
+  stockLevels       StockLevel[]
+  stockMovements    StockMovement[]
+  bulkRentalItems   BulkRentalItem[]
 
   @@index([slug])
   @@index([country])
@@ -89,9 +91,9 @@ model BusinessUnit {
   businessUnitIntents    BusinessUnitIntent[]
   userChannelIdentities  UserChannelIdentity[]
   eventQueue             EventQueue[]
-  equipment              Equipment[]
   assetTemplates         AssetTemplate[]
   assets                 Asset[]
+  stockLevels            StockLevel[]
   supplyCategories       SupplyCategory[]
   supplies               Supply[]
   rentalContracts        RentalContract[]
@@ -150,6 +152,10 @@ model User {
   createdRentals         AssetRental[]           @relation
   createdRentalContracts RentalContract[]        @relation("RentalContractCreator")
   createdRentalMovements RentalAccountMovement[] @relation("RentalMovementCreator")
+
+  // Stock management relations
+  createdStockMovements  StockMovement[]  @relation("StockMovementCreator")
+  createdBulkRentalItems BulkRentalItem[] @relation("BulkRentalItemCreator")
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -655,63 +661,6 @@ enum EventStatus {
 }
 
 // ============================================
-// MÓDULOS: EQUIPOS Y MAQUINARIA
-// ============================================
-
-model Equipment {
-  id             String @id @default(uuid())
-  tenantId       String
-  businessUnitId String
-
-  // Identificación
-  code        String // Código único interno (EXC-CAT-320, GRU-LIE-110)
-  name        String
-  category    String // "Maquinaria pesada", "Acceso y soporte", etc.
-  description String?
-
-  // Especificaciones técnicas
-  specifications Json @default("{}")
-
-  // Costos de alquiler
-  dailyRate   Decimal @db.Decimal(10, 2)
-  weeklyRate  Decimal @db.Decimal(10, 2)
-  monthlyRate Decimal @db.Decimal(10, 2)
-
-  // Estado
-  status    EquipmentStatus    @default(AVAILABLE)
-  condition EquipmentCondition @default(GOOD)
-
-  // Metadata
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  businessUnit BusinessUnit @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
-
-  @@unique([tenantId, code])
-  @@index([tenantId])
-  @@index([businessUnitId])
-  @@index([status])
-  @@map("equipment")
-}
-
-enum EquipmentStatus {
-  AVAILABLE // Disponible para alquiler
-  RENTED // Actualmente alquilado
-  MAINTENANCE // En mantenimiento
-  OUT_OF_SERVICE // Fuera de servicio
-  RESERVED // Reservado
-}
-
-enum EquipmentCondition {
-  EXCELLENT // Excelente
-  GOOD // Buena
-  FAIR // Regular
-  POOR // Mala
-}
-
-// ============================================
 // ASSETS MODULE - Rental Equipment Management
 // ============================================
 
@@ -724,11 +673,14 @@ model AssetTemplate {
   description String?
   icon        String? // Emoji o nombre de ícono
 
+  // Management type: individual tracking vs bulk inventory
+  managementType AssetManagementType @default(UNIT)
+
   requiresPreventiveMaintenance Boolean @default(false)
   requiresDocumentation         Boolean @default(false) // Si requiere SOAT, Seguro, Certificaciones, etc.
 
-  // Array de definiciones de campos personalizados
-  customFields Json // CustomField[]
+  // Array de definiciones de campos personalizados (opcional)
+  customFields Json? // CustomField[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -737,10 +689,13 @@ model AssetTemplate {
   businessUnit       BusinessUnit        @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
   assets             Asset[]
   purchaseOrderItems PurchaseOrderItem[]
+  stockLevels        StockLevel[] // For BULK management type
+  bulkRentalItems    BulkRentalItem[] // BULK items in rental contracts
 
   @@unique([businessUnitId, name])
   @@index([businessUnitId])
   @@index([category])
+  @@index([managementType])
   @@map("asset_templates")
 }
 
@@ -749,6 +704,11 @@ enum AssetCategory {
   IMPLEMENT // Implementos (andamios, herramientas grandes)
   VEHICLE // Vehículos
   TOOL // Herramientas menores
+}
+
+enum AssetManagementType {
+  UNIT // Individual tracking (one DB row per physical unit)
+  BULK // Quantity-based inventory (stock levels only)
 }
 
 model Asset {
@@ -1098,6 +1058,158 @@ model AssetDocumentType {
   @@index([businessUnitId])
   @@index([isActive])
   @@map("asset_document_types")
+}
+
+// ============================================
+// BULK INVENTORY: Stock Level Management
+// ============================================
+// For AssetTemplates with managementType = BULK
+// Manages quantities without creating individual Asset rows
+
+model StockLevel {
+  id             String @id @default(uuid())
+  tenantId       String
+  businessUnitId String
+  templateId     String
+
+  // Quantity tracking (NEVER update directly - use StockMovement service only)
+  quantityAvailable Int @default(0) // Available for rental/sale
+  quantityReserved  Int @default(0) // Reserved in quotations
+  quantityRented    Int @default(0) // Currently rented out
+
+  // Location (optional, for multi-location support)
+  location String? // Warehouse, site, etc.
+
+  // Pricing for bulk items (can override template defaults)
+  pricePerDay   Decimal? @db.Decimal(10, 2)
+  pricePerWeek  Decimal? @db.Decimal(10, 2)
+  pricePerMonth Decimal? @db.Decimal(10, 2)
+  unitCost      Decimal? @db.Decimal(10, 2) // Cost per unit for inventory valuation
+
+  // Alerts
+  minStock Int? // Minimum stock alert threshold
+  maxStock Int? // Maximum stock capacity
+
+  // Optimistic locking for concurrency control
+  version Int @default(0)
+
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  businessUnit    BusinessUnit     @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
+  template        AssetTemplate    @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  movements       StockMovement[]
+  bulkRentalItems BulkRentalItem[]
+
+  @@unique([tenantId, businessUnitId, templateId, location])
+  @@index([tenantId])
+  @@index([businessUnitId])
+  @@index([templateId])
+  @@index([quantityAvailable])
+  @@map("stock_levels")
+}
+
+// Stock movements for bulk inventory audit trail
+model StockMovement {
+  id           String @id @default(uuid())
+  tenantId     String
+  stockLevelId String
+
+  // Movement type and quantity
+  type     StockMovementType
+  quantity Int // Always positive (type indicates direction)
+
+  // Before/after snapshots for complete audit trail
+  quantityBefore Int // Total quantity before this movement
+  quantityAfter  Int // Total quantity after this movement
+
+  // Detailed state snapshots
+  availableBefore Int
+  availableAfter  Int
+  reservedBefore  Int
+  reservedAfter   Int
+  rentedBefore    Int
+  rentedAfter     Int
+
+  // References (REQUIRED for RESERVE, RENT_OUT, RETURN)
+  referenceId   String? // Quotation ID, Contract ID, etc.
+  referenceType String? // "Quotation", "RentalContract", "PurchaseOrder"
+
+  // Reason is REQUIRED for ADJUST movements
+  reason String? // "damaged", "lost", "initial", "purchase", etc.
+  notes  String?
+
+  // Location (if movement affects specific location)
+  location String?
+
+  // Audit
+  createdAt DateTime @default(now())
+  createdBy String?
+
+  // Relations
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  stockLevel StockLevel @relation(fields: [stockLevelId], references: [id], onDelete: Cascade)
+  creator    User?      @relation("StockMovementCreator", fields: [createdBy], references: [id])
+
+  @@index([tenantId])
+  @@index([stockLevelId, createdAt])
+  @@index([type])
+  @@index([referenceId])
+  @@index([referenceType])
+  @@map("stock_movements")
+}
+
+enum StockMovementType {
+  ADD // Incoming stock (purchase, transfer in, initial stock)
+  RESERVE // Reserve stock for quotation
+  UNRESERVE // Release reservation (quotation cancelled)
+  RENT_OUT // Rent out to customer (contract signed)
+  RETURN // Return from rental
+  ADJUST // Manual adjustment (loss, damage, correction)
+}
+
+// ============================================
+// BULK RENTAL ITEMS (Connect BULK inventory to contracts)
+// ============================================
+
+model BulkRentalItem {
+  id         String @id @default(uuid())
+  tenantId   String
+  contractId String
+  templateId String
+
+  // Quantity and pricing snapshot at contract creation
+  quantity      Int
+  pricePerDay   Decimal? @db.Decimal(10, 2)
+  pricePerWeek  Decimal? @db.Decimal(10, 2)
+  pricePerMonth Decimal? @db.Decimal(10, 2)
+
+  // Location tracking
+  location String?
+
+  // Reference to stock level used
+  stockLevelId String?
+
+  // Audit
+  createdAt DateTime @default(now())
+  createdBy String?
+
+  // Relations
+  tenant     Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contract   RentalContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  template   AssetTemplate  @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  stockLevel StockLevel?    @relation(fields: [stockLevelId], references: [id], onDelete: SetNull)
+  creator    User?          @relation("BulkRentalItemCreator", fields: [createdBy], references: [id])
+
+  @@index([tenantId])
+  @@index([contractId])
+  @@index([templateId])
+  @@index([stockLevelId])
+  @@map("bulk_rental_items")
 }
 
 // ============================================
@@ -1785,6 +1897,7 @@ model RentalContract {
   // Relaciones rental
   movements     RentalAccountMovement[] // Historial de transacciones (de ESTE contrato)
   activeRentals AssetRental[] // Assets actualmente rentados
+  bulkItems     BulkRentalItem[] // BULK inventory items in this contract
 
   // Legacy relations (mantener compatibilidad)
   contractAssets ContractAsset[]

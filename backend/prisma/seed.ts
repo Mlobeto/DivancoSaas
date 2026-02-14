@@ -8,10 +8,15 @@
  * 4. Asignación de permisos a roles (RolePermissions)
  *
  * Ejecutar con: npx prisma db seed
+ *
+ * IMPORTANTE: Usa PrismaClient directo (sin extensiones de auto-filtering)
+ * porque seeds no tienen request context con tenantId/businessUnitId.
+ * Las extensiones se aplicarían solo en runtime de la aplicación.
  */
 
 import { PrismaClient, PermissionScope } from "@prisma/client";
 
+// Usar PrismaClient directo sin extensiones para seeds
 const prisma = new PrismaClient();
 
 async function main() {
@@ -1343,8 +1348,11 @@ async function main() {
   // ============================================
   // 8. EQUIPOS DE CONSTRUCCIÓN DISPONIBLES
   // ============================================
-  console.log("🚜 Creando inventario de equipos...");
+  console.log(
+    "🚜 Creando inventario de equipos (AssetTemplates + Assets UNIT)...",
+  );
 
+  // Equipment templates with their specifications
   const equipmentData = [
     {
       code: "EXC-CAT-320",
@@ -1576,9 +1584,40 @@ async function main() {
     },
   ];
 
-  const createdEquipment = [];
+  const createdAssets = [];
   for (const eq of equipmentData) {
-    const equipment = await prisma.equipment.upsert({
+    // Create AssetTemplate for each equipment type
+    const template = await prisma.assetTemplate.upsert({
+      where: {
+        businessUnitId_name: {
+          businessUnitId: rentalBU.id,
+          name: eq.name,
+        },
+      },
+      update: {
+        category: eq.category,
+        description: eq.description,
+        managementType: "UNIT",
+        specifications: eq.specifications,
+        dailyRate: eq.dailyRate,
+        weeklyRate: eq.weeklyRate,
+        monthlyRate: eq.monthlyRate,
+      },
+      create: {
+        businessUnitId: rentalBU.id,
+        name: eq.name,
+        category: eq.category,
+        description: eq.description,
+        managementType: "UNIT",
+        specifications: eq.specifications,
+        dailyRate: eq.dailyRate,
+        weeklyRate: eq.weeklyRate,
+        monthlyRate: eq.monthlyRate,
+      },
+    });
+
+    // Create individual Asset (UNIT management)
+    const asset = await prisma.asset.upsert({
       where: {
         tenantId_code: {
           tenantId: demoTenant.id,
@@ -1586,35 +1625,25 @@ async function main() {
         },
       },
       update: {
-        name: eq.name,
-        category: eq.category,
-        description: eq.description,
-        specifications: eq.specifications,
-        dailyRate: eq.dailyRate,
-        weeklyRate: eq.weeklyRate,
-        monthlyRate: eq.monthlyRate,
         status: eq.status as any,
         condition: eq.condition as any,
       },
       create: {
         tenantId: demoTenant.id,
         businessUnitId: rentalBU.id,
+        templateId: template.id,
         code: eq.code,
-        name: eq.name,
-        category: eq.category,
-        description: eq.description,
-        specifications: eq.specifications,
-        dailyRate: eq.dailyRate,
-        weeklyRate: eq.weeklyRate,
-        monthlyRate: eq.monthlyRate,
         status: eq.status as any,
         condition: eq.condition as any,
       },
     });
-    createdEquipment.push(eq.code);
+
+    createdAssets.push(eq.code);
   }
 
-  console.log(`✅ ${createdEquipment.length} equipos de construcción creados`);
+  console.log(
+    `✅ ${createdAssets.length} equipos de construcción creados (AssetTemplates + Assets UNIT)`,
+  );
   console.log("");
 
   // ============================================

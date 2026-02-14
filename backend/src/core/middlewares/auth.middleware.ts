@@ -20,8 +20,12 @@ interface JwtPayload {
 }
 
 /**
- * Middleware de autenticación
- * Verifica JWT y carga el contexto del usuario
+ * Middleware de autenticación - HARDENED
+ *
+ * SECURITY ENHANCEMENTS:
+ * 1. Validates businessUnit belongs to user's tenant
+ * 2. Prevents cross-tenant access via BU manipulation
+ * 3. Strict validation of tenant/BU ownership
  */
 export async function authenticate(
   req: Request,
@@ -63,6 +67,7 @@ export async function authenticate(
             ? { businessUnitId: businessUnitId }
             : undefined,
           include: {
+            businessUnit: true, // CRITICAL: Load BU to validate tenant ownership
             role: {
               include: {
                 permissions: {
@@ -97,6 +102,41 @@ export async function authenticate(
         },
       });
       return;
+    }
+
+    // SECURITY: Validate businessUnit belongs to user's tenant
+    if (businessUnitId) {
+      const userBU = user.businessUnits.find(
+        (ub) => ub.businessUnitId === businessUnitId,
+      );
+
+      if (!userBU) {
+        res.status(403).json({
+          success: false,
+          error: {
+            code: "FORBIDDEN",
+            message: "User does not have access to this business unit",
+          },
+        });
+        return;
+      }
+
+      // CRITICAL: Verify BU belongs to user's tenant
+      if (userBU.businessUnit.tenantId !== user.tenantId) {
+        console.error(
+          `[SECURITY VIOLATION] BusinessUnit ${businessUnitId} belongs to tenant ${userBU.businessUnit.tenantId} ` +
+            `but user ${user.id} belongs to tenant ${user.tenantId}. This should NEVER happen.`,
+        );
+
+        res.status(403).json({
+          success: false,
+          error: {
+            code: "FORBIDDEN",
+            message: "Business unit does not belong to your tenant",
+          },
+        });
+        return;
+      }
     }
 
     // Construir contexto

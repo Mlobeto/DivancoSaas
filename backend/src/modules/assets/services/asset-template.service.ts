@@ -27,6 +27,11 @@ export enum AssetCategory {
   TOOL = "TOOL", // Herramientas menores
 }
 
+export enum AssetManagementType {
+  UNIT = "UNIT", // Individual tracking (one DB row per physical unit)
+  BULK = "BULK", // Quantity-based inventory (stock levels only)
+}
+
 export interface CustomField {
   key: string; // "brand", "oil_change_km"
   label: string; // "Marca", "Kilómetros para cambio de aceite"
@@ -47,9 +52,11 @@ export interface CustomField {
 export interface CreateTemplateInput {
   name: string;
   category: AssetCategory;
+  managementType: AssetManagementType;
   description?: string;
   icon?: string;
   requiresPreventiveMaintenance: boolean;
+  requiresDocumentation?: boolean;
   customFields: CustomField[];
 }
 
@@ -57,12 +64,15 @@ export interface UpdateTemplateInput {
   name?: string;
   description?: string;
   icon?: string;
+  managementType?: AssetManagementType;
   requiresPreventiveMaintenance?: boolean;
+  requiresDocumentation?: boolean;
   customFields?: CustomField[];
 }
 
 export interface ListTemplatesOptions {
   category?: AssetCategory;
+  managementType?: AssetManagementType;
   search?: string;
   page?: number;
   limit?: number;
@@ -80,7 +90,7 @@ export class AssetTemplateService {
     businessUnitId: string,
     options: ListTemplatesOptions = {},
   ) {
-    const { category, search, page = 1, limit = 50 } = options;
+    const { category, managementType, search, page = 1, limit = 50 } = options;
 
     const where: any = {
       businessUnitId,
@@ -88,6 +98,10 @@ export class AssetTemplateService {
 
     if (category) {
       where.category = category;
+    }
+
+    if (managementType) {
+      where.managementType = managementType;
     }
 
     if (search) {
@@ -105,7 +119,10 @@ export class AssetTemplateService {
         take: limit,
         include: {
           _count: {
-            select: { assets: true },
+            select: {
+              assets: true,
+              stockLevels: true,
+            },
           },
         },
       }),
@@ -131,7 +148,21 @@ export class AssetTemplateService {
       where: { id: templateId, businessUnitId },
       include: {
         _count: {
-          select: { assets: true },
+          select: {
+            assets: true,
+            stockLevels: true,
+          },
+        },
+        stockLevels: {
+          select: {
+            id: true,
+            quantityAvailable: true,
+            quantityReserved: true,
+            quantityRented: true,
+            location: true,
+            minStock: true,
+            maxStock: true,
+          },
         },
       },
     });
@@ -173,12 +204,27 @@ export class AssetTemplateService {
         businessUnitId,
         name: data.name,
         category: data.category,
+        managementType: data.managementType,
         description: data.description,
         icon: data.icon,
         requiresPreventiveMaintenance: data.requiresPreventiveMaintenance,
+        requiresDocumentation: data.requiresDocumentation ?? false,
         customFields: data.customFields as any,
       },
     });
+
+    // If BULK management type, create initial stock level
+    if (data.managementType === AssetManagementType.BULK) {
+      await prisma.stockLevel.create({
+        data: {
+          businessUnitId,
+          templateId: template.id,
+          quantityAvailable: 0,
+          quantityReserved: 0,
+          quantityRented: 0,
+        },
+      });
+    }
 
     return template;
   }
@@ -225,6 +271,32 @@ export class AssetTemplateService {
       this.validateCustomFields(data.customFields);
     }
 
+    // Prevent changing managementType if template has assets or stock levels
+    if (
+      data.managementType &&
+      data.managementType !== existing.managementType
+    ) {
+      const counts = await prisma.assetTemplate.findUnique({
+        where: { id: templateId },
+        include: {
+          _count: {
+            select: { assets: true, stockLevels: true },
+          },
+        },
+      });
+
+      if (
+        counts &&
+        (counts._count.assets > 0 || counts._count.stockLevels > 0)
+      ) {
+        throw new AppError(
+          400,
+          "CANNOT_CHANGE_MANAGEMENT_TYPE",
+          "Cannot change management type for templates with existing assets or stock levels",
+        );
+      }
+    }
+
     const template = await prisma.assetTemplate.update({
       where: { id: templateId },
       data: {
@@ -233,8 +305,12 @@ export class AssetTemplateService {
           description: data.description,
         }),
         ...(data.icon !== undefined && { icon: data.icon }),
+        ...(data.managementType && { managementType: data.managementType }),
         ...(data.requiresPreventiveMaintenance !== undefined && {
           requiresPreventiveMaintenance: data.requiresPreventiveMaintenance,
+        }),
+        ...(data.requiresDocumentation !== undefined && {
+          requiresDocumentation: data.requiresDocumentation,
         }),
         ...(data.customFields && { customFields: data.customFields as any }),
       },
@@ -357,9 +433,11 @@ export class AssetTemplateService {
       {
         name: newName,
         category: original.category as AssetCategory,
+        managementType: original.managementType as AssetManagementType,
         description: original.description || undefined,
         icon: original.icon || undefined,
         requiresPreventiveMaintenance: original.requiresPreventiveMaintenance,
+        requiresDocumentation: original.requiresDocumentation,
         customFields: original.customFields as unknown as CustomField[],
       },
       businessUnitId,

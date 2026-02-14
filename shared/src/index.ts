@@ -275,3 +275,9 @@ export interface SyncStatus {
   failed: number;
   lastSyncAt?: Date;
 }
+
+// ============================================
+// REQUEST CONTEXT (Multi-tenant isolation)
+// ============================================
+
+export * from "./context/request-context";

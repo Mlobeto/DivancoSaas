@@ -20,6 +20,7 @@ import {
 import { RentalController } from "./controllers/rental.controller";
 import { SupplyController } from "./controllers/supply.controller";
 import { IncidentController } from "./controllers/incident.controller";
+import { StockLevelController } from "./controllers/stock-level.controller";
 import assetTemplateRoutes from "./routes/asset-template.routes";
 
 export class AssetsModule implements ModuleContract {
@@ -35,6 +36,25 @@ export class AssetsModule implements ModuleContract {
 
     // ========== ASSET TEMPLATES ==========
     router.use("/templates", assetTemplateRoutes);
+
+    // ========== STOCK LEVELS (BULK INVENTORY) ==========
+    router.get("/stock-levels/stats", StockLevelController.getStockStats); // Before :templateId
+    router.get("/stock-levels", StockLevelController.listStockLevels);
+    router.get("/stock-levels/:templateId", StockLevelController.getStockLevel);
+    router.patch(
+      "/stock-levels/:templateId",
+      StockLevelController.updateStockLevel,
+    );
+    router.get(
+      "/stock-levels/:templateId/movements",
+      StockLevelController.getStockMovements,
+    );
+    router.post("/stock-levels/add", StockLevelController.addStock);
+    router.post("/stock-levels/reserve", StockLevelController.reserveStock);
+    router.post("/stock-levels/unreserve", StockLevelController.unreserveStock);
+    router.post("/stock-levels/rent", StockLevelController.rentOutStock);
+    router.post("/stock-levels/return", StockLevelController.returnStock);
+    router.post("/stock-levels/adjust", StockLevelController.adjustStock);
 
     // ========== ASSETS ==========
     router.post(
