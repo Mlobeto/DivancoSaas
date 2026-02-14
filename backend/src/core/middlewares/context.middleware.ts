@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import {
   requestContext,
   RequestContextData,
-} from "../../../../shared/src/context/request-context";
+} from "@shared/context/request-context";
 
 /**
  * Context Injector Middleware
