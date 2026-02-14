@@ -13,14 +13,14 @@
      * ====================================================== */
     "outDir": "./dist",
     "baseUrl": ".",
+    "composite": true,
     "paths": {
       "@/*": ["src/*"],
       "@core/*": ["src/core/*"],
       "@modules/*": ["src/modules/*"],
       "@integrations/*": ["src/integrations/*"],
       "@shared/*": ["src/shared/*"],
-      "@config/*": ["src/config/*"],
-      "@divancosaas/shared": ["../shared/dist/index.d.ts"]
+      "@config/*": ["src/config/*"]
     },
 
     /* ======================================================
@@ -48,7 +48,11 @@
   /* ======================================================
    * FILES
    * ====================================================== */
-  "include": ["src/**/*", "prisma/**/*"],
+  "include": [
+    "src/**/*",
+    "prisma/**/*",
+    "../shared/src/context/request-context.ts"
+  ],
   "exclude": [
     "node_modules",
     "dist",

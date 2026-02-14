@@ -1,5 +1,8 @@
 import { Request, Response, NextFunction } from "express";
-import { requestContext, RequestContextData } from "@divancosaas/shared";
+import {
+  requestContext,
+  RequestContextData,
+} from "../../../../shared/src/context/request-context";
 
 /**
  * Context Injector Middleware

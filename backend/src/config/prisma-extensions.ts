@@ -3,7 +3,7 @@ import {
   hasRequestContext,
   getTenantId,
   getBusinessUnitId,
-} from "@divancosaas/shared";
+} from "../../../shared/src/context/request-context";
 import {
   isTenantScoped,
   isBusinessUnitScoped,
