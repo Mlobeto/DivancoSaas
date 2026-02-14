@@ -145,11 +145,7 @@ createRoot(document.getElementById("root")!).render(
               </ProtectedRoute>
             }
           />
-          {/* Redirect old /equipment route to /machinery */}
-          <Route
-            path="/equipment"
-            element={<Navigate to="/machinery" replace />}
-          />
+
           {/* Purchases Module Routes */}
           <Route
             path="/purchases"

@@ -22,13 +22,7 @@ export interface BusinessUnitStats {
     totalBusinessUnits: number;
     activeModules: number;
   };
-  equipment?: {
-    total: number;
-    available: number;
-    rented: number;
-    maintenance: number;
-    outOfService: number;
-  };
+
   recentActivity: {
     eventCount: number;
     pendingEvents: number;

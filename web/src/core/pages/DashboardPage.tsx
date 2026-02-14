@@ -305,50 +305,7 @@ export function DashboardPage() {
                     </div>
                   </div>
 
-                  {/* Equipment Stats */}
-                  {buStats.equipment && (
-                    <div>
-                      <h4 className="text-md font-semibold mb-4">Equipos</h4>
-                      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                        <div className="card bg-dark-800">
-                          <p className="text-dark-400 text-xs mb-1">Total</p>
-                          <p className="text-2xl font-bold text-white">
-                            {buStats.equipment.total}
-                          </p>
-                        </div>
-                        <div className="card bg-green-900/20 border-green-800">
-                          <p className="text-dark-400 text-xs mb-1">
-                            Disponibles
-                          </p>
-                          <p className="text-2xl font-bold text-green-400">
-                            {buStats.equipment.available}
-                          </p>
-                        </div>
-                        <div className="card bg-blue-900/20 border-blue-800">
-                          <p className="text-dark-400 text-xs mb-1">Rentados</p>
-                          <p className="text-2xl font-bold text-blue-400">
-                            {buStats.equipment.rented}
-                          </p>
-                        </div>
-                        <div className="card bg-yellow-900/20 border-yellow-800">
-                          <p className="text-dark-400 text-xs mb-1">
-                            Mantenimiento
-                          </p>
-                          <p className="text-2xl font-bold text-yellow-400">
-                            {buStats.equipment.maintenance}
-                          </p>
-                        </div>
-                        <div className="card bg-red-900/20 border-red-800">
-                          <p className="text-dark-400 text-xs mb-1">
-                            Fuera de Servicio
-                          </p>
-                          <p className="text-2xl font-bold text-red-400">
-                            {buStats.equipment.outOfService}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+
                 </div>
               )}
             </div>

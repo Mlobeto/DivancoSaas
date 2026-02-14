@@ -1,36 +1,51 @@
-# Módulo: Maquinaria (Machinery)
+# Módulo: Assets (Maquinaria)
 
 ## Propósito
 
-Gestión completa de maquinaria e implementos para alquiler en proyectos de construcción.
+Gestión completa de activos (maquinaria, herramientas, equipos) con sistema de plantillas, seguimiento de estado y documentación.
 
 ## Características
 
-- ✅ Listado de maquinaria con filtros (estado, condición, categoría)
-- ✅ CRUD completo de maquinaria
-- ✅ Gestión de tarifas (diaria, semanal, mensual)
-- ✅ Estados: Disponible, Rentado, Mantenimiento, Fuera de servicio, Reservado
-- ✅ Condiciones: Excelente, Bueno, Regular, Malo
+- ✅ Sistema de plantillas de activos con campos personalizados
+- ✅ Gestión UNIT (tracking individual) y BULK (inventario por cantidad)
+- ✅ Estados: AVAILABLE, RENTED, MAINTENANCE, OUT_OF_SERVICE, RESERVED
+- ✅ Documentación de activos con alertas de vencimiento
+- ✅ Tipos de documentos configurables
+- ✅ Dashboard de alertas para documentos próximos a vencer
+- ✅ Importación CSV de activos
+- ✅ Imágenes de activos
 
 ## Estructura
 
 ```
 machinery/
 ├── pages/
-│   └── MachineryPage.tsx       # Listado y gestión de maquinaria
+│   ├── AssetsListPage.tsx          # Listado de activos
+│   ├── AssetFormPage.tsx           # Formulario crear/editar
+│   ├── AssetTemplatesPage.tsx      # Gestión de plantillas
+│   ├── DocumentTypesPage.tsx       # Tipos de documentos
+│   ├── AlertsDashboardPage.tsx     # Dashboard de alertas
+│   └── TemplateWizardPage.tsx      # Asistente plantillas
 ├── services/
-│   └── machinery.service.ts    # API calls para maquinaria
-├── types/
-│   └── (por definir)
-└── index.ts                    # Exports del módulo
+│   ├── assets.service.ts           # CRUD de activos
+│   ├── asset-template.service.ts   # Plantillas
+│   ├── document-types.service.ts   # Tipos de docs
+│   └── alerts.service.ts           # Alertas
+├── components/
+│   └── AssetDocumentationModal.tsx # Modal docs
+└── index.ts                        # Exports del módulo
 ```
 
 ## Endpoints Backend
 
-- `GET /api/v1/equipment` - Lista maquinaria
-- `POST /api/v1/equipment` - Crea maquinaria
-- `PUT /api/v1/equipment/:id` - Actualiza maquinaria
-- `DELETE /api/v1/equipment/:id` - Elimina maquinaria
+- `GET /api/v1/assets` - Lista activos
+- `POST /api/v1/assets` - Crea activo
+- `GET /api/v1/assets/:id` - Obtiene activo
+- `PATCH /api/v1/assets/:id` - Actualiza activo
+- `DELETE /api/v1/assets/:id` - Elimina activo
+- `POST /api/v1/assets/:id/state` - Actualiza estado
+- `GET /api/v1/assets/:id/events` - Eventos del activo
+- `DELETE /api/v1/assets/:id/image` - Elimina imagen
 
 ## Dependencias del Core
 
