@@ -1,10 +1,10 @@
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useAuthStore } from "@/store/auth.store";
 import { businessUnitService } from "@/core/services/businessUnit.service";
 import type { BusinessUnit } from "@/core/types/api.types";
-import { LayoutDashboard, Box, ShoppingCart, Users } from "lucide-react";
+import DynamicNavigation from "@/app/navigation/DynamicNavigation";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -14,7 +14,6 @@ interface LayoutProps {
 }
 
 export function Layout({ children, title, subtitle, actions }: LayoutProps) {
-  const location = useLocation();
   const { user, tenant, businessUnit, role, setAuth, clearAuth } =
     useAuthStore();
   const [showBuSelector, setShowBuSelector] = useState(false);
@@ -44,47 +43,6 @@ export function Layout({ children, title, subtitle, actions }: LayoutProps) {
       });
     }
     setShowBuSelector(false);
-  };
-
-  // Navigation menu items
-  const menuItems = [
-    {
-      label: "Dashboard",
-      icon: LayoutDashboard,
-      path: "/dashboard",
-    },
-    {
-      label: "Inventario",
-      icon: Box,
-      path: "/inventory",
-      subItems: [
-        { label: "Plantillas", path: "/inventory/templates" },
-        { label: "Activos", path: "/inventory" },
-      ],
-    },
-    {
-      label: "Compras",
-      icon: ShoppingCart,
-      path: "/purchases",
-      subItems: [
-        { label: "Categorías", path: "/purchases/categories" },
-        { label: "Suministros", path: "/supplies" },
-        { label: "Proveedores", path: "/suppliers" },
-        { label: "Órdenes", path: "/purchase-orders" },
-      ],
-    },
-    {
-      label: "Clientes",
-      icon: Users,
-      path: "/clients",
-    },
-  ];
-
-  const isActive = (path: string) => {
-    if (path === "/dashboard") {
-      return location.pathname === path;
-    }
-    return location.pathname.startsWith(path);
   };
 
   return (
@@ -139,49 +97,9 @@ export function Layout({ children, title, subtitle, actions }: LayoutProps) {
                 </div>
               </Link>
 
-              {/* Desktop Navigation */}
-              <div className="hidden lg:flex items-center gap-1 ml-8">
-                {menuItems.map((item) => {
-                  const IconComponent = item.icon;
-                  return (
-                    <div key={item.path} className="relative group">
-                      <Link
-                        to={item.path}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                          isActive(item.path)
-                            ? "bg-primary-600 text-white"
-                            : "text-dark-300 hover:text-white hover:bg-dark-700"
-                        }`}
-                      >
-                        <IconComponent className="w-4 h-4" />
-                        <span className="text-sm font-medium">
-                          {item.label}
-                        </span>
-                      </Link>
-
-                      {/* Dropdown for subitems */}
-                      {item.subItems && (
-                        <div className="absolute top-full left-0 mt-1 w-48 bg-dark-800 border border-dark-700 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
-                          <div className="py-2">
-                            {item.subItems.map((subItem) => (
-                              <Link
-                                key={subItem.path}
-                                to={subItem.path}
-                                className={`block px-4 py-2 text-sm transition-colors ${
-                                  location.pathname === subItem.path
-                                    ? "bg-dark-700 text-primary-400"
-                                    : "text-dark-300 hover:bg-dark-700 hover:text-white"
-                                }`}
-                              >
-                                {subItem.label}
-                              </Link>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+              {/* Desktop Navigation - Dynamic from modules */}
+              <div className="hidden lg:block ml-8">
+                <DynamicNavigation isMobile={false} />
               </div>
             </div>
 
@@ -329,6 +247,30 @@ export function Layout({ children, title, subtitle, actions }: LayoutProps) {
                       )}
                     </div>
                     <div className="p-2">
+                      {/* Admin: Module Management (SUPER_ADMIN only) */}
+                      {user?.role === "SUPER_ADMIN" && (
+                        <a
+                          href="/admin/modules"
+                          className="w-full flex items-center gap-3 px-4 py-2 text-sm text-primary-400 hover:bg-dark-700 rounded-lg transition-colors mb-2"
+                          onClick={() => setShowUserMenu(false)}
+                        >
+                          <svg
+                            className="w-5 h-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"
+                            />
+                          </svg>
+                          Gestión de Módulos
+                        </a>
+                      )}
+
                       <button
                         onClick={handleLogout}
                         className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-400 hover:bg-dark-700 rounded-lg transition-colors"
@@ -356,53 +298,16 @@ export function Layout({ children, title, subtitle, actions }: LayoutProps) {
           </div>
         </div>
 
-        {/* Mobile Menu */}
+        {/* Mobile Menu - Dynamic Navigation */}
         {showMobileMenu && (
           <div className="lg:hidden border-t border-dark-700 bg-dark-800">
-            <div className="px-4 py-4 space-y-1">
-              {menuItems.map((item) => {
-                const IconComponent = item.icon;
-                return (
-                  <div key={item.path}>
-                    <Link
-                      to={item.path}
-                      onClick={() => setShowMobileMenu(false)}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                        isActive(item.path)
-                          ? "bg-primary-600 text-white"
-                          : "text-dark-300 hover:text-white hover:bg-dark-700"
-                      }`}
-                    >
-                      <IconComponent className="w-5 h-5" />
-                      <span className="font-medium">{item.label}</span>
-                    </Link>
-
-                    {/* Mobile Subitems */}
-                    {item.subItems && (
-                      <div className="ml-8 mt-1 space-y-1">
-                        {item.subItems.map((subItem) => (
-                          <Link
-                            key={subItem.path}
-                            to={subItem.path}
-                            onClick={() => setShowMobileMenu(false)}
-                            className={`block px-4 py-2 rounded-lg text-sm transition-colors ${
-                              location.pathname === subItem.path
-                                ? "bg-dark-700 text-primary-400"
-                                : "text-dark-400 hover:text-white hover:bg-dark-700"
-                            }`}
-                          >
-                            {subItem.label}
-                          </Link>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+            <div className="px-4 py-4">
+              <DynamicNavigation isMobile={true} />
             </div>
           </div>
         )}
       </nav>
+
       {/* Main Header - Page Title & Actions */}
       {(title || actions) && (
         <div className="bg-dark-800 border-b border-dark-700">

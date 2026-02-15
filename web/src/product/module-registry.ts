@@ -103,6 +103,15 @@ class ModuleRegistry {
   }
 
   /**
+   * Unlock the registry (for development/HMR only)
+   * WARNING: Only use this during development hot reloads
+   */
+  unlock(): void {
+    this.locked = false;
+    console.log("[ModuleRegistry] Registry unlocked (development mode)");
+  }
+
+  /**
    * Check if registry is locked
    */
   isLocked(): boolean {

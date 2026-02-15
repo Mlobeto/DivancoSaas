@@ -16,27 +16,30 @@ import { moduleRegistry } from "@/product";
 export async function loadModules(): Promise<void> {
   console.log("[ModuleLoader] Loading modules...");
 
+  // Check if already loaded (prevents double-loading in development)
+  if (moduleRegistry.isLocked()) {
+    console.log(
+      "[ModuleLoader] Registry already locked, skipping reload (development mode)",
+    );
+    return;
+  }
+
   try {
     // Import all module definitions
     // These imports are done dynamically to allow for code splitting in the future
-    const [
-      { rentalModule },
-      { inventoryModule },
-      { clientsModule },
-      { purchasesModule },
-    ] = await Promise.all([
-      import("@/modules/rental"),
-      import("@/modules/inventory"),
-      import("@/modules/clients"),
-      import("@/modules/purchases"),
-    ]);
+    // NOTE: rental is now loaded as a VERTICAL in loadPlatformModules
+    const [{ inventoryModule }, { clientsModule }, { purchasesModule }] =
+      await Promise.all([
+        import("@/modules/inventory"),
+        import("@/modules/clients"),
+        import("@/modules/purchases"),
+      ]);
 
-    // Register all modules
+    // Register all modules (rental excluded - now a vertical)
     const results = moduleRegistry.registerAll([
       inventoryModule,
       clientsModule,
       purchasesModule,
-      rentalModule,
     ]);
 
     // Log results

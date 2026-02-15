@@ -8,6 +8,7 @@ export interface User {
   firstName: string;
   lastName: string;
   avatar?: string;
+  role?: "SUPER_ADMIN" | "USER"; // Global role from User model
 }
 
 export interface Tenant {
@@ -23,11 +24,7 @@ export interface BusinessUnit {
   slug: string;
   description?: string;
   enabledModules?: string[];
-  role?: {
-    // Solo en getMyBusinessUnits()
-    id: string;
-    name: string;
-  };
+  role?: string; // Role within this BU (OWNER, ADMIN, MANAGER, etc.)
 }
 
 export interface AuthResponse {
@@ -35,8 +32,7 @@ export interface AuthResponse {
   refreshToken?: string;
   user: User;
   tenant: Tenant;
-  businessUnits: BusinessUnit[]; // ← El backend devuelve array
-  role?: string;
+  businessUnits: BusinessUnit[]; // ← El backend devuelve array con roles
 }
 
 export interface LoginRequest {

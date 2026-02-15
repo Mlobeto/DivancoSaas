@@ -25,7 +25,15 @@ export function LoginPage() {
       setAuth({
         user: data.user,
         tenant: data.tenant!,
-        businessUnit: firstBusinessUnit,
+        businessUnit: firstBusinessUnit
+          ? {
+              id: firstBusinessUnit.id,
+              name: firstBusinessUnit.name,
+              slug: firstBusinessUnit.slug,
+              description: firstBusinessUnit.description,
+            }
+          : undefined,
+        role: firstBusinessUnit?.role, // Role within the selected BU
       });
       navigate("/dashboard");
     },

@@ -1,11 +1,15 @@
 /**
- * Navigation Builder
+ * Navigation Builder - Platform Architecture
  *
- * Dynamically builds navigation structure from registered modules.
- * Handles permissions, ordering, and conditional visibility.
+ * Dynamically builds navigation structure from PLATFORM architecture:
+ * - Gets active VERTICAL navigation (priority)
+ * - Includes required CORE module navigation
+ * - Includes LEGACY module navigation (during migration)
+ * - Handles permissions, ordering, and conditional visibility
  */
 
 import { NavigationItem, ModuleContext } from "./types/module.types";
+import { verticalRegistry } from "./vertical-registry";
 import { moduleRegistry } from "./module-registry";
 
 /**
@@ -14,12 +18,20 @@ import { moduleRegistry } from "./module-registry";
 export class NavigationBuilder {
   /**
    * Build navigation tree for current context
+   * Merges vertical, core, and legacy module navigation
    */
   buildNavigation(context: ModuleContext): NavigationItem[] {
-    const items = moduleRegistry.getNavigation(context);
+    // Get navigation from active vertical (includes core navigation)
+    const verticalItems = verticalRegistry.getNavigation(context);
+
+    // Get navigation from legacy modules (during migration)
+    const legacyItems = moduleRegistry.getNavigation(context);
+
+    // Merge both navigation sets (verticals have priority)
+    const allItems = [...verticalItems, ...legacyItems];
 
     // Filter by permissions
-    const filtered = this.filterByPermissions(items, context.permissions);
+    const filtered = this.filterByPermissions(allItems, context.permissions);
 
     // Sort by order
     const sorted = this.sortByOrder(filtered);

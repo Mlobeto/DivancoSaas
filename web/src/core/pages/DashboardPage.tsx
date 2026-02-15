@@ -3,26 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "@/store/auth.store";
 import { dashboardService } from "@/core/services/dashboard.service";
 import { Layout } from "@/core/components/Layout";
-import {
-  Box,
-  ShoppingCart,
-  Users,
-  Archive,
-  Layout as LayoutIcon,
-  AlertCircle,
-  Building2,
-  FileText,
-  DollarSign,
-  List,
-  UserPlus,
-  ChevronDown,
-  ChevronUp,
-  BarChart3,
-  FileSignature,
-  FilePlus,
-  Shapes,
-  Wallet,
-} from "lucide-react";
+import { DynamicDashboardCards } from "@/core/components/DynamicDashboardCards";
+import { ChevronDown, ChevronUp, BarChart3 } from "lucide-react";
 
 export function DashboardPage() {
   const { tenant, businessUnit } = useAuthStore();
@@ -63,121 +45,9 @@ export function DashboardPage() {
             permite activar módulos según las necesidades de cada Business Unit,
             con datos completamente aislados y workflows configurables.
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
-            {/* Inventario y Activos */}
-            <div className="card bg-dark-800 border-primary-800">
-              <h4 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-                <Box className="w-4 h-4" /> INVENTARIO Y ACTIVOS
-              </h4>
-              <div className="space-y-2">
-                <a
-                  href="/inventory"
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm"
-                >
-                  <Archive className="w-4 h-4" /> Activos →
-                </a>
-                <a
-                  href="/inventory/templates"
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm"
-                >
-                  <LayoutIcon className="w-4 h-4" /> Plantillas →
-                </a>
-                <a
-                  href="/inventory/alerts"
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm"
-                >
-                  <AlertCircle className="w-4 h-4" /> Alertas de Documentación →
-                </a>
-              </div>
-            </div>
 
-            {/* Compras y Proveedores */}
-            <div className="card bg-dark-800 border-blue-800">
-              <h4 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-                <ShoppingCart className="w-4 h-4" /> COMPRAS Y PROVEEDORES
-              </h4>
-              <div className="space-y-2">
-                <a
-                  href="/suppliers"
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm"
-                >
-                  <Building2 className="w-4 h-4" /> Proveedores →
-                </a>
-                <a
-                  href="/purchase-orders"
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm"
-                >
-                  <FileText className="w-4 h-4" /> Órdenes de Compra →
-                </a>
-                <a
-                  href="/purchases/quotes"
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm"
-                >
-                  <DollarSign className="w-4 h-4" /> Cotizaciones →
-                </a>
-              </div>
-            </div>
-
-            {/* Clientes */}
-            <div className="card bg-dark-800 border-green-800">
-              <h4 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-                <Users className="w-4 h-4" /> CLIENTES
-              </h4>
-              <div className="space-y-2">
-                <a
-                  href="/clients"
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm"
-                >
-                  <List className="w-4 h-4" /> Lista de Clientes →
-                </a>
-                <a
-                  href="/clients/new"
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm"
-                >
-                  <UserPlus className="w-4 h-4" /> Nuevo Cliente →
-                </a>
-              </div>
-            </div>
-
-            {/* Cotizaciones y Contratos */}
-            <div className="card bg-dark-800 border-purple-800">
-              <h4 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-                <FileSignature className="w-4 h-4" /> COTIZACIONES Y CONTRATOS
-              </h4>
-              <div className="space-y-2">
-                <a
-                  href="/quotations"
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm"
-                >
-                  <List className="w-4 h-4" /> Lista de Cotizaciones →
-                </a>
-                <a
-                  href="/quotations/new"
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm"
-                >
-                  <FilePlus className="w-4 h-4" /> Nueva Cotización →
-                </a>
-                <a
-                  href="/quotations/templates"
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm"
-                >
-                  <Shapes className="w-4 h-4" /> Plantillas PDF →
-                </a>
-                <a
-                  href="/rental/contracts"
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm"
-                >
-                  <FileText className="w-4 h-4" /> Contratos de Renta →
-                </a>
-                <a
-                  href="/rental/accounts"
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm"
-                >
-                  <Wallet className="w-4 h-4" /> Estados de Cuenta →
-                </a>
-              </div>
-            </div>
-          </div>
+          {/* Dynamic Module Cards */}
+          <DynamicDashboardCards />
         </div>
 
         {/* Collapsible Statistics Panels */}

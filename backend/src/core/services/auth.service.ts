@@ -351,6 +351,7 @@ export class AuthService {
         firstName: user.firstName,
         lastName: user.lastName,
         tenantId: user.tenant?.id || null,
+        role: user.role, // ← Include global role (SUPER_ADMIN or USER)
       },
       tenant: user.tenant
         ? {
@@ -364,6 +365,7 @@ export class AuthService {
         id: ubu.businessUnit.id,
         name: ubu.businessUnit.name,
         slug: ubu.businessUnit.slug,
+        role: ubu.role.name, // ← Role within this BU (OWNER, ADMIN, etc.)
       })),
     };
   }

@@ -1,7 +1,11 @@
 /**
- * Dynamic App Router
+ * Dynamic App Router - Platform Architecture
  *
- * Builds React Router configuration dynamically from registered modules.
+ * Builds React Router configuration from PLATFORM architecture:
+ * - Gets active VERTICAL for tenant
+ * - Includes required CORE module routes
+ * - Merges vertical-specific routes
+ *
  * IMPORTANT: Router is created ONCE after login, not on every render.
  */
 
@@ -12,7 +16,7 @@ import {
   Outlet,
 } from "react-router-dom";
 import { Suspense } from "react";
-import { moduleRegistry, type ModuleContext } from "@/product";
+import { verticalRegistry, type ModuleContext } from "@/product";
 
 // Import core components
 import { Layout } from "@/core/components/Layout";
@@ -20,19 +24,33 @@ import { ProtectedRoute } from "@/core/components/ProtectedRoute";
 import { LoginPage } from "@/core/pages/LoginPage";
 import { RegisterPage } from "@/core/pages/RegisterPage";
 import { DashboardPage } from "@/core/pages/DashboardPage";
+import { ModuleAssignmentManager } from "@/core/pages/ModuleAssignmentManager";
 // import { SelectBusinessUnitPage } from "@/core/pages/SelectBusinessUnitPage"; // TODO: Create this page
 
 /**
- * Build dynamic routes from registered modules
+ * Build dynamic routes from active vertical and its required core modules
  * @param context - Module context with tenant, businessUnit, permissions
  */
 export function buildRoutes(context: ModuleContext): RouteObject[] {
-  // Get enabled modules for this context
-  const moduleRoutes = moduleRegistry.getRoutes(context);
+  // Get routes from active vertical (includes required core module routes)
+  const platformRoutes = verticalRegistry.getRoutes(context);
 
   console.log(
-    `[AppRouter] Building routes for ${moduleRoutes.length} module routes`,
+    `[AppRouter] Building routes: ${platformRoutes.length} total (core + vertical)`,
   );
+
+  // Get active vertical info for logging
+  const activeVertical = verticalRegistry.getActiveVerticalInfo(context);
+  if (activeVertical) {
+    console.log(
+      `[AppRouter] Active vertical: ${activeVertical.verticalId} (${activeVertical.industry})`,
+    );
+    console.log(
+      `[AppRouter] Using core modules: ${activeVertical.enabledCoreModules.join(", ")}`,
+    );
+  } else {
+    console.warn("[AppRouter] No active vertical found for tenant");
+  }
 
   return [
     // Public routes (no auth required)
@@ -54,34 +72,29 @@ export function buildRoutes(context: ModuleContext): RouteObject[] {
     {
       element: <ProtectedRoute />,
       children: [
+        // Root redirect to dashboard
         {
-          element: (
-            <Layout>
-              <Suspense fallback={<div>Loading...</div>}>
-                <Outlet />
-              </Suspense>
-            </Layout>
-          ),
-          children: [
-            // Root redirect to dashboard
-            {
-              path: "/",
-              element: <Navigate to="/dashboard" replace />,
-            },
-            // Dashboard
-            {
-              path: "/dashboard",
-              element: <DashboardPage />,
-            },
-            // Dynamic module routes (all lazy-loaded)
-            ...moduleRoutes,
-            // 404 fallback (future)
-            // {
-            //   path: '*',
-            //   element: <NotFoundPage />,
-            // },
-          ],
+          path: "/",
+          element: <Navigate to="/dashboard" replace />,
         },
+        // Dashboard
+        {
+          path: "/dashboard",
+          element: <DashboardPage />,
+        },
+        // Admin: Module Assignment (OWNER only)
+        {
+          path: "/admin/modules",
+          element: <ModuleAssignmentManager />,
+        },
+        // Dynamic platform routes (core + vertical, all lazy-loaded)
+        // Note: Each page handles its own Layout wrapper
+        ...platformRoutes,
+        // 404 fallback (future)
+        // {
+        //   path: '*',
+        //   element: <NotFoundPage />,
+        // },
       ],
     },
   ];

@@ -5,11 +5,48 @@ import { RouterProvider } from "react-router-dom";
 
 // Module System
 import { loadModules } from "@/app/module-loader/loadModules";
+import { loadPlatformModules } from "@/app/module-loader/loadPlatformModules";
 import { createAppRouter } from "@/app/router/AppRouter";
 import { createModuleContext } from "@/product";
 import { useAuthStore } from "@/store/auth.store";
 
 import "./index.css";
+
+// ============================================================
+// Global module loading state
+// ============================================================
+let modulesLoadingPromise: Promise<void> | null = null;
+let modulesLoaded = false;
+
+/**
+ * Load modules once globally (outside React lifecycle)
+ * This prevents double-loading in StrictMode development
+ */
+function loadModulesOnce(): Promise<void> {
+  if (modulesLoaded) {
+    return Promise.resolve();
+  }
+
+  if (modulesLoadingPromise) {
+    return modulesLoadingPromise;
+  }
+
+  modulesLoadingPromise = Promise.all([
+    loadModules(), // OLD: modules in @/modules (except rental)
+    loadPlatformModules(), // NEW: verticals in @/verticals
+  ])
+    .then(() => {
+      console.log("[App] All modules loaded successfully");
+      modulesLoaded = true;
+    })
+    .catch((error) => {
+      console.error("[App] Failed to load modules:", error);
+      modulesLoadingPromise = null; // Reset to allow retry
+      throw error;
+    });
+
+  return modulesLoadingPromise;
+}
 
 // Configure TanStack Query
 const queryClient = new QueryClient({
@@ -30,28 +67,27 @@ const queryClient = new QueryClient({
  * 3. Router re-creation when tenant/BU changes
  */
 function App() {
-  const [modulesLoaded, setModulesLoaded] = useState(false);
+  const [modulesReady, setModulesReady] = useState(false);
   const [router, setRouter] = useState<ReturnType<
     typeof createAppRouter
   > | null>(null);
   const { tenant, businessUnit, role } = useAuthStore();
 
-  // Load modules on mount (once)
+  // Load modules on mount (uses global cache to prevent double-loading)
   useEffect(() => {
-    loadModules()
+    loadModulesOnce()
       .then(() => {
-        console.log("[App] Modules loaded successfully");
-        setModulesLoaded(true);
+        setModulesReady(true);
       })
       .catch((error) => {
-        console.error("[App] Failed to load modules:", error);
-        // Show error UI to user
+        console.error("[App] Module loading failed:", error);
+        // Keep modulesReady as false to show error state
       });
   }, []);
 
   // Create router when modules are loaded AND auth context changes
   useEffect(() => {
-    if (!modulesLoaded) return;
+    if (!modulesReady) return;
 
     // Create module context
     // Note: router is created even without auth (public routes like /login exist)
@@ -70,10 +106,10 @@ function App() {
       "[App] Router created for context:",
       `tenant=${context.tenantId}, bu=${context.businessUnitId}`,
     );
-  }, [modulesLoaded, tenant?.id, businessUnit?.id, role]);
+  }, [modulesReady, tenant?.id, businessUnit?.id, role]);
 
   // Show loading state while modules load
-  if (!modulesLoaded || !router) {
+  if (!modulesReady || !router) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">

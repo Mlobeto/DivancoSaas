@@ -2,11 +2,15 @@
  * Product Layer - Public API
  *
  * This is the main entry point for the product/platform layer.
- * Import from here to use module system, feature flags, etc.
+ * Import from here to use module system, feature flags, registries, etc.
  */
 
-// Types
+// Types - Base Module System
 export * from "./types/module.types";
+
+// Types - Core & Vertical
+export * from "./types/core.types";
+export * from "./types/vertical.types";
 
 // Feature Flags
 export {
@@ -18,8 +22,10 @@ export {
   createModuleContext,
 } from "./feature-flags";
 
-// Module Registry
-export { moduleRegistry, registerModule } from "./module-registry";
+// Registries
+export { moduleRegistry, registerModule } from "./module-registry"; // Legacy - will be deprecated
+export { coreRegistry } from "./core-registry";
+export { verticalRegistry } from "./vertical-registry";
 
 // Navigation
 export { NavigationBuilder, navigationBuilder } from "./navigation-builder";

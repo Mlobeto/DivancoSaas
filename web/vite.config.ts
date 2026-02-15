@@ -10,6 +10,7 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
       "@/core": path.resolve(__dirname, "./src/core"),
       "@/modules": path.resolve(__dirname, "./src/modules"),
+      "@/verticals": path.resolve(__dirname, "./src/verticals"),
       "@/shared": path.resolve(__dirname, "./src/shared"),
       "@/lib": path.resolve(__dirname, "./src/lib"),
       "@/store": path.resolve(__dirname, "./src/store"),

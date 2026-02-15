@@ -26,6 +26,7 @@
       "@/*": ["src/*"],
       "@/core/*": ["src/core/*"],
       "@/modules/*": ["src/modules/*"],
+      "@/verticals/*": ["src/verticals/*"],
       "@/shared/*": ["src/shared/*"],
       "@/lib/*": ["src/lib/*"],
       "@/store/*": ["src/store/*"]
