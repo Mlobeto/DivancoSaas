@@ -11,10 +11,10 @@ import { useAuthStore } from "@/store/auth.store";
 import {
   assetsService,
   type CreateAssetData,
-} from "@/modules/machinery/services/assets.service";
-import { assetTemplateService } from "@/modules/machinery/services/asset-template.service";
+} from "@/modules/inventory/services/assets.service";
+import { assetTemplateService } from "@/modules/inventory/services/asset-template.service";
 import { ArrowLeft, X, Image as ImageIcon } from "lucide-react";
-import { AssetDocumentationModal } from "@/modules/machinery/components/AssetDocumentationModal";
+import { AssetDocumentationModal } from "@/modules/inventory/components/AssetDocumentationModal";
 
 export function AssetFormPage() {
   const navigate = useNavigate();
@@ -135,7 +135,7 @@ export function AssetFormPage() {
         ) {
           setShowDocModal(true);
         } else {
-          navigate("/machinery");
+          navigate("/inventory");
         }
       }
     },
@@ -152,7 +152,7 @@ export function AssetFormPage() {
       if (selectedImage) {
         uploadImageMutation.mutate({ assetId: id!, file: selectedImage });
       } else {
-        navigate("/machinery");
+        navigate("/inventory");
       }
     },
   });
@@ -172,10 +172,10 @@ export function AssetFormPage() {
         ) {
           setShowDocModal(true);
         } else {
-          navigate("/machinery");
+          navigate("/inventory");
         }
       } else {
-        navigate("/machinery");
+        navigate("/inventory");
       }
     },
   });
@@ -252,7 +252,7 @@ export function AssetFormPage() {
         {/* Header */}
         <div className="flex items-center gap-4">
           <button
-            onClick={() => navigate("/machinery")}
+            onClick={() => navigate("/inventory")}
             className="p-2 text-[#9e9e9e] hover:text-[#0696d7] hover:bg-[#3f3f3f] rounded-none transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -676,7 +676,7 @@ export function AssetFormPage() {
           <div className="flex gap-4">
             <button
               type="button"
-              onClick={() => navigate("/machinery")}
+              onClick={() => navigate("/inventory")}
               disabled={isLoading}
               className="flex-1 px-6 py-3 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors disabled:opacity-50"
             >
@@ -704,7 +704,7 @@ export function AssetFormPage() {
           assetName={formData.name}
           onClose={() => {
             setShowDocModal(false);
-            navigate("/machinery");
+            navigate("/inventory");
           }}
           onSuccess={() => {
             queryClient.invalidateQueries({ queryKey: ["assets"] });

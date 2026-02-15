@@ -11,7 +11,7 @@ import { useAuthStore } from "@/store/auth.store";
 import {
   assetsService,
   type Asset,
-} from "@/modules/machinery/services/assets.service";
+} from "@/modules/inventory/services/assets.service";
 import { AlertCircle, FileText, Settings, Plus, Upload } from "lucide-react";
 import { CSVImportUpload } from "@/shared/components/CSVImportUpload";
 
@@ -74,28 +74,28 @@ export function AssetsListPage() {
             Importar CSV
           </button>
           <button
-            onClick={() => navigate("/machinery/alerts")}
+            onClick={() => navigate("/inventory/alerts")}
             className="autocad-btn-secondary flex items-center gap-2"
           >
             <AlertCircle className="w-4 h-4" />
             Alertas
           </button>
           <button
-            onClick={() => navigate("/machinery/document-types")}
+            onClick={() => navigate("/inventory/document-types")}
             className="autocad-btn-secondary flex items-center gap-2"
           >
             <FileText className="w-4 h-4" />
             Tipos de Docs
           </button>
           <button
-            onClick={() => navigate("/machinery/templates")}
+            onClick={() => navigate("/inventory/templates")}
             className="autocad-btn-secondary flex items-center gap-2"
           >
             <Settings className="w-4 h-4" />
             Plantillas
           </button>
           <button
-            onClick={() => navigate("/machinery/assets/new")}
+            onClick={() => navigate("/inventory/assets/new")}
             className="autocad-btn-primary flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
@@ -169,7 +169,7 @@ export function AssetsListPage() {
               No hay activos registrados
             </p>
             <button
-              onClick={() => navigate("/machinery/assets/new")}
+              onClick={() => navigate("/inventory/assets/new")}
               className="autocad-btn-primary"
             >
               Crear primer activo

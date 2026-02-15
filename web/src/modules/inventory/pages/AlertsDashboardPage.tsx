@@ -9,7 +9,7 @@ import { useAuthStore } from "@/store/auth.store";
 import {
   alertsService,
   type ExpiringDocument,
-} from "@/modules/machinery/services/alerts.service";
+} from "@/modules/inventory/services/alerts.service";
 import {
   AlertCircle,
   AlertTriangle,
@@ -186,7 +186,7 @@ export function AlertsDashboardPage() {
             </p>
           </div>
           <Link
-            to="/machinery/document-types"
+            to="/inventory/document-types"
             className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
           >
             Gestionar Tipos de Documentos

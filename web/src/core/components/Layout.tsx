@@ -56,10 +56,10 @@ export function Layout({ children, title, subtitle, actions }: LayoutProps) {
     {
       label: "Inventario",
       icon: Box,
-      path: "/machinery",
+      path: "/inventory",
       subItems: [
-        { label: "Plantillas", path: "/machinery/templates" },
-        { label: "Activos", path: "/machinery" },
+        { label: "Plantillas", path: "/inventory/templates" },
+        { label: "Activos", path: "/inventory" },
       ],
     },
     {

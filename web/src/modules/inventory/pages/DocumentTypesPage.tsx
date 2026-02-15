@@ -11,7 +11,7 @@ import {
   documentTypesService,
   type AssetDocumentType,
   type CreateDocumentTypeData,
-} from "@/modules/machinery/services/document-types.service";
+} from "@/modules/inventory/services/document-types.service";
 import { Plus, Pencil, Trash2, FileText, AlertCircle } from "lucide-react";
 
 export function DocumentTypesPage() {

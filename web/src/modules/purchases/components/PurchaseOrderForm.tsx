@@ -7,7 +7,7 @@ import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { purchaseOrderService } from "../services/purchase-order.service";
 import { supplierService } from "../services/supplier.service";
-import { assetTemplateService } from "@/modules/machinery/services/asset-template.service";
+import { assetTemplateService } from "@/modules/inventory/services/asset-template.service";
 import {
   PurchaseOrder,
   CreatePurchaseOrderDTO,

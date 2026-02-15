@@ -30,13 +30,13 @@ import {
 import type {
   CreateTemplateInput,
   CustomField,
-} from "@/modules/machinery/services/asset-template.service";
+} from "@/modules/inventory/services/asset-template.service";
 import {
   FieldType,
   FieldTypeLabels,
   AssetCategory,
   AssetCategoryLabels,
-} from "@/modules/machinery/services/asset-template.service";
+} from "@/modules/inventory/services/asset-template.service";
 
 // ============================================
 // STEP 1: BASIC INFO

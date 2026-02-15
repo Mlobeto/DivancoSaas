@@ -12,7 +12,7 @@ import {
   type AssetTemplate,
   AssetCategory,
   AssetCategoryLabels,
-} from "@/modules/machinery/services/asset-template.service";
+} from "@/modules/inventory/services/asset-template.service";
 import { useNavigate } from "react-router-dom";
 import {
   Construction,
@@ -158,11 +158,11 @@ export function AssetTemplatesPage() {
       subtitle={`Configuración de plantillas de activos - ${businessUnit.name}`}
       actions={
         <>
-          <button onClick={() => navigate("/machinery")} className="btn-ghost">
+          <button onClick={() => navigate("/inventory")} className="btn-ghost">
             ← Inventario
           </button>
           <button
-            onClick={() => navigate("/machinery/templates/create")}
+            onClick={() => navigate("/inventory/templates/create")}
             className="btn-primary"
           >
             + Nueva Plantilla
@@ -265,7 +265,7 @@ export function AssetTemplatesPage() {
               personalizados. Por ejemplo: Retroexcavadora, Andamio, etc.
             </p>
             <button
-              onClick={() => navigate("/machinery/templates/create")}
+              onClick={() => navigate("/inventory/templates/create")}
               className="btn-primary"
             >
               Crear primera plantilla

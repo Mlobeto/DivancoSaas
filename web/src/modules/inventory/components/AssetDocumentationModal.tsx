@@ -16,8 +16,8 @@ import {
 import {
   assetsService,
   type UploadAttachmentsData,
-} from "@/modules/machinery/services/assets.service";
-import { documentTypesService } from "@/modules/machinery/services/document-types.service";
+} from "@/modules/inventory/services/assets.service";
+import { documentTypesService } from "@/modules/inventory/services/document-types.service";
 
 interface AssetDocumentationModalProps {
   assetId: string;

@@ -71,19 +71,19 @@ export function DashboardPage() {
               </h4>
               <div className="space-y-2">
                 <a
-                  href="/machinery"
+                  href="/inventory"
                   className="flex items-center gap-2 px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm"
                 >
                   <Archive className="w-4 h-4" /> Activos →
                 </a>
                 <a
-                  href="/machinery/templates"
+                  href="/inventory/templates"
                   className="flex items-center gap-2 px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm"
                 >
                   <LayoutIcon className="w-4 h-4" /> Plantillas →
                 </a>
                 <a
-                  href="/machinery/alerts"
+                  href="/inventory/alerts"
                   className="flex items-center gap-2 px-4 py-2 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm"
                 >
                   <AlertCircle className="w-4 h-4" /> Alertas de Documentación →
@@ -304,8 +304,6 @@ export function DashboardPage() {
                       </p>
                     </div>
                   </div>
-
-
                 </div>
               )}
             </div>

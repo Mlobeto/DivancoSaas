@@ -11,13 +11,13 @@ import { ResetPasswordPage } from "@/core/pages/ResetPasswordPage";
 import { DashboardPage } from "@/core/pages/DashboardPage";
 
 // Module Pages
-// import { MachineryPage } from "@/modules/machinery/pages/MachineryPage"; // DEPRECATED
-import { AssetsListPage } from "@/modules/machinery/pages/AssetsListPage";
-import { AssetTemplatesPage } from "@/modules/machinery/pages/AssetTemplatesPage";
-import { TemplateWizardPage } from "@/modules/machinery/pages/TemplateWizardPage";
-import { DocumentTypesPage } from "@/modules/machinery/pages/DocumentTypesPage";
-import { AssetFormPage } from "@/modules/machinery/pages/AssetFormPage";
-import { AlertsDashboardPage } from "@/modules/machinery/pages/AlertsDashboardPage";
+// import { MachineryPage } from "@/modules/inventory/pages/MachineryPage"; // DEPRECATED
+import { AssetsListPage } from "@/modules/inventory/pages/AssetsListPage";
+import { AssetTemplatesPage } from "@/modules/inventory/pages/AssetTemplatesPage";
+import { TemplateWizardPage } from "@/modules/inventory/pages/TemplateWizardPage";
+import { DocumentTypesPage } from "@/modules/inventory/pages/DocumentTypesPage";
+import { AssetFormPage } from "@/modules/inventory/pages/AssetFormPage";
+import { AlertsDashboardPage } from "@/modules/inventory/pages/AlertsDashboardPage";
 import {
   SuppliersPage,
   PurchaseOrdersPage,
@@ -82,7 +82,7 @@ createRoot(document.getElementById("root")!).render(
             }
           />
           <Route
-            path="/machinery"
+            path="/inventory"
             element={
               <ProtectedRoute>
                 <AssetsListPage />
@@ -90,7 +90,7 @@ createRoot(document.getElementById("root")!).render(
             }
           />
           <Route
-            path="/machinery/templates"
+            path="/inventory/templates"
             element={
               <ProtectedRoute>
                 <AssetTemplatesPage />
@@ -98,7 +98,7 @@ createRoot(document.getElementById("root")!).render(
             }
           />
           <Route
-            path="/machinery/templates/create"
+            path="/inventory/templates/create"
             element={
               <ProtectedRoute>
                 <TemplateWizardPage />
@@ -106,7 +106,7 @@ createRoot(document.getElementById("root")!).render(
             }
           />
           <Route
-            path="/machinery/templates/:id/edit"
+            path="/inventory/templates/:id/edit"
             element={
               <ProtectedRoute>
                 <TemplateWizardPage />
@@ -114,7 +114,7 @@ createRoot(document.getElementById("root")!).render(
             }
           />
           <Route
-            path="/machinery/document-types"
+            path="/inventory/document-types"
             element={
               <ProtectedRoute>
                 <DocumentTypesPage />
@@ -122,7 +122,7 @@ createRoot(document.getElementById("root")!).render(
             }
           />
           <Route
-            path="/machinery/assets/new"
+            path="/inventory/assets/new"
             element={
               <ProtectedRoute>
                 <AssetFormPage />
@@ -130,7 +130,7 @@ createRoot(document.getElementById("root")!).render(
             }
           />
           <Route
-            path="/machinery/assets/:id/edit"
+            path="/inventory/assets/:id/edit"
             element={
               <ProtectedRoute>
                 <AssetFormPage />
@@ -138,7 +138,7 @@ createRoot(document.getElementById("root")!).render(
             }
           />
           <Route
-            path="/machinery/alerts"
+            path="/inventory/alerts"
             element={
               <ProtectedRoute>
                 <AlertsDashboardPage />

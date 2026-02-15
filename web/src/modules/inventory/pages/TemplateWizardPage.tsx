@@ -12,12 +12,12 @@ import {
   assetTemplateService,
   type CreateTemplateInput,
   AssetCategory,
-} from "@/modules/machinery/services/asset-template.service";
+} from "@/modules/inventory/services/asset-template.service";
 import {
   BasicInfoStep,
   CustomFieldsStep,
   PreviewStep,
-} from "@/modules/machinery/components/TemplateWizardSteps";
+} from "@/modules/inventory/components/TemplateWizardSteps";
 
 export function TemplateWizardPage() {
   const { id } = useParams();
@@ -63,7 +63,7 @@ export function TemplateWizardPage() {
         ? assetTemplateService.update(id, data)
         : assetTemplateService.create(data),
     onSuccess: () => {
-      navigate("/machinery/templates");
+      navigate("/inventory/templates");
     },
   });
 
@@ -87,7 +87,7 @@ export function TemplateWizardPage() {
       actions={
         <div className="flex gap-3">
           <button
-            onClick={() => navigate("/machinery/templates")}
+            onClick={() => navigate("/inventory/templates")}
             className="btn-ghost flex items-center gap-2"
           >
             <X className="w-4 h-4" /> Cancelar
