@@ -40,13 +40,11 @@ modules/
 
 ## 📦 Módulos Disponibles
 
-### Ejemplo: Projects
-Ver: `modules/projects/projects.module.ts`
-
-Características:
-- Gestión de proyectos
-- Workflow configurable
-- Tareas y subtareas
+Consulta cada módulo en su carpeta respectiva:
+- `assets/` - Gestión de activos (UNIT y BULK)
+- `clients/` - Gestión de clientes
+- `purchases/` - Órdenes de compra y proveedores
+- `rental/` - Cotizaciones y contratos de alquiler
 
 ## 🔌 Cómo Crear un Nuevo Módulo
 

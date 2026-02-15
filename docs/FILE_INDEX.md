@@ -58,12 +58,11 @@
 | `backend/src/config/database.ts` | Prisma client y middleware |
 | `backend/src/config/index.ts`    | Configuración general      |
 
-### Módulos (Ejemplos)
+### Módulos
 
-| Archivo                                           | Descripción                   |
-| ------------------------------------------------- | ----------------------------- |
-| `backend/src/modules/README.md`                   | Guía de módulos               |
-| `backend/src/modules/projects/projects.module.ts` | Módulo de proyectos (ejemplo) |
+| Archivo                         | Descripción          |
+| ------------------------------- | --------------------- |
+| `backend/src/modules/README.md` | Guía de módulos |
 
 ### Adapters
 
@@ -257,9 +256,6 @@
 
 5. **`backend/src/core/middlewares/auth.middleware.ts`**
    - Cómo funciona la autenticación
-
-6. **`backend/src/modules/projects/projects.module.ts`**
-   - Ejemplo de cómo crear módulos
 
 ---
 
