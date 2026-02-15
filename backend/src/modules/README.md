@@ -21,10 +21,11 @@ modules/
    - Solo puede usar contracts del core
 
 2. **Debe implementar ModuleContract**
+
    ```typescript
    export class MiModulo implements ModuleContract {
-     readonly name = 'mi-modulo';
-     readonly version = '1.0.0';
+     readonly name = "mi-modulo";
+     readonly version = "1.0.0";
      // ...
    }
    ```
@@ -41,6 +42,7 @@ modules/
 ## 📦 Módulos Disponibles
 
 Consulta cada módulo en su carpeta respectiva:
+
 - `assets/` - Gestión de activos (UNIT y BULK)
 - `clients/` - Gestión de clientes
 - `purchases/` - Órdenes de compra y proveedores

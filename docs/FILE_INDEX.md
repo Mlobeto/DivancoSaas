@@ -60,8 +60,8 @@
 
 ### Módulos
 
-| Archivo                         | Descripción          |
-| ------------------------------- | --------------------- |
+| Archivo                         | Descripción     |
+| ------------------------------- | --------------- |
 | `backend/src/modules/README.md` | Guía de módulos |
 
 ### Adapters
@@ -183,9 +183,52 @@
 
 ---
 
+## 🎨 Arquitectura Frontend Modular (NEW)
+
+### Product Layer (Infraestructura de Módulos)
+
+| Archivo                                 | Descripción                            |
+| --------------------------------------- | -------------------------------------- |
+| `web/src/product/types/module.types.ts` | Tipos e interfaces del sistema modular |
+| `web/src/product/module-registry.ts`    | Registro central de módulos            |
+| `web/src/product/feature-flags.ts`      | Sistema de feature flags por tenant    |
+| `web/src/product/navigation-builder.ts` | Constructor dinámico de navegación     |
+| `web/src/product/index.ts`              | API pública de la capa de producto     |
+
+### App Layer (Bootstrapping)
+
+| Archivo                                        | Descripción                          |
+| ---------------------------------------------- | ------------------------------------ |
+| `web/src/app/module-loader/loadModules.ts`     | Carga e inicializa todos los módulos |
+| `web/src/app/router/AppRouter.tsx`             | Router dinámico basado en módulos    |
+| `web/src/app/navigation/DynamicNavigation.tsx` | Componente de navegación dinámica    |
+| `web/src/app/index.ts`                         | API pública de la capa de aplicación |
+
+### Module Definitions (Auto-registro)
+
+| Archivo                               | Descripción                         |
+| ------------------------------------- | ----------------------------------- |
+| `web/src/modules/rental/module.ts`    | Definición del módulo de alquileres |
+| `web/src/modules/inventory/module.ts` | Definición del módulo de inventario |
+| `web/src/modules/clients/module.ts`   | Definición del módulo de clientes   |
+| `web/src/modules/purchases/module.ts` | Definición del módulo de compras    |
+
+### Documentación de Arquitectura Modular
+
+| Archivo                                         | Descripción                                   | Prioridad |
+| ----------------------------------------------- | --------------------------------------------- | --------- |
+| `docs/FRONTEND_MODULAR_ARCHITECTURE_SUMMARY.md` | 📘 Resumen ejecutivo de la nueva arquitectura | 🔴 ALTA   |
+| `docs/FRONTEND_MIGRATION_GUIDE.md`              | 📖 Guía paso a paso de migración              | 🔴 ALTA   |
+| `docs/FRONTEND_MIGRATION_RISKS.md`              | ⚠️ Análisis de riesgos y mitigación           | 🟡 MEDIA  |
+| `docs/MODULE_SYSTEM_QUICK_REFERENCE.md`         | 🚀 Referencia rápida para crear módulos       | 🟢 BAJA   |
+| `docs/BACKEND_ARCHITECTURE.md`                  | 🏗️ Arquitectura del backend (referencia)      | 🟢 BAJA   |
+| `docs/FRONTEND_ARCHITECTURE.md`                 | 🎨 Arquitectura del frontend (referencia)     | 🟢 BAJA   |
+
+---
+
 ## 📊 Resumen por Tipo
 
-### Documentación: 10 archivos
+### Documentación: 16 archivos (+6 nuevos)
 
 - ARQUITECTURA.md (⚠️ PRIORIDAD MÁXIMA)
 - README.md
@@ -197,6 +240,12 @@
 - backend/src/modules/README.md
 - backend/src/adapters/README.md
 - shared/README.md
+- **docs/FRONTEND_MODULAR_ARCHITECTURE_SUMMARY.md** (⭐ NUEVO)
+- **docs/FRONTEND_MIGRATION_GUIDE.md** (⭐ NUEVO)
+- **docs/FRONTEND_MIGRATION_RISKS.md** (⭐ NUEVO)
+- **docs/MODULE_SYSTEM_QUICK_REFERENCE.md** (⭐ NUEVO)
+- **docs/BACKEND_ARCHITECTURE.md** (⭐ NUEVO)
+- **docs/FRONTEND_ARCHITECTURE.md** (⭐ NUEVO)
 
 ### Backend: ~25 archivos
 
@@ -210,9 +259,12 @@
 - 1 módulo ejemplo
 - Varios configs (package.json, tsconfig, etc.)
 
-### Frontend Web: ~20 archivos
+### Frontend Web: ~35 archivos (+15 nuevos)
 
-- 3 páginas React
+- **Product Layer (5 archivos):** Sistema modular core
+- **App Layer (4 archivos):** Bootstrapping y routing
+- **Module Definitions (4 archivos):** Auto-registro de módulos
+- 3 páginas React (core)
 - 1 servicio API
 - 2 stores Zustand
 - 1 cliente API
@@ -261,14 +313,21 @@
 
 ## 📈 Total de Archivos Creados
 
-**~75 archivos** organizados en:
+**~90 archivos** (+15 nuevos) organizados en:
 
 - ✅ Backend funcional
-- ✅ Frontend web funcional
+- ✅ Frontend web funcional con **arquitectura modular**
 - ✅ App móvil funcional
-- ✅ Documentación completa
+- ✅ Documentación completa + **guías de migración**
 - ✅ Scripts de instalación
 - ✅ Configuraciones de desarrollo
+
+**Nuevos Archivos (Arquitectura Modular):**
+
+- 5 archivos de Product Layer (infraestructura)
+- 4 archivos de App Layer (bootstrapping)
+- 4 module definitions (auto-registro)
+- 6 documentos de arquitectura y migración
 
 ---
 
@@ -276,25 +335,32 @@
 
 ### ¿Necesitas...?
 
-| Necesidad           | Archivo                                  |
-| ------------------- | ---------------------------------------- |
-| Entender principios | [ARQUITECTURA.md](./ARQUITECTURA.md)     |
-| Instalar proyecto   | [QUICKSTART.md](./QUICKSTART.md)         |
-| Ver estado          | [PROJECT_STATUS.md](./PROJECT_STATUS.md) |
-| Schema DB           | `backend/prisma/schema.prisma`           |
-| Crear módulo        | `backend/src/modules/README.md`          |
-| Crear adapter       | `backend/src/adapters/README.md`         |
-| Auth/Login          | `backend/src/core/routes/auth.routes.ts` |
-| Frontend ejemplo    | `web/src/pages/`                         |
-| Mobile ejemplo      | `mobile/app/`                            |
-| Tipos compartidos   | `shared/src/index.ts`                    |
+| Necesidad                         | Archivo                                                                                    |
+| --------------------------------- | ------------------------------------------------------------------------------------------ |
+| Entender principios               | [ARQUITECTURA.md](./ARQUITECTURA.md)                                                       |
+| **Migrar a arquitectura modular** | **[FRONTEND_MIGRATION_GUIDE.md](./FRONTEND_MIGRATION_GUIDE.md)**                           |
+| **Arquitectura frontend nueva**   | **[FRONTEND_MODULAR_ARCHITECTURE_SUMMARY.md](./FRONTEND_MODULAR_ARCHITECTURE_SUMMARY.md)** |
+| **Crear nuevo módulo**            | **[MODULE_SYSTEM_QUICK_REFERENCE.md](./MODULE_SYSTEM_QUICK_REFERENCE.md)**                 |
+| **Análisis de riesgos**           | **[FRONTEND_MIGRATION_RISKS.md](./FRONTEND_MIGRATION_RISKS.md)**                           |
+| Instalar proyecto                 | [QUICKSTART.md](./QUICKSTART.md)                                                           |
+| Ver estado                        | [PROJECT_STATUS.md](./PROJECT_STATUS.md)                                                   |
+| Schema DB                         | `backend/prisma/schema.prisma`                                                             |
+| Crear módulo backend              | `backend/src/modules/README.md`                                                            |
+| Crear adapter                     | `backend/src/adapters/README.md`                                                           |
+| Auth/Login                        | `backend/src/core/routes/auth.routes.ts`                                                   |
+| Frontend ejemplo                  | `web/src/pages/`                                                                           |
+| **Module definition ejemplo**     | **`web/src/modules/rental/module.ts`**                                                     |
+| Mobile ejemplo                    | `mobile/app/`                                                                              |
+| Tipos compartidos                 | `shared/src/index.ts`                                                                      |
 
 ---
 
 <div align="center">
 
-**DivancoSaaS - Arquitectura Completa Inicializada**
+**DivancoSaaS - Arquitectura Completa + Sistema Modular Frontend**
 
-Versión 1.0.0 | Enero 2026
+Versión 1.1.0 | Febrero 2026
+
+⭐ **NUEVO:** Arquitectura modular multi-tenant lista para implementar
 
 </div>

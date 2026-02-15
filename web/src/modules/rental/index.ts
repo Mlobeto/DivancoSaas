@@ -3,6 +3,9 @@
  * Módulo de cotizaciones, contratos de renta y estados de cuenta
  */
 
+// Module Definition (for platform registration)
+export { rentalModule } from "./module";
+
 // Types
 export * from "./types/quotation.types.ts";
 

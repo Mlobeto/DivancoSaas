@@ -2,6 +2,9 @@
  * PURCHASES MODULE - EXPORTS
  */
 
+// Module Definition (for platform registration)
+export { purchasesModule } from "./module";
+
 // Types
 export * from "./types/purchases.types";
 export * from "./types/supply-category.types";

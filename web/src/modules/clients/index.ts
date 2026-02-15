@@ -2,6 +2,9 @@
  * CLIENTS MODULE - EXPORTS
  */
 
+// Module Definition (for platform registration)
+export { clientsModule } from "./module";
+
 // Types
 export * from "./types/client.types";
 

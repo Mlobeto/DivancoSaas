@@ -1,3 +1,6 @@
+// Module Definition (for platform registration)
+export { inventoryModule } from "./module";
+
 // Pages
 export { AssetsListPage } from "./pages/AssetsListPage";
 export { AssetTemplatesPage } from "./pages/AssetTemplatesPage";
