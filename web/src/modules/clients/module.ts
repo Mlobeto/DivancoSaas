@@ -7,6 +7,7 @@
 
 import { ModuleDefinition } from "@/product";
 import { lazy } from "react";
+import { clientsRoutes } from "./routes.config";
 
 // Lazy load pages for code splitting
 const ClientsPage = lazy(() =>
@@ -34,7 +35,14 @@ export const clientsModule: ModuleDefinition = {
   vertical: "general",
 
   /**
+   * NEW: Dynamic route configuration
+   * Defines routes using the new dynamic router system
+   */
+  routeConfig: clientsRoutes,
+
+  /**
    * Module routes
+   * @deprecated Use routeConfig instead. Kept for backward compatibility during migration.
    */
   routes: [
     {

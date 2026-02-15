@@ -10,11 +10,11 @@
 
 import type {
   VerticalDefinition,
-  VerticalContext,
   VerticalRegistrationResult,
   ActiveVerticalInfo,
 } from "./types/vertical.types";
 import type { ModuleContext } from "./types/module.types";
+import type { VerticalRouteConfig } from "./types/route.types";
 import { coreRegistry } from "./core-registry";
 import { createElement, isValidElement } from "react";
 import type { RouteObject } from "react-router-dom";
@@ -226,6 +226,7 @@ class VerticalRegistry {
 
   /**
    * Get routes from active vertical and its required core modules
+   * @deprecated Use getRouteConfig() for new dynamic routing system
    */
   getRoutes(context: ModuleContext): RouteObject[] {
     const vertical = this.getActiveVertical(context);
@@ -250,6 +251,48 @@ class VerticalRegistry {
 
     // Merge: core routes first, then vertical routes
     return [...coreRoutes, ...verticalRoutes];
+  }
+
+  /**
+   * Get route configuration from active vertical
+   * NEW: For dynamic routing system
+   *
+   * This method supports both legacy and new routing systems:
+   * - If vertical has routeConfig, use it (preferred)
+   * - If vertical only has old routes, convert them temporarily
+   *
+   * Note: Core module routes are handled separately by moduleRegistry
+   */
+  getRouteConfig(context: ModuleContext): VerticalRouteConfig | null {
+    const vertical = this.getActiveVertical(context);
+
+    if (!vertical) {
+      return null;
+    }
+
+    // Prefer new routeConfig if available
+    if (vertical.routeConfig) {
+      return vertical.routeConfig;
+    }
+
+    // Fallback: Convert legacy routes to new format
+    if (vertical.routes && vertical.routes.length > 0) {
+      console.warn(
+        `[VerticalRegistry] Vertical '${vertical.id}' using legacy routes. Please migrate to routeConfig.`,
+      );
+
+      return {
+        verticalId: vertical.id,
+        routes: vertical.routes.map((r) => ({
+          path: r.path || "",
+          element: r.element,
+          children: r.children as any,
+          index: r.index,
+        })),
+      };
+    }
+
+    return null;
   }
 
   /**

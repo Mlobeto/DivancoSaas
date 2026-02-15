@@ -10,7 +10,7 @@ interface AuthState {
   isAuthenticated: boolean;
   setAuth: (data: {
     user: User;
-    tenant: Tenant;
+    tenant?: Tenant; // ← Optional for SUPER_ADMIN
     businessUnit?: BusinessUnit;
     role?: string;
   }) => void;
@@ -29,7 +29,7 @@ export const useAuthStore = create<AuthState>()(
       setAuth: (data) =>
         set({
           user: data.user,
-          tenant: data.tenant,
+          tenant: data.tenant || null,
           businessUnit: data.businessUnit || null,
           role: data.role || null,
           isAuthenticated: true,

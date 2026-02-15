@@ -37,6 +37,7 @@ interface AuthResponse {
     firstName: string;
     lastName: string;
     tenantId: string | null;
+    role?: string; // SUPER_ADMIN or USER
   };
   tenant: {
     id: string;
@@ -48,6 +49,7 @@ interface AuthResponse {
     id: string;
     name: string;
     slug: string;
+    role?: string; // Role within this BU (OWNER, ADMIN, etc.)
   }>;
 }
 
@@ -199,7 +201,7 @@ export class AuthService {
         },
       });
 
-      return { tenant, user, businessUnit };
+      return { tenant, user, businessUnit, adminRole };
     });
 
     // 6. Enviar email de bienvenida (async, no bloqueante)
@@ -223,6 +225,7 @@ export class AuthService {
         firstName: result.user.firstName,
         lastName: result.user.lastName,
         tenantId: result.tenant.id,
+        role: result.user.role, // USER by default
       },
       tenant: {
         id: result.tenant.id,
@@ -235,6 +238,7 @@ export class AuthService {
           id: result.businessUnit.id,
           name: result.businessUnit.name,
           slug: result.businessUnit.slug,
+          role: result.adminRole.name, // admin role
         },
       ],
     };
@@ -260,6 +264,7 @@ export class AuthService {
           businessUnits: {
             include: {
               businessUnit: true,
+              role: true,
             },
           },
         },
@@ -273,6 +278,7 @@ export class AuthService {
           businessUnits: {
             include: {
               businessUnit: true,
+              role: true,
             },
           },
         },
@@ -365,7 +371,7 @@ export class AuthService {
         id: ubu.businessUnit.id,
         name: ubu.businessUnit.name,
         slug: ubu.businessUnit.slug,
-        role: ubu.role.name, // ← Role within this BU (OWNER, ADMIN, etc.)
+        role: ubu.role?.name || "GUEST", // ← Role within this BU (handle missing role)
       })),
     };
   }
@@ -707,6 +713,7 @@ export class AuthService {
           firstName: user.firstName,
           lastName: user.lastName,
           tenantId: user.tenantId,
+          role: user.role,
         },
       };
     } catch (error) {

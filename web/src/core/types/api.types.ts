@@ -8,8 +8,29 @@ export interface User {
   firstName: string;
   lastName: string;
   avatar?: string;
-  role?: "SUPER_ADMIN" | "USER"; // Global role from User model
+  role?: "SUPER_ADMIN" | "DEVELOPER" | "USER"; // Global role from User model
 }
+
+/**
+ * User Role Permissions:
+ *
+ * SUPER_ADMIN:
+ * - Full system access
+ * - Can manage tenants and modules
+ * - Can assign modules to tenants
+ * - Cross-tenant access
+ *
+ * DEVELOPER:
+ * - System inspection and debugging
+ * - Access to logs, metrics, and analytics
+ * - View system architecture
+ * - Read-only access (cannot modify data)
+ * - Useful for developers auditing the system
+ *
+ * USER:
+ * - Standard user with role-based permissions per Business Unit
+ * - Access controlled by BU roles (OWNER, ADMIN, MANAGER, etc.)
+ */
 
 export interface Tenant {
   id: string;

@@ -11,7 +11,6 @@ import { createElement, isValidElement } from "react";
 import type { RouteObject } from "react-router-dom";
 import type {
   CoreModuleDefinition,
-  CoreModuleContext,
   CoreRegistrationResult,
 } from "./types/core.types";
 import type { ModuleContext } from "./types/module.types";

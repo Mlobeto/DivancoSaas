@@ -24,6 +24,13 @@ backend/
 │   │   │   ├── auth.middleware.ts  # 🔒 JWT + BU validation
 │   │   │   ├── context.middleware.ts # 🔒 Tenant context injection
 │   │   │   └── error.middleware.ts
+│   │   ├── routes/                 # Core routes
+│   │   │   ├── auth.routes.ts      # Login, register, JWT
+│   │   │   ├── user.routes.ts      # User management
+│   │   │   └── business-unit.routes.ts # BU management
+│   │   ├── services/               # Core services
+│   │   │   ├── auth.service.ts     # Authentication & roles
+│   │   │   └── email.service.ts    # Email notifications
 │   │   └── types/                  # Shared types
 │   │
 │   ├── shared/                     # Shared utilities
@@ -43,8 +50,70 @@ backend/
 │
 └── prisma/
     ├── schema.prisma               # Database schema
+    ├── seed.ts                     # 🆕 Minimal seed (roles + demo data)
     └── migrations/                 # DB version control
 ```
+
+---
+
+## 🎯 Hierarchical User System
+
+### Platform Owner (SUPER_ADMIN)
+
+```typescript
+{
+  role: "SUPER_ADMIN",  // User.role field
+  tenantId: null,       // No tenant association
+  businessUnits: []     // No BU assignments
+}
+```
+
+**Capabilities:**
+
+- ✅ Cross-tenant access
+- ✅ Manage platform subscriptions
+- ✅ Assign modules to tenants/BUs
+- ✅ View all tenants and their data
+- ✅ Platform-level configuration
+
+**API Access:**
+
+- `GET /api/v1/admin/tenants` - List all tenants (🚧 Pending)
+- `GET /api/v1/admin/tenants/:id/business-units` (🚧 Pending)
+- `POST /api/v1/admin/module-assignments` (🚧 Pending)
+
+### Tenant User (USER)
+
+```typescript
+{
+  role: "USER",         // User.role field
+  tenantId: "...",      // Belongs to one tenant
+  businessUnits: [      // Multiple BU assignments
+    {
+      id: "bu-1",
+      role: "OWNER"     // Role within this BU
+    },
+    {
+      id: "bu-2",
+      role: "MANAGER"
+    }
+  ]
+}
+```
+
+**Roles within Business Units:**
+
+- `OWNER` - Full control of BU
+- `ADMIN` - Administrative access
+- `MANAGER` - Operational management
+- `EMPLOYEE` - Standard operations
+- `VIEWER` - Read-only access
+
+**Tenant Isolation:**
+
+- ✅ All queries auto-filtered by tenantId
+- ✅ Cannot access other tenant data
+- ✅ BU selection required for operations
 
 ---
 
@@ -86,53 +155,197 @@ modules/[module-name]/
                 ┌────────────────────────┐
                 │   auth.middleware.ts   │
                 │  - Verify JWT token    │
-                │  - Extract user info   │
-                │  - Validate BU owner   │
+                │  - Extract userId      │
+                │  - Check User.role     │ ← NEW: SUPER_ADMIN vs USER
+                │  - Validate BU access  │
                 └────────┬───────────────┘
                          │
                          ▼
            ┌─────────────────────────────┐
            │  context.middleware.ts      │
-           │  - Inject tenantId into     │
-           │    AsyncLocalStorage        │
+           │  - Skip for SUPER_ADMIN     │ ← NEW: Conditional injection
+           │  - Inject tenantId (USER)   │
            │  - Inject businessUnitId    │
            └─────────┬───────────────────┘
                      │
                      ▼
        ┌─────────────────────────────────┐
        │   prisma-extensions.ts          │
-       │   - Auto-filter by tenantId     │
-       │   - Throw TenantContextError    │
-       │     if context missing          │
+       │  - Auto-filter by tenantId      │
+       │  - Bypass for SUPER_ADMIN       │ ← NEW: Cross-tenant access
+       │  - Throw TenantContextError     │
+       │    if context missing (USER)    │
        └─────────┬───────────────────────┘
                  │
                  ▼
     ┌────────────────────────────────────┐
     │   Controller → Service → DB        │
-    │   ✅ All queries filtered          │
-    │   ✅ Cross-tenant access blocked   │
+    │   ✅ SUPER_ADMIN: Full access      │ ← NEW
+    │   ✅ USER: Tenant-filtered         │
+    │   ✅ Cross-tenant blocked          │
     └────────────────────────────────────┘
+```
+
+### Authentication Response (Updated)
+
+```typescript
+interface AuthResponse {
+  token: string;
+  refreshToken?: string;
+  user: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    tenantId: string | null; // null for SUPER_ADMIN
+    role: "SUPER_ADMIN" | "USER"; // ← NEW: Global role
+  };
+  tenant: Tenant | null; // null for SUPER_ADMIN
+  businessUnits: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    role?: string; // ← NEW: OWNER, ADMIN, etc.
+  }>;
+}
 ```
 
 ---
 
-## 📦 Current Modules
+## 🗄️ Database Seed Strategy
+
+### Minimal Seed (seed.ts)
+
+**Philosophy:** Frontend owns module definitions, backend only stores assignments.
+
+**Seed Contents:**
+
+```typescript
+// 1. System Roles (5)
+- OWNER, ADMIN, MANAGER, EMPLOYEE, VIEWER
+
+// 2. Platform Owner
+{
+  email: "owner@divancosaas.com",
+  password: "PlatformOwner123!",
+  role: "SUPER_ADMIN",
+  tenantId: null
+}
+
+// 3. Demo Tenant
+{
+  name: "Construcciones Demo S.A.",
+  slug: "construcciones-demo",
+  plan: "free"
+}
+
+// 4. Demo Business Unit
+{
+  name: "División Alquiler de Implementos",
+  slug: "alquiler",
+  tenantId: demo-tenant-id
+}
+
+// 5. Demo Tenant Admin
+{
+  email: "admin@construcciones-demo.com",
+  password: "Admin123!",
+  role: "USER",
+  tenantId: demo-tenant-id,
+  businessUnits: [{ id: demo-bu-id, role: "OWNER" }]
+}
+```
+
+**What's NOT in seed anymore:**
+
+- ❌ Module definitions (moved to frontend registries)
+- ❌ Permission definitions (managed per role in BU)
+- ❌ Hardcoded role-permission assignments
+
+**Total:** ~200 lines (vs 2247 before)
+
+---
+
+## 📦 Module Management (NEW APPROACH)
+
+### Frontend-First Architecture
+
+**Philosophy:** Module definitions live in frontend registries. Backend provides data operations through tenant-isolated APIs.
+
+### Module Registry (Frontend)
+
+**Location:** `web/src/modules/`
+
+**Dual Registry System:**
+
+```typescript
+// Legacy system (being phased out)
+moduleRegistry = {
+  assets: { name: "Assets", icon: Package, route: "/assets" },
+  clients: { name: "Clients", icon: Users, route: "/clients" },
+  // ...
+};
+
+// New system (vertical-based)
+verticalRegistry = {
+  rental: {
+    id: "rental",
+    name: "Rental",
+    modules: [
+      {
+        id: "assets",
+        name: "Assets",
+        vertical: "rental",
+        route: "/assets",
+        // ...
+      },
+    ],
+  },
+};
+```
+
+### Module Assignment (Temporary)
+
+**Storage:** `localStorage` (key: `module-assignments-${tenantId}`)
+
+**Format:**
+
+```json
+{
+  "rental": {
+    "buId": "bu-123",
+    "modules": ["assets", "clients", "rentals"]
+  }
+}
+```
+
+**TODO (Next Phase):**
+
+- Implement subscription system (backend)
+- Create `ModuleAssignment` table
+- API endpoints for SUPER_ADMIN:
+  - `GET /api/v1/admin/tenants`
+  - `GET /api/v1/admin/tenants/:id/business-units`
+  - `POST /api/v1/admin/module-assignments`
+
+---
+
+## 🔌 Current Backend Modules (API-Only)
+
+Backend provides **data operations** for these modules. No module definitions in DB.
 
 ### 1️⃣ Assets Module
 
-**Path:** `modules/assets/`
-
-**Responsabilidad:** Gestión de activos (maquinaria, herramientas, equipos)
+**Path:** `backend/src/modules/assets/`
 
 **Features:**
 
-- ✅ Sistema UNIT (tracking individual) + BULK (inventario por cantidad)
-- ✅ Plantillas de activos con campos personalizados
-- ✅ Estados: AVAILABLE, RENTED, MAINTENANCE, OUT_OF_SERVICE, RESERVED
-- ✅ Documentación de activos con alertas de vencimiento
-- ✅ Tipos de documentos configurables
-- ✅ Stock movements con audit trail completo
-- ✅ Importación CSV
+- ✅ UNIT (individual tracking) + BULK (quantity inventory)
+- ✅ Asset templates with custom fields
+- ✅ States: AVAILABLE, RENTED, MAINTENANCE, OUT_OF_SERVICE, RESERVED
+- ✅ Document management with expiration alerts
+- ✅ Stock movements with audit trail
+- ✅ CSV import
 
 **API Routes:**
 
@@ -146,28 +359,18 @@ POST   /api/v1/assets/:id/state
 GET    /api/v1/assets/:id/events
 ```
 
-**Controllers:**
-
-- `assets.controller.ts` - CRUD de activos
-- `asset-templates.controller.ts` - Plantillas
-- `document-types.controller.ts` - Tipos de docs
-- `stock-level.controller.ts` - Inventario BULK
-- `alerts.controller.ts` - Alertas de vencimiento
-
 ---
 
 ### 2️⃣ Clients Module
 
-**Path:** `modules/clients/`
-
-**Responsabilidad:** Gestión de clientes (personas y empresas)
+**Path:** `backend/src/modules/clients/`
 
 **Features:**
 
-- ✅ Clientes individuales y empresas
-- ✅ Múltiples contactos por cliente
-- ✅ Estados: ACTIVE, INACTIVE, SUSPENDED
-- ✅ Tipos: INDIVIDUAL, COMPANY
+- ✅ Individual and company clients
+- ✅ Multiple contacts per client
+- ✅ States: ACTIVE, INACTIVE, SUSPENDED
+- ✅ Types: INDIVIDUAL, COMPANY
 
 **API Routes:**
 
@@ -183,17 +386,15 @@ DELETE /api/v1/clients/:id
 
 ### 3️⃣ Purchases Module
 
-**Path:** `modules/purchases/`
-
-**Responsabilidad:** Compras, proveedores y suministros
+**Path:** `backend/src/modules/purchases/`
 
 **Features:**
 
-- ✅ Gestión de proveedores
-- ✅ Órdenes de compra con ítems
-- ✅ Categorías de suministros con wizard
-- ✅ Suministros (BULK inventory)
-- ✅ Estados de OC: DRAFT, PENDING, APPROVED, RECEIVED, CANCELLED
+- ✅ Supplier management
+- ✅ Purchase orders with line items
+- ✅ Supply categories with wizard
+- ✅ Supplies (BULK inventory)
+- ✅ PO states: DRAFT, PENDING, APPROVED, RECEIVED, CANCELLED
 
 **API Routes:**
 
@@ -231,17 +432,15 @@ DELETE /api/v1/supplies/:id
 
 ### 4️⃣ Rental Module
 
-**Path:** `modules/rental/`
-
-**Responsabilidad:** Cotizaciones y contratos de alquiler
+**Path:** `backend/src/modules/rental/`
 
 **Features:**
 
-- ✅ Cotizaciones con plantillas personalizables
-- ✅ Generación de PDFs con Puppeteer
-- ✅ Contratos de alquiler
-- ✅ Firmas digitales (integración pendiente)
-- ✅ Estados: DRAFT, SENT, APPROVED, REJECTED, EXPIRED
+- ✅ Quotations with customizable templates
+- ✅ PDF generation with Puppeteer
+- ✅ Rental contracts
+- ✅ Digital signatures (integration pending)
+- ✅ States: DRAFT, SENT, APPROVED, REJECTED, EXPIRED
 
 **API Routes:**
 
@@ -272,15 +471,27 @@ PUT    /api/v1/rental-contracts/:id
 
 ## 🔒 Tenant Isolation Implementation
 
-### Modelo de Datos
+### Data Model
 
 ```prisma
 model Tenant {
   id              String          @id @default(cuid())
   name            String
+  slug            String          @unique
   status          TenantStatus    @default(ACTIVE)
+  plan            String          @default("free")
   businessUnits   BusinessUnit[]
+  users           User[]
   // ... 50+ related models
+}
+
+model User {
+  id              String           @id @default(cuid())
+  email           String           @unique
+  role            UserRole         // SUPER_ADMIN or USER
+  tenantId        String?          // null for SUPER_ADMIN
+  tenant          Tenant?          @relation(...)
+  businessUnits   UserBusinessUnit[]
 }
 
 model BusinessUnit {
@@ -289,85 +500,174 @@ model BusinessUnit {
   name            String
   tenantId        String
   tenant          Tenant    @relation(...)
+  users           UserBusinessUnit[]
   // ... all business data
 }
 ```
 
 ### Enforcement Strategy
 
-**59 modelos tenant-scoped** (filtrado automático):
+**59 tenant-scoped models** (automatic filtering):
 
 - Asset, Client, Supplier, Supply, PurchaseOrder
-- Quotation, Contract, User, Role, Permission
+- Quotation, Contract, Role, Permission
 - StockMovement, AssetTemplate, DocumentType
-- ... y 46 más
+- ... and 46 more
 
-**12 modelos BU-scoped** (filtrado opcional):
+**12 BU-scoped models** (optional filtering):
 
-- Scoped por BusinessUnit dentro del tenant
+- Scoped by BusinessUnit within tenant
 
-**4 modelos globales** (sin filtrado):
+**4 global models** (no filtering):
 
 - Tenant, BusinessUnit, SystemConfig, AuditLog
 
 ### Prisma Middleware
 
 ```typescript
-// Auto-injected on every query:
+// Auto-injected on every query (USER only):
 {
   where: {
     tenantId: getTenantId(), // from AsyncLocalStorage
     ...originalWhere
   }
 }
+
+// SUPER_ADMIN bypasses tenant filtering
 ```
 
 ---
 
-## 🚀 Deployment
+## 🚀 Deployment & Environment
 
-- **Platform:** Railway
-- **Database:** PostgreSQL (Supabase/Neon)
+### Current Setup
+
+- **Platform:** Railway (development/staging)
+- **Database:** PostgreSQL
 - **Storage:** Azure Blob Storage
 - **Runtime:** Node.js 20 + tsx
+- **Process Manager:** PM2 (production)
 
-**Environment Variables:**
+### Environment Variables
 
-```
+```bash
+# Core
+PORT=3000
+NODE_ENV=production
 DATABASE_URL=postgresql://...
+
+# Authentication
 JWT_SECRET=...
+JWT_REFRESH_SECRET=...
+
+# Storage
 AZURE_STORAGE_CONNECTION_STRING=...
 AZURE_STORAGE_CONTAINER_NAME=uploads
+
+# Payment Integration
 MERCADOPAGO_ACCESS_TOKEN=...
+
+# Email (optional)
+SMTP_HOST=...
+SMTP_PORT=587
+```
+
+### Puppeteer Configuration
+
+```toml
+# nixpacks.toml (Railway)
+[phases.setup]
+nixPkgs = ["...", "chromium"]
+
+[phases.install]
+cmds = ["npm ci"]
 ```
 
 ---
 
 ## 📊 Database Schema Summary
 
-- **Tenants:** Multi-tenancy root
-- **Business Units:** Organization structure within tenant
-- **Assets:** 59 tables (templates, documents, stock, events)
-- **Clients:** 4 tables (clients, contacts)
-- **Purchases:** 8 tables (suppliers, orders, supplies, categories)
-- **Rental:** 10 tables (quotations, templates, contracts, items)
+### Core Tables
 
-**Total:** ~80 tables con tenant isolation
+- **Multi-tenancy:** 2 tables (Tenant, BusinessUnit)
+- **Users & Auth:** 4 tables (User, UserBusinessUnit, Role, RefreshToken)
+- **Module Data:** ~75 tables across 4 modules
+
+### Tenant Isolation Stats
+
+- **59 models:** Tenant-scoped (automatic filtering)
+- **12 models:** BU-scoped (filtered within tenant)
+- **4 models:** Global (no filtering)
+- **Total:** ~80 tables
 
 ---
 
-## 🛠️ Key Technologies
+## 🛠️ Technology Stack
 
-- **Framework:** Express.js + TypeScript
+### Core
+
+- **Framework:** Express.js 4.21.2
+- **Language:** TypeScript 5.3.3
+- **Runtime:** Node.js 20+
+
+### Data Layer
+
 - **ORM:** Prisma 6.19.2
-- **Authentication:** JWT (jsonwebtoken)
-- **Validation:** Zod schemas
-- **File Upload:** Multer + Azure Blob
-- **PDF Generation:** Puppeteer
-- **Documentation:** Swagger/OpenAPI
+- **Database:** PostgreSQL 14+
+- **Caching:** (planned)
+
+### Security & Auth
+
+- **Authentication:** JWT (jsonwebtoken 9.0.2)
+- **Password Hashing:** bcryptjs 2.4.3
+- **Validation:** Zod 3.22.4
+
+### Integrations
+
+- **File Storage:** Azure Blob Storage
+- **PDF Generation:** Puppeteer 23.11.1
+- **Payments:** Mercado Pago SDK
+- **Email:** (planned)
+
+### Development
+
+- **API Documentation:** Swagger/OpenAPI
 - **Testing:** Jest (unit tests)
+- **Code Quality:** ESLint, Prettier
 
 ---
 
-**Última actualización:** Febrero 2026  
-**Versión:** 1.0 - Multi-tenant hardening completo
+## 🎯 Current Status & Roadmap
+
+### ✅ Completed
+
+- Multi-tenant architecture with Prisma middleware
+- Hierarchical user system (SUPER_ADMIN vs USER)
+- 4 functional modules (Assets, Clients, Purchases, Rental)
+- JWT authentication with refresh tokens
+- Azure Blob Storage integration
+- PDF generation with Puppeteer
+- Minimal database seed (200 lines)
+
+### 🚧 In Progress
+
+- Module assignment system (currently localStorage)
+- SUPER_ADMIN admin panel
+- Subscription management
+
+### 📋 Planned
+
+- Admin endpoints for SUPER_ADMIN:
+  - `GET /api/v1/admin/tenants`
+  - `GET /api/v1/admin/tenants/:id/business-units`
+  - `POST /api/v1/admin/module-assignments`
+- Database-backed module assignments
+- Billing & subscription system
+- Email notifications
+- Advanced RBAC (role-permission matrix)
+- API rate limiting
+
+---
+
+**Last Updated:** February 2026  
+**Version:** 2.0 - Frontend-First Module Management

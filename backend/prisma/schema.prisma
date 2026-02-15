@@ -166,8 +166,9 @@ model User {
 }
 
 enum UserRole {
-  SUPER_ADMIN // Cross-tenant access, debugging, support
-  USER // Normal user
+  SUPER_ADMIN // Cross-tenant access, system configuration, unlimited privileges
+  DEVELOPER // System inspection, logs, metrics, debugging (read-only, no data modification)
+  USER // Normal user with role-based permissions per Business Unit
 }
 
 enum UserStatus {

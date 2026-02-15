@@ -19,6 +19,7 @@ import type {
   NavigationItem,
   ModuleContext,
 } from "./module.types";
+import type { VerticalRouteConfig } from "./route.types";
 
 /**
  * Vertical Definition
@@ -59,8 +60,17 @@ export interface VerticalDefinition {
    */
   optionalCoreModules?: string[];
 
-  /** Vertical-specific routes */
+  /**
+   * LEGACY: Vertical-specific routes
+   * @deprecated Use routeConfig instead for new dynamic routing system
+   */
   routes: ModuleRoute[];
+
+  /**
+   * NEW: Dynamic route configuration
+   * Preferred method for defining routes with full protection/permission support
+   */
+  routeConfig?: VerticalRouteConfig;
 
   /** Vertical-specific navigation (takes priority over core) */
   navigation: NavigationItem[];

@@ -12,6 +12,14 @@ export * from "./types/module.types";
 export * from "./types/core.types";
 export * from "./types/vertical.types";
 
+// Types - Dynamic Routing System
+export * from "./types/route.types";
+export {
+  RouteBuilder,
+  buildDynamicRoutes,
+  getRouteStats,
+} from "./route-builder";
+
 // Feature Flags
 export {
   type FeatureFlags,

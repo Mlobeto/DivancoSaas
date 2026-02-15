@@ -155,6 +155,40 @@ export function ModuleAssignmentManager() {
     );
   }
 
+  // SUPER_ADMIN without tenant needs multi-tenant selector (TODO)
+  if (isPlatformOwner && !tenant) {
+    return (
+      <Layout title="Gestión de Módulos">
+        <div className="p-8">
+          <div className="card bg-blue-900/20 border-blue-800 text-blue-400">
+            <div className="flex items-center gap-3">
+              <Package className="w-6 h-6" />
+              <div>
+                <h3 className="font-semibold mb-2">
+                  Gestión Multi-Tenant Pendiente
+                </h3>
+                <p className="text-sm mb-3">
+                  Como Platform Owner (SUPER_ADMIN), necesitas un selector de
+                  Tenant/Business Unit para asignar módulos.
+                </p>
+                <p className="text-xs text-dark-400">
+                  Por ahora, esta funcionalidad almacena assignments en
+                  localStorage por tenant. En el futuro, se implementará con:
+                </p>
+                <ul className="text-xs text-dark-400 mt-2 ml-4 list-disc space-y-1">
+                  <li>Selector de todos los tenants de la plataforma</li>
+                  <li>Selector de Business Units por tenant</li>
+                  <li>Persistencia en base de datos</li>
+                  <li>Integración con sistema de suscripciones</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
   if (!businessUnit) {
     return (
       <Layout title="Gestión de Módulos">

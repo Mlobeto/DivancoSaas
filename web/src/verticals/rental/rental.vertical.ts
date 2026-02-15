@@ -9,6 +9,7 @@
 
 import { VerticalDefinition } from "@/product";
 import { lazy } from "react";
+import { rentalRoutes } from "./routes.config";
 
 // Lazy load pages for code splitting (from modules/rental temporarily)
 const QuotationsListPage = lazy(() =>
@@ -68,8 +69,15 @@ export const rentalVertical: VerticalDefinition = {
   optionalCoreModules: ["maintenance"],
 
   /**
+   * NEW: Dynamic route configuration
+   * Defines routes using the new dynamic router system
+   */
+  routeConfig: rentalRoutes,
+
+  /**
    * Vertical-specific routes
    * These will be merged with core module routes
+   * @deprecated Use routeConfig instead. Kept for backward compatibility during migration.
    */
   routes: [
     // Quotations

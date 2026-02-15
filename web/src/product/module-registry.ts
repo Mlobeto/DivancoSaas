@@ -11,6 +11,7 @@ import {
   ModuleLoadError,
   ModuleRegistrationResult,
 } from "./types/module.types";
+import type { ModuleRouteConfig } from "./types/route.types";
 import { featureFlagService } from "./feature-flags";
 import { createElement, isValidElement } from "react";
 import type { RouteObject } from "react-router-dom";
@@ -164,6 +165,7 @@ class ModuleRegistry {
   /**
    * Get all routes from enabled modules
    * Transforms lazy components into React elements
+   * @deprecated Use getRouteConfigs() for new dynamic routing system
    */
   getRoutes(context: ModuleContext): RouteObject[] {
     const modules = this.getEnabledModules(context);
@@ -171,6 +173,45 @@ class ModuleRegistry {
     return modules.flatMap((module) =>
       module.routes.map((route) => this.transformRoute(route)),
     );
+  }
+
+  /**
+   * Get route configurations from all enabled modules
+   * NEW: For dynamic routing system
+   *
+   * This method supports both legacy and new routing systems:
+   * - If module has routeConfig, use it (preferred)
+   * - If module only has old routes, convert them temporarily
+   */
+  getRouteConfigs(context: ModuleContext): ModuleRouteConfig[] {
+    const modules = this.getEnabledModules(context);
+    const configs: ModuleRouteConfig[] = [];
+
+    for (const module of modules) {
+      // Prefer new routeConfig if available
+      if (module.routeConfig) {
+        configs.push(module.routeConfig);
+      } else if (module.routes && module.routes.length > 0) {
+        // Fallback: Convert legacy routes to temporary config
+        console.warn(
+          `[ModuleRegistry] Module '${module.id}' using legacy routes. Please migrate to routeConfig.`,
+        );
+
+        // Create temporary config from legacy routes
+        configs.push({
+          moduleId: module.id,
+          basePath: "", // Legacy routes had paths hardcoded
+          routes: module.routes.map((r) => ({
+            path: r.path || "",
+            element: r.element,
+            children: r.children as any,
+            index: r.index,
+          })),
+        });
+      }
+    }
+
+    return configs;
   }
 
   /**

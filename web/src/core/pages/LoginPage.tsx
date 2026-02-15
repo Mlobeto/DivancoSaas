@@ -24,7 +24,7 @@ export function LoginPage() {
       const firstBusinessUnit = data.businessUnits?.[0];
       setAuth({
         user: data.user,
-        tenant: data.tenant!,
+        tenant: data.tenant || undefined,
         businessUnit: firstBusinessUnit
           ? {
               id: firstBusinessUnit.id,
@@ -35,7 +35,13 @@ export function LoginPage() {
           : undefined,
         role: firstBusinessUnit?.role, // Role within the selected BU
       });
-      navigate("/dashboard");
+
+      // Platform Owner (SUPER_ADMIN) goes directly to module management
+      if (data.user.role === "SUPER_ADMIN") {
+        navigate("/admin/modules");
+      } else {
+        navigate("/dashboard");
+      }
     },
   });
 

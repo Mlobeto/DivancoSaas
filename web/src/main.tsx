@@ -1,4 +1,4 @@
-import { StrictMode, useEffect, useState } from "react";
+import { StrictMode, useEffect, useState, useMemo } from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider } from "react-router-dom";
@@ -6,7 +6,7 @@ import { RouterProvider } from "react-router-dom";
 // Module System
 import { loadModules } from "@/app/module-loader/loadModules";
 import { loadPlatformModules } from "@/app/module-loader/loadPlatformModules";
-import { createAppRouter } from "@/app/router/AppRouter";
+import { createAppRouter } from "@/app/router/AppRouter.v2"; // Using new dynamic router
 import { createModuleContext } from "@/product";
 import { useAuthStore } from "@/store/auth.store";
 
@@ -68,9 +68,6 @@ const queryClient = new QueryClient({
  */
 function App() {
   const [modulesReady, setModulesReady] = useState(false);
-  const [router, setRouter] = useState<ReturnType<
-    typeof createAppRouter
-  > | null>(null);
   const { tenant, businessUnit, role } = useAuthStore();
 
   // Load modules on mount (uses global cache to prevent double-loading)
@@ -85,28 +82,28 @@ function App() {
       });
   }, []);
 
-  // Create router when modules are loaded AND auth context changes
-  useEffect(() => {
-    if (!modulesReady) return;
-
-    // Create module context
-    // Note: router is created even without auth (public routes like /login exist)
+  // Create module context - memoized to prevent unnecessary recalculations
+  // Note: context is created even without auth (public routes like /login exist)
+  const context = useMemo(() => {
     const permissions: string[] = role ? [role] : [];
-    const context = createModuleContext(
+    return createModuleContext(
       tenant?.id || "",
       businessUnit?.id || "",
       permissions,
     );
+  }, [tenant?.id, businessUnit?.id, role]);
 
-    // Create router with current context
-    const newRouter = createAppRouter(context);
-    setRouter(newRouter);
+  // Create router - memoized to only recreate when modules load or context changes
+  const router = useMemo(() => {
+    if (!modulesReady) return null;
 
     console.log(
       "[App] Router created for context:",
       `tenant=${context.tenantId}, bu=${context.businessUnitId}`,
     );
-  }, [modulesReady, tenant?.id, businessUnit?.id, role]);
+
+    return createAppRouter(context);
+  }, [modulesReady, context]);
 
   // Show loading state while modules load
   if (!modulesReady || !router) {

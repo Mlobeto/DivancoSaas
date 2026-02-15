@@ -7,6 +7,7 @@
 
 import type { RouteObject } from "react-router-dom";
 import type { LazyExoticComponent, ReactNode } from "react";
+import type { ModuleRouteConfig } from "./route.types";
 
 /**
  * Module Route - extends RouteObject to support lazy components
@@ -46,8 +47,17 @@ export interface ModuleDefinition {
   /** Module description */
   description?: string;
 
-  /** React Router route definitions (supports lazy components) */
+  /**
+   * LEGACY: React Router route definitions (supports lazy components)
+   * @deprecated Use routeConfig instead for new dynamic routing system
+   */
   routes: ModuleRoute[];
+
+  /**
+   * NEW: Dynamic route configuration
+   * Preferred method for defining routes with full protection/permission support
+   */
+  routeConfig?: ModuleRouteConfig;
 
   /** Navigation menu items */
   navigation: NavigationItem[];

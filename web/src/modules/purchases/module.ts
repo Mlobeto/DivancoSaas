@@ -7,6 +7,7 @@
 
 import { ModuleDefinition } from "@/product";
 import { lazy } from "react";
+import { purchasesRoutes } from "./routes.config";
 
 // Lazy load pages for code splitting
 const PurchaseOrdersPage = lazy(() =>
@@ -45,7 +46,14 @@ export const purchasesModule: ModuleDefinition = {
   vertical: "general",
 
   /**
+   * NEW: Dynamic route configuration
+   * Defines routes using the new dynamic router system
+   */
+  routeConfig: purchasesRoutes,
+
+  /**
    * Module routes
+   * @deprecated Use routeConfig instead. Kept for backward compatibility during migration.
    */
   routes: [
     // Purchase Orders
