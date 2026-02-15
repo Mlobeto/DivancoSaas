@@ -2,7 +2,7 @@
  * Dynamic App Router
  *
  * Builds React Router configuration dynamically from registered modules.
- * This replaces the hardcoded routes in main.tsx.
+ * IMPORTANT: Router is created ONCE after login, not on every render.
  */
 
 import {
@@ -11,8 +11,8 @@ import {
   RouteObject,
   Outlet,
 } from "react-router-dom";
-import { moduleRegistry, createModuleContext } from "@/product";
-import { useAuthStore } from "@/store/auth.store";
+import { Suspense } from "react";
+import { moduleRegistry, type ModuleContext } from "@/product";
 
 // Import core components
 import { Layout } from "@/core/components/Layout";
@@ -23,27 +23,11 @@ import { DashboardPage } from "@/core/pages/DashboardPage";
 // import { SelectBusinessUnitPage } from "@/core/pages/SelectBusinessUnitPage"; // TODO: Create this page
 
 /**
- * Get module context from current auth state
- */
-function getModuleContext() {
-  const { tenant, businessUnit, role } = useAuthStore.getState();
-
-  // TODO: Derive permissions from role or fetch from backend
-  const permissions: string[] = role ? [role] : [];
-
-  return createModuleContext(
-    tenant?.id || "",
-    businessUnit?.id || "",
-    permissions,
-  );
-}
-
-/**
  * Build dynamic routes from registered modules
+ * @param context - Module context with tenant, businessUnit, permissions
  */
-export function buildRoutes(): RouteObject[] {
-  // Get enabled modules for current context
-  const context = getModuleContext();
+export function buildRoutes(context: ModuleContext): RouteObject[] {
+  // Get enabled modules for this context
   const moduleRoutes = moduleRegistry.getRoutes(context);
 
   console.log(
@@ -73,7 +57,9 @@ export function buildRoutes(): RouteObject[] {
         {
           element: (
             <Layout>
-              <Outlet />
+              <Suspense fallback={<div>Loading...</div>}>
+                <Outlet />
+              </Suspense>
             </Layout>
           ),
           children: [
@@ -87,7 +73,7 @@ export function buildRoutes(): RouteObject[] {
               path: "/dashboard",
               element: <DashboardPage />,
             },
-            // Dynamic module routes
+            // Dynamic module routes (all lazy-loaded)
             ...moduleRoutes,
             // 404 fallback (future)
             // {
@@ -103,16 +89,14 @@ export function buildRoutes(): RouteObject[] {
 
 /**
  * Create router instance
+ * @param context - Module context (tenant, businessUnit, permissions)
  */
-export function createAppRouter() {
-  const routes = buildRoutes();
-  return createBrowserRouter(routes);
-}
+export function createAppRouter(context: ModuleContext) {
+  const routes = buildRoutes(context);
 
-/**
- * Rebuild router (called when modules are reloaded or context changes)
- */
-export function rebuildRouter() {
-  console.log("[AppRouter] Rebuilding router...");
-  return createAppRouter();
+  console.log(
+    `[AppRouter] Creating router for tenant=${context.tenantId}, bu=${context.businessUnitId}`,
+  );
+
+  return createBrowserRouter(routes);
 }

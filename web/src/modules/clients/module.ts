@@ -6,7 +6,7 @@
  */
 
 import { ModuleDefinition } from "@/product";
-import { lazy, createElement } from "react";
+import { lazy } from "react";
 
 // Lazy load pages for code splitting
 const ClientsPage = lazy(() =>
@@ -39,19 +39,19 @@ export const clientsModule: ModuleDefinition = {
   routes: [
     {
       path: "/clients",
-      element: createElement(ClientsPage),
+      element: ClientsPage,
     },
     {
       path: "/clients/new",
-      element: createElement(ClientWizardPage),
+      element: ClientWizardPage,
     },
     {
       path: "/clients/:id",
-      element: createElement(ClientDetailPage),
+      element: ClientDetailPage,
     },
     {
       path: "/clients/:id/edit",
-      element: createElement(ClientWizardPage),
+      element: ClientWizardPage,
     },
   ],
 

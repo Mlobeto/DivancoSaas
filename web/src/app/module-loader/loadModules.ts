@@ -54,6 +54,9 @@ export async function loadModules(): Promise<void> {
     // Initialize modules
     await moduleRegistry.initialize();
 
+    // Lock registry to prevent further mutations
+    moduleRegistry.lock();
+
     // Log statistics
     const stats = moduleRegistry.getStats();
     console.log("[ModuleLoader] Registry stats:", stats);

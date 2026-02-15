@@ -1,52 +1,17 @@
-import { StrictMode } from "react";
+import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { RouterProvider } from "react-router-dom";
 
-// Core Pages
-import { LoginPage } from "@/core/pages/LoginPage";
-import { RegisterPage } from "@/core/pages/RegisterPage";
-import { ForgotPasswordPage } from "@/core/pages/ForgotPasswordPage";
-import { ResetPasswordPage } from "@/core/pages/ResetPasswordPage";
-import { DashboardPage } from "@/core/pages/DashboardPage";
-
-// Module Pages
-// import { MachineryPage } from "@/modules/inventory/pages/MachineryPage"; // DEPRECATED
-import { AssetsListPage } from "@/modules/inventory/pages/AssetsListPage";
-import { AssetTemplatesPage } from "@/modules/inventory/pages/AssetTemplatesPage";
-import { TemplateWizardPage } from "@/modules/inventory/pages/TemplateWizardPage";
-import { DocumentTypesPage } from "@/modules/inventory/pages/DocumentTypesPage";
-import { AssetFormPage } from "@/modules/inventory/pages/AssetFormPage";
-import { AlertsDashboardPage } from "@/modules/inventory/pages/AlertsDashboardPage";
-import {
-  SuppliersPage,
-  PurchaseOrdersPage,
-  SupplyCategoriesPage,
-  CategoryWizardPage,
-  SuppliesPage,
-  SupplyFormPage,
-} from "@/modules/purchases";
-import {
-  ClientsPage,
-  ClientDetailPage,
-  ClientWizardPage,
-} from "@/modules/clients";
-import {
-  QuotationsListPage,
-  QuotationFormPage,
-  QuotationTemplatesPage,
-  TemplateFormPage,
-  TemplatePreviewPage,
-  ContractsListPage,
-  AccountsListPage,
-} from "@/modules/rental";
-
-// Core Services
-import { authService } from "@/core/services/auth.service";
+// Module System
+import { loadModules } from "@/app/module-loader/loadModules";
+import { createAppRouter } from "@/app/router/AppRouter";
+import { createModuleContext } from "@/product";
+import { useAuthStore } from "@/store/auth.store";
 
 import "./index.css";
 
-// Configurar TanStack Query
+// Configure TanStack Query
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -56,269 +21,77 @@ const queryClient = new QueryClient({
   },
 });
 
-// Componente de ruta protegida
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  if (!authService.isAuthenticated()) {
-    return <Navigate to="/login" replace />;
+/**
+ * App Component
+ *
+ * Handles:
+ * 1. Module loading on mount
+ * 2. Router creation after auth context is available
+ * 3. Router re-creation when tenant/BU changes
+ */
+function App() {
+  const [modulesLoaded, setModulesLoaded] = useState(false);
+  const [router, setRouter] = useState<ReturnType<
+    typeof createAppRouter
+  > | null>(null);
+  const { tenant, businessUnit, role } = useAuthStore();
+
+  // Load modules on mount (once)
+  useEffect(() => {
+    loadModules()
+      .then(() => {
+        console.log("[App] Modules loaded successfully");
+        setModulesLoaded(true);
+      })
+      .catch((error) => {
+        console.error("[App] Failed to load modules:", error);
+        // Show error UI to user
+      });
+  }, []);
+
+  // Create router when modules are loaded AND auth context changes
+  useEffect(() => {
+    if (!modulesLoaded) return;
+
+    // Create module context
+    // Note: router is created even without auth (public routes like /login exist)
+    const permissions: string[] = role ? [role] : [];
+    const context = createModuleContext(
+      tenant?.id || "",
+      businessUnit?.id || "",
+      permissions,
+    );
+
+    // Create router with current context
+    const newRouter = createAppRouter(context);
+    setRouter(newRouter);
+
+    console.log(
+      "[App] Router created for context:",
+      `tenant=${context.tenantId}, bu=${context.businessUnitId}`,
+    );
+  }, [modulesLoaded, tenant?.id, businessUnit?.id, role]);
+
+  // Show loading state while modules load
+  if (!modulesLoaded || !router) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading application...</p>
+        </div>
+      </div>
+    );
   }
-  return <>{children}</>;
+
+  return <RouterProvider router={router} />;
 }
 
+// Render app
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          <Route path="/reset-password" element={<ResetPasswordPage />} />
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <DashboardPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/inventory"
-            element={
-              <ProtectedRoute>
-                <AssetsListPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/inventory/templates"
-            element={
-              <ProtectedRoute>
-                <AssetTemplatesPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/inventory/templates/create"
-            element={
-              <ProtectedRoute>
-                <TemplateWizardPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/inventory/templates/:id/edit"
-            element={
-              <ProtectedRoute>
-                <TemplateWizardPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/inventory/document-types"
-            element={
-              <ProtectedRoute>
-                <DocumentTypesPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/inventory/assets/new"
-            element={
-              <ProtectedRoute>
-                <AssetFormPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/inventory/assets/:id/edit"
-            element={
-              <ProtectedRoute>
-                <AssetFormPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/inventory/alerts"
-            element={
-              <ProtectedRoute>
-                <AlertsDashboardPage />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* Purchases Module Routes */}
-          <Route
-            path="/purchases"
-            element={<Navigate to="/purchase-orders" replace />}
-          />
-          <Route
-            path="/suppliers"
-            element={
-              <ProtectedRoute>
-                <SuppliersPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/purchase-orders"
-            element={
-              <ProtectedRoute>
-                <PurchaseOrdersPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/purchases/categories"
-            element={
-              <ProtectedRoute>
-                <SupplyCategoriesPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/purchases/categories/new"
-            element={
-              <ProtectedRoute>
-                <CategoryWizardPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/purchases/categories/:id/edit"
-            element={
-              <ProtectedRoute>
-                <CategoryWizardPage />
-              </ProtectedRoute>
-            }
-          />
-          {/* Supplies Routes */}
-          <Route
-            path="/supplies"
-            element={
-              <ProtectedRoute>
-                <SuppliesPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/supplies/new"
-            element={
-              <ProtectedRoute>
-                <SupplyFormPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/supplies/:id/edit"
-            element={
-              <ProtectedRoute>
-                <SupplyFormPage />
-              </ProtectedRoute>
-            }
-          />
-          {/* Clients Module Routes */}
-          <Route
-            path="/clients"
-            element={
-              <ProtectedRoute>
-                <ClientsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/clients/new"
-            element={
-              <ProtectedRoute>
-                <ClientWizardPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/clients/:id"
-            element={
-              <ProtectedRoute>
-                <ClientDetailPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/clients/:id/edit"
-            element={
-              <ProtectedRoute>
-                <ClientWizardPage />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* Rental Module Routes */}
-          <Route
-            path="/quotations"
-            element={
-              <ProtectedRoute>
-                <QuotationsListPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/quotations/new"
-            element={
-              <ProtectedRoute>
-                <QuotationFormPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/quotations/templates"
-            element={
-              <ProtectedRoute>
-                <QuotationTemplatesPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/quotations/templates/new"
-            element={
-              <ProtectedRoute>
-                <TemplateFormPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/quotations/templates/:id/edit"
-            element={
-              <ProtectedRoute>
-                <TemplateFormPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/quotations/templates/:id/preview"
-            element={
-              <ProtectedRoute>
-                <TemplatePreviewPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/rental/contracts"
-            element={
-              <ProtectedRoute>
-                <ContractsListPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/rental/accounts"
-            element={
-              <ProtectedRoute>
-                <AccountsListPage />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-      </BrowserRouter>
+      <App />
     </QueryClientProvider>
   </StrictMode>,
 );

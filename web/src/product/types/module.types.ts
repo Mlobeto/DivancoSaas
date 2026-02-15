@@ -5,7 +5,18 @@
  * Each business module must implement ModuleDefinition to be loaded dynamically.
  */
 
-import { RouteObject } from "react-router-dom";
+import type { RouteObject } from "react-router-dom";
+import type { LazyExoticComponent, ReactNode } from "react";
+
+/**
+ * Module Route - extends RouteObject to support lazy components
+ * The element can be a LazyExoticComponent which will be transformed
+ * to ReactNode by the module registry
+ */
+export interface ModuleRoute extends Omit<RouteObject, "element" | "children"> {
+  element?: ReactNode | LazyExoticComponent<any>;
+  children?: ModuleRoute[];
+}
 
 /**
  * Navigation item structure for dynamic menu generation
@@ -35,8 +46,8 @@ export interface ModuleDefinition {
   /** Module description */
   description?: string;
 
-  /** React Router route definitions */
-  routes: RouteObject[];
+  /** React Router route definitions (supports lazy components) */
+  routes: ModuleRoute[];
 
   /** Navigation menu items */
   navigation: NavigationItem[];

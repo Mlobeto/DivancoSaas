@@ -6,7 +6,7 @@
  */
 
 import { ModuleDefinition } from "@/product";
-import { lazy, createElement } from "react";
+import { lazy } from "react";
 
 // Lazy load pages for code splitting
 const PurchaseOrdersPage = lazy(() =>
@@ -51,37 +51,37 @@ export const purchasesModule: ModuleDefinition = {
     // Purchase Orders
     {
       path: "/purchases",
-      element: createElement(PurchaseOrdersPage),
+      element: PurchaseOrdersPage,
     },
 
     // Suppliers
     {
       path: "/purchases/suppliers",
-      element: createElement(SuppliersPage),
+      element: SuppliersPage,
     },
 
     // Supplies
     {
       path: "/purchases/supplies",
-      element: createElement(SuppliesPage),
+      element: SuppliesPage,
     },
     {
       path: "/purchases/supplies/new",
-      element: createElement(SupplyFormPage),
+      element: SupplyFormPage,
     },
     {
       path: "/purchases/supplies/:id/edit",
-      element: createElement(SupplyFormPage),
+      element: SupplyFormPage,
     },
 
     // Supply Categories
     {
       path: "/purchases/categories",
-      element: createElement(SupplyCategoriesPage),
+      element: SupplyCategoriesPage,
     },
     {
       path: "/purchases/categories/wizard",
-      element: createElement(CategoryWizardPage),
+      element: CategoryWizardPage,
     },
   ],
 

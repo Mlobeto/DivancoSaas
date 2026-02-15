@@ -6,7 +6,7 @@
  */
 
 import { ModuleDefinition } from "@/product";
-import { lazy, createElement } from "react";
+import { lazy } from "react";
 
 // Lazy load pages for code splitting
 const AssetsListPage = lazy(() =>
@@ -53,41 +53,41 @@ export const inventoryModule: ModuleDefinition = {
     // Assets
     {
       path: "/inventory",
-      element: createElement(AssetsListPage),
+      element: AssetsListPage,
     },
     {
       path: "/inventory/new",
-      element: createElement(AssetFormPage),
+      element: AssetFormPage,
     },
     {
       path: "/inventory/:id/edit",
-      element: createElement(AssetFormPage),
+      element: AssetFormPage,
     },
 
     // Templates
     {
       path: "/inventory/templates",
-      element: createElement(AssetTemplatesPage),
+      element: AssetTemplatesPage,
     },
     {
       path: "/inventory/templates/new",
-      element: createElement(TemplateWizardPage),
+      element: TemplateWizardPage,
     },
     {
       path: "/inventory/templates/:id/edit",
-      element: createElement(TemplateWizardPage),
+      element: TemplateWizardPage,
     },
 
     // Document Types
     {
       path: "/inventory/document-types",
-      element: createElement(DocumentTypesPage),
+      element: DocumentTypesPage,
     },
 
     // Alerts
     {
       path: "/inventory/alerts",
-      element: createElement(AlertsDashboardPage),
+      element: AlertsDashboardPage,
     },
   ],
 

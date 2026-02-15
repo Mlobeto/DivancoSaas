@@ -6,7 +6,7 @@
  */
 
 import { ModuleDefinition } from "@/product";
-import { lazy, createElement } from "react";
+import { lazy } from "react";
 
 // Lazy load pages for code splitting
 const QuotationsListPage = lazy(() =>
@@ -63,49 +63,49 @@ export const rentalModule: ModuleDefinition = {
     // Quotations
     {
       path: "/rental/quotations",
-      element: createElement(QuotationsListPage),
+      element: QuotationsListPage,
     },
     {
       path: "/rental/quotations/new",
-      element: createElement(QuotationFormPage),
+      element: QuotationFormPage,
     },
     {
       path: "/rental/quotations/:id/edit",
-      element: createElement(QuotationFormPage),
+      element: QuotationFormPage,
     },
 
     // Contracts
     {
       path: "/rental/contracts",
-      element: createElement(ContractsListPage),
+      element: ContractsListPage,
     },
     {
       path: "/rental/contracts/:id",
-      element: createElement(ContractsListPage),
+      element: ContractsListPage,
     },
 
     // Templates
     {
       path: "/rental/templates",
-      element: createElement(QuotationTemplatesPage),
+      element: QuotationTemplatesPage,
     },
     {
       path: "/rental/templates/new",
-      element: createElement(TemplateFormPage),
+      element: TemplateFormPage,
     },
     {
       path: "/rental/templates/:id/edit",
-      element: createElement(TemplateFormPage),
+      element: TemplateFormPage,
     },
     {
       path: "/rental/templates/:id/preview",
-      element: createElement(TemplatePreviewPage),
+      element: TemplatePreviewPage,
     },
 
     // Accounts (billing)
     {
       path: "/rental/accounts",
-      element: createElement(AccountsListPage),
+      element: AccountsListPage,
     },
   ],
 

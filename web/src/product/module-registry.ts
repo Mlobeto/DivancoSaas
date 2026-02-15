@@ -12,19 +12,31 @@ import {
   ModuleRegistrationResult,
 } from "./types/module.types";
 import { featureFlagService } from "./feature-flags";
+import { createElement, isValidElement } from "react";
+import type { RouteObject } from "react-router-dom";
 
 /**
  * Module Registry Class
  * Manages module registration, validation, and access
+ *
+ * IMPORTANT: Registry is locked after initialization to prevent runtime mutations.
  */
 class ModuleRegistry {
   private modules: Map<string, ModuleDefinition> = new Map();
+  private locked: boolean = false;
   private initialized: boolean = false;
 
   /**
    * Register a module
+   * @throws Error if registry is already locked
    */
   register(module: ModuleDefinition): ModuleRegistrationResult {
+    if (this.locked) {
+      throw new Error(
+        `[ModuleRegistry] Cannot register module '${module.id}': Registry is locked after initialization`,
+      );
+    }
+
     try {
       // Validate module definition
       this.validateModule(module);
@@ -75,6 +87,29 @@ class ModuleRegistry {
   }
 
   /**
+   * Lock the registry to prevent further registrations
+   * Call this after all modules are loaded during app initialization
+   */
+  lock(): void {
+    if (this.locked) {
+      console.warn("[ModuleRegistry] Registry is already locked");
+      return;
+    }
+
+    this.locked = true;
+    console.log(
+      `[ModuleRegistry] Registry locked with ${this.modules.size} modules`,
+    );
+  }
+
+  /**
+   * Check if registry is locked
+   */
+  isLocked(): boolean {
+    return this.locked;
+  }
+
+  /**
    * Get a specific module by ID
    */
   getModule(id: string): ModuleDefinition | undefined {
@@ -119,9 +154,37 @@ class ModuleRegistry {
 
   /**
    * Get all routes from enabled modules
+   * Transforms lazy components into React elements
    */
-  getRoutes(context: ModuleContext) {
-    return this.getEnabledModules(context).flatMap((module) => module.routes);
+  getRoutes(context: ModuleContext): RouteObject[] {
+    const modules = this.getEnabledModules(context);
+
+    return modules.flatMap((module) =>
+      module.routes.map((route) => this.transformRoute(route)),
+    );
+  }
+
+  /**
+   * Transform a ModuleRoute to RouteObject
+   * Wraps LazyExoticComponent in createElement if needed
+   */
+  private transformRoute(route: any): RouteObject {
+    const transformed: any = { ...route };
+
+    // If element is a LazyExoticComponent (not already a ReactElement), wrap it
+    if (transformed.element && !isValidElement(transformed.element)) {
+      // It's a lazy component, wrap it in createElement
+      transformed.element = createElement(transformed.element);
+    }
+
+    // Recursively transform children
+    if (route.children) {
+      transformed.children = route.children.map((child: any) =>
+        this.transformRoute(child),
+      );
+    }
+
+    return transformed as RouteObject;
   }
 
   /**
