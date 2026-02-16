@@ -2,12 +2,22 @@
  * TEMPLATE SERVICE
  * Servicio para gestión de plantillas HTML y generación de PDFs
  * Ubicación: shared (transversal a múltiples módulos)
+ *
+ * IMPORTANTE: Templates ahora SOLO contienen el body (content).
+ * Header, footer y logo vienen de BusinessUnitBranding.
  */
 
 import Handlebars from "handlebars";
 import puppeteer, { PDFOptions } from "puppeteer";
 import prisma from "@config/database";
 import { azureBlobStorageService } from "@shared/storage/azure-blob-storage.service";
+import { brandingService } from "@core/services/branding.service";
+import { pdfGeneratorService } from "@core/services/pdf-generator.service";
+import {
+  buildDocument,
+  type BrandingConfig,
+  type BusinessUnitInfo,
+} from "@core/services/document-builder.service";
 
 // ============================================
 // TYPES
@@ -22,10 +32,8 @@ export interface Template {
   content: string;
   styles?: string;
   variables: TemplateVariable[];
-  logoUrl?: string;
-  headerHtml?: string;
-  footerHtml?: string;
   isActive: boolean;
+  // REMOVED: logoUrl, headerHtml, footerHtml (now from BusinessUnitBranding)
 }
 
 export type TemplateType =
@@ -51,9 +59,7 @@ export interface CreateTemplateParams {
   content: string;
   styles?: string;
   variables: TemplateVariable[];
-  logoUrl?: string;
-  headerHtml?: string;
-  footerHtml?: string;
+  // REMOVED: logoUrl, headerHtml, footerHtml (now from BusinessUnitBranding)
 }
 
 export interface UpdateTemplateParams {
@@ -61,10 +67,8 @@ export interface UpdateTemplateParams {
   content?: string;
   styles?: string;
   variables?: TemplateVariable[];
-  logoUrl?: string;
-  headerHtml?: string;
-  footerHtml?: string;
   isActive?: boolean;
+  // REMOVED: logoUrl, headerHtml, footerHtml (now from BusinessUnitBranding)
 }
 
 export interface RenderTemplateParams {
@@ -120,9 +124,6 @@ export class TemplateService {
         content: params.content,
         styles: params.styles,
         variables: params.variables as any,
-        logoUrl: params.logoUrl,
-        headerHtml: params.headerHtml,
-        footerHtml: params.footerHtml,
         isActive: true,
       },
     });
@@ -233,36 +234,23 @@ export class TemplateService {
   /**
    * Upload logo for template to Azure Blob Storage
    */
+  /**
+   * @deprecated Logos are now managed in BusinessUnitBranding, not in Templates.
+   * Use BrandingService.update() to update logos.
+   */
   async uploadTemplateLogo(
     templateId: string,
     file: Express.Multer.File,
     tenantId: string,
     businessUnitId: string,
   ): Promise<string> {
-    // Upload to Azure Blob Storage
-    const result = await azureBlobStorageService.uploadFile({
-      file: file.buffer,
-      fileName: file.originalname,
-      contentType: file.mimetype,
-      folder: "templates",
-      tenantId,
-      businessUnitId,
-    });
-
-    // Generate SAS URL with long expiration (30 days) for logo access
-    const sasUrl = await azureBlobStorageService.generateSasUrl(
-      result.blobName,
-      43200, // 30 days in minutes
+    throw new Error(
+      "uploadTemplateLogo is deprecated. Use BrandingService to manage logos per BusinessUnit.",
     );
-
-    // Update template with SAS URL
-    await this.updateTemplate(templateId, { logoUrl: sasUrl });
-
-    return sasUrl;
   }
 
   /**
-   * Renderizar plantilla con datos
+   * Renderizar plantilla con datos (solo el body, sin branding)
    */
   async renderTemplate(params: RenderTemplateParams): Promise<string> {
     const template = await this.getTemplate(params.templateId);
@@ -340,12 +328,80 @@ export class TemplateService {
   /**
    * Renderizar plantilla y generar PDF en un solo paso
    */
+  /**
+   * Renderizar template y generar PDF con branding
+   * Este método ahora integra BusinessUnitBranding automáticamente
+   */
   async renderAndGeneratePDF(
     params: RenderTemplateParams,
     pdfOptions?: PDFGenerationOptions,
   ): Promise<Buffer> {
-    const html = await this.renderTemplate(params);
-    return this.generatePDF(html, pdfOptions);
+    // 1. Get template
+    const template = await this.getTemplate(params.templateId);
+    if (!template) {
+      throw new Error(`Template ${params.templateId} not found`);
+    }
+
+    if (!template.isActive) {
+      throw new Error(`Template ${params.templateId} is not active`);
+    }
+
+    // 2. Get branding for business unit
+    const branding = await brandingService.getOrCreateDefault(
+      template.businessUnitId,
+    );
+
+    // 3. Get business unit info
+    const businessUnit = await prisma.businessUnit.findUnique({
+      where: { id: template.businessUnitId },
+    });
+
+    if (!businessUnit) {
+      throw new Error(`BusinessUnit ${template.businessUnitId} not found`);
+    }
+
+    // 4. Render content with Handlebars
+    const compiledTemplate = this.handlebars.compile(template.content);
+    const enrichedData = this.enrichData(params.data, params.options);
+    let renderedContent = compiledTemplate(enrichedData);
+
+    // Add custom styles if exists
+    if (template.styles) {
+      renderedContent = `<style>${template.styles}</style>${renderedContent}`;
+    }
+
+    // 5. Build branding config
+    const brandingConfig: BrandingConfig = {
+      logoUrl: branding.logoUrl || undefined,
+      primaryColor: branding.primaryColor,
+      secondaryColor: branding.secondaryColor,
+      fontFamily: branding.fontFamily,
+      headerConfig: branding.headerConfig,
+      footerConfig: branding.footerConfig,
+    };
+
+    // 6. Build business unit info
+    const businessUnitInfo: BusinessUnitInfo = {
+      name: businessUnit.name,
+      taxId: (businessUnit.settings as any)?.taxId,
+      email: (businessUnit.settings as any)?.email,
+      phone: (businessUnit.settings as any)?.phone,
+      address: (businessUnit.settings as any)?.address,
+      website: (businessUnit.settings as any)?.website,
+    };
+
+    // 7. Build complete document (branding header + content + branding footer)
+    const completeHtml = buildDocument(
+      brandingConfig,
+      businessUnitInfo,
+      renderedContent,
+      template.type as any,
+      template.name,
+    );
+
+    // 8. Generate PDF using new PDF service
+    const format = pdfOptions?.format === "Letter" ? "A4" : "A4"; // Map to our supported formats
+    return pdfGeneratorService.generatePDF(completeHtml, { format });
   }
 
   // ============================================

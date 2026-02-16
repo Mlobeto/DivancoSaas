@@ -296,7 +296,8 @@ router.delete(
   templateController.delete.bind(templateController),
 );
 
-// Upload logo for template
+// @deprecated Upload logo for template - USE BRANDING API INSTEAD
+// Use PUT /api/v1/branding/:businessUnitId to manage logos per BusinessUnit
 router.post(
   "/templates/:id/logo",
   authenticate,

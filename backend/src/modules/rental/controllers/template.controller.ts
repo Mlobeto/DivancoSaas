@@ -175,49 +175,18 @@ export class TemplateController {
   }
 
   /**
-   * Upload logo for template
-   * POST /api/v1/templates/:id/logo
+   * @deprecated Upload logo is deprecated. Use BrandingService instead.
+   * Logos are now managed per BusinessUnit, not per Template.
+   * Use PUT /api/v1/branding/:businessUnitId to update logos.
    */
   async uploadLogo(req: Request, res: Response): Promise<void> {
-    try {
-      if (!(req as any).context) {
-        res.status(401).json({
-          success: false,
-          error: "No authentication context",
-        });
-        return;
-      }
-
-      const { tenantId, businessUnitId } = (req as any).context;
-      const { id } = req.params;
-      const file = req.file;
-
-      if (!file) {
-        res.status(400).json({
-          success: false,
-          error: "No file uploaded",
-        });
-        return;
-      }
-
-      const logoUrl = await templateService.uploadTemplateLogo(
-        id,
-        file,
-        tenantId,
-        businessUnitId,
-      );
-
-      res.json({
-        success: true,
-        data: { logoUrl },
-      });
-    } catch (error: any) {
-      console.error("Error uploading template logo:", error);
-      res.status(400).json({
-        success: false,
-        error: error.message,
-      });
-    }
+    res.status(410).json({
+      success: false,
+      error:
+        "Logo upload for templates is deprecated. Use BrandingService to manage logos per BusinessUnit.",
+      message:
+        "Please use PUT /api/v1/branding/:businessUnitId to update the logo for your Business Unit.",
+    });
   }
 }
 

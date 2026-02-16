@@ -108,6 +108,7 @@ model BusinessUnit {
   quotationContracts     QuotationContract[]
   clientBUs              ClientBusinessUnit[]
   assetDocumentTypes     AssetDocumentType[]
+  branding               BusinessUnitBranding?
 
   @@unique([tenantId, slug])
   @@index([tenantId])
@@ -2120,15 +2121,15 @@ model Template {
   businessUnitId String
   name           String
   type           String // "quotation", "contract", "invoice", "receipt", "report", "certificate"
-  content        String   @db.Text // HTML con variables Handlebars
-  styles         String?  @db.Text // CSS personalizado
+  content        String   @db.Text // HTML con variables Handlebars (solo body, sin header/footer)
+  styles         String?  @db.Text // CSS personalizado adicional
   variables      Json // Array de TemplateVariable
-  logoUrl        String?
-  headerHtml     String?  @db.Text
-  footerHtml     String?  @db.Text
   isActive       Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+
+  // Nota: logoUrl, headerHtml, footerHtml fueron REMOVIDOS
+  // Ahora se usan desde BusinessUnitBranding automáticamente
 
   tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   businessUnit BusinessUnit @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
@@ -2316,4 +2317,36 @@ model QuotationContract {
   @@index([tenantId, businessUnitId, status])
   @@index([startDate, endDate])
   @@map("quotation_contracts")
+}
+
+// ============================================
+// BRANDING Y PERSONALIZACIÓN
+// ============================================
+
+model BusinessUnitBranding {
+  id             String @id @default(uuid())
+  businessUnitId String @unique
+
+  // Logo y Colores
+  logoUrl        String?
+  primaryColor   String  @default("#1E40AF") // Color principal (ej: azul)
+  secondaryColor String  @default("#64748B") // Color secundario (ej: gris)
+  fontFamily     String  @default("Inter") // Fuente del documento
+
+  // Configuración de Header (JSON)
+  // { showLogo: boolean, logoAlign: "left"|"center"|"right", showBusinessName: boolean, showTaxInfo: boolean, height: number }
+  headerConfig Json @default("{\"showLogo\":true,\"logoAlign\":\"left\",\"showBusinessName\":true,\"showTaxInfo\":false,\"height\":80}")
+
+  // Configuración de Footer (JSON)
+  // { showContactInfo: boolean, showDisclaimer: boolean, disclaimerText?: string, height: number }
+  footerConfig Json @default("{\"showContactInfo\":true,\"showDisclaimer\":false,\"height\":60}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relación
+  businessUnit BusinessUnit @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
+
+  @@index([businessUnitId])
+  @@map("business_unit_branding")
 }
