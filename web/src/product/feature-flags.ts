@@ -115,11 +115,13 @@ export function useFeatureFlag(flag: keyof FeatureFlags): boolean {
 
 /**
  * Helper to create module context with feature flags
+ * Optionally takes tenant config (enabledModules, vertical) from authStore
  */
 export function createModuleContext(
   tenantId: string,
   businessUnitId: string,
   permissions: string[],
+  config?: Record<string, any>,
 ): ModuleContext {
   return {
     tenantId,
@@ -129,5 +131,6 @@ export function createModuleContext(
       string,
       boolean
     >,
+    config,
   };
 }

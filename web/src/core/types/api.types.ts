@@ -37,6 +37,11 @@ export interface Tenant {
   name: string;
   slug: string;
   plan: string;
+  status?: "ACTIVE" | "SUSPENDED" | "CANCELLED";
+  country?: string;
+  billingEmail?: string;
+  enabledModules?: string[]; // Modules assigned to this tenant
+  vertical?: string | null; // Vertical assigned to this tenant
 }
 
 export interface BusinessUnit {
@@ -46,6 +51,7 @@ export interface BusinessUnit {
   description?: string;
   enabledModules?: string[];
   role?: string; // Role within this BU (OWNER, ADMIN, MANAGER, etc.)
+  permissions?: string[]; // User permissions in this BU from backend
 }
 
 export interface AuthResponse {
@@ -54,6 +60,7 @@ export interface AuthResponse {
   user: User;
   tenant: Tenant;
   businessUnits: BusinessUnit[]; // ← El backend devuelve array con roles
+  permissions?: string[]; // User permissions for the first/active BU
 }
 
 export interface LoginRequest {

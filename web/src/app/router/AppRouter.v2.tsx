@@ -56,10 +56,12 @@ const DashboardPage = lazy(() =>
   })),
 );
 
-const ModuleAssignmentManager = lazy(() =>
-  import("@/core/pages/ModuleAssignmentManager").then((m) => ({
-    default: m.ModuleAssignmentManager,
-  })),
+const TenantListPage = lazy(() =>
+  import("@/core/pages/admin").then((m) => ({ default: m.TenantListPage })),
+);
+
+const TenantFormPage = lazy(() =>
+  import("@/core/pages/admin").then((m) => ({ default: m.TenantFormPage })),
 );
 
 //================================================================
@@ -117,29 +119,43 @@ const coreProtectedRoutes: DynamicRouteDefinition[] = [
  */
 const adminRoutes: DynamicRouteDefinition[] = [
   {
-    path: "/admin/modules",
-    element: ModuleAssignmentManager,
-    protection: RouteProtection.ADMIN,
-    layout: RouteLayout.ADMIN,
-    permissions: ["SUPER_ADMIN"],
-    guard: (context) => {
-      return context.user?.role === "SUPER_ADMIN";
-    },
-    meta: {
-      title: "Module Management",
-      icon: "settings",
-    },
-  },
-  {
     path: "/admin/tenants",
-    element: createElement("div", null, "Tenants Management (TODO)"),
+    element: TenantListPage,
     protection: RouteProtection.ADMIN,
+    layout: RouteLayout.APP,
     permissions: ["SUPER_ADMIN"],
     guard: (context) => {
       return context.user?.role === "SUPER_ADMIN";
     },
     meta: {
       title: "Tenants",
+      icon: "building-2",
+    },
+  },
+  {
+    path: "/admin/tenants/new",
+    element: TenantFormPage,
+    protection: RouteProtection.ADMIN,
+    layout: RouteLayout.APP,
+    permissions: ["SUPER_ADMIN"],
+    guard: (context) => {
+      return context.user?.role === "SUPER_ADMIN";
+    },
+    meta: {
+      title: "Nuevo Tenant",
+    },
+  },
+  {
+    path: "/admin/tenants/:id/edit",
+    element: TenantFormPage,
+    protection: RouteProtection.ADMIN,
+    layout: RouteLayout.APP,
+    permissions: ["SUPER_ADMIN"],
+    guard: (context) => {
+      return context.user?.role === "SUPER_ADMIN";
+    },
+    meta: {
+      title: "Editar Tenant",
     },
   },
 ];

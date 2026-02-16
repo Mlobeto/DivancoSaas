@@ -22,6 +22,15 @@ export function LoginPage() {
     onSuccess: (data) => {
       // El backend devuelve businessUnits (array), extraer el primero
       const firstBusinessUnit = data.businessUnits?.[0];
+
+      console.log("[Login] Auth response:", {
+        user: data.user,
+        tenant: data.tenant,
+        businessUnit: firstBusinessUnit,
+        role: data.user.role,
+        permissions: data.permissions || [],
+      });
+
       setAuth({
         user: data.user,
         tenant: data.tenant || undefined,
@@ -34,13 +43,15 @@ export function LoginPage() {
             }
           : undefined,
         role: firstBusinessUnit?.role, // Role within the selected BU
+        permissions: data.permissions || [], // Permissions from backend
       });
 
-      // Platform Owner (SUPER_ADMIN) goes directly to module management
+      // Force page reload to rebuild router with new auth context
+      // This ensures the router has the correct context (tenant, businessUnit, permissions)
       if (data.user.role === "SUPER_ADMIN") {
-        navigate("/admin/modules");
+        window.location.href = "/admin/tenants";
       } else {
-        navigate("/dashboard");
+        window.location.href = "/dashboard";
       }
     },
   });

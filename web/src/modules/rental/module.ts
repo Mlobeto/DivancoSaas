@@ -1,11 +1,19 @@
 /**
- * Rental Module Definition
+ * LEGACY - DO NOT USE
  *
- * This module handles quotations, contracts, and rental operations.
- * Self-registers with the platform module system.
+ * Rental Module Definition (DEPRECATED)
+ *
+ * This file is kept for historical reference only.
+ * Rental is now implemented as a VERTICAL in @/verticals/rental
+ *
+ * The rental vertical orchestrates inventory, clients, and purchases modules
+ * to provide complete rental management functionality.
+ *
+ * @deprecated Use @/verticals/rental instead
  */
 
-import { ModuleDefinition } from "@/product";
+/* eslint-disable @typescript-eslint/no-unused-vars */
+
 import { lazy } from "react";
 
 // Lazy load pages for code splitting
@@ -47,8 +55,9 @@ const AccountsListPage = lazy(() =>
 
 /**
  * Rental module definition
+ * @deprecated This module is deprecated. Use @/verticals/rental instead.
  */
-export const rentalModule: ModuleDefinition = {
+export const rentalModule = {
   id: "rental",
   name: "Alquileres",
   description: "Gestión de cotizaciones, contratos y alquileres",

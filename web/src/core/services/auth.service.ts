@@ -19,6 +19,13 @@ export const authService = {
 
     const authData = response.data.data!;
 
+    // Log tenant data for debugging
+    console.log("[AuthService] Login response:", {
+      tenant: authData.tenant,
+      user: authData.user,
+      businessUnits: authData.businessUnits,
+    });
+
     // Guardar token
     if (authData.token) {
       localStorage.setItem("token", authData.token);

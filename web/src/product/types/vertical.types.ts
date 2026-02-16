@@ -14,11 +14,7 @@
  */
 
 import type { ComponentType } from "react";
-import type {
-  ModuleRoute,
-  NavigationItem,
-  ModuleContext,
-} from "./module.types";
+import type { NavigationItem, ModuleContext } from "./module.types";
 import type { VerticalRouteConfig } from "./route.types";
 
 /**
@@ -61,16 +57,10 @@ export interface VerticalDefinition {
   optionalCoreModules?: string[];
 
   /**
-   * LEGACY: Vertical-specific routes
-   * @deprecated Use routeConfig instead for new dynamic routing system
+   * Dynamic route configuration
+   * Defines routes with full protection/permission support
    */
-  routes: ModuleRoute[];
-
-  /**
-   * NEW: Dynamic route configuration
-   * Preferred method for defining routes with full protection/permission support
-   */
-  routeConfig?: VerticalRouteConfig;
+  routeConfig: VerticalRouteConfig;
 
   /** Vertical-specific navigation (takes priority over core) */
   navigation: NavigationItem[];

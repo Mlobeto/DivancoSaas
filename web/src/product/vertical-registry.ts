@@ -16,8 +16,6 @@ import type {
 import type { ModuleContext } from "./types/module.types";
 import type { VerticalRouteConfig } from "./types/route.types";
 import { coreRegistry } from "./core-registry";
-import { createElement, isValidElement } from "react";
-import type { RouteObject } from "react-router-dom";
 
 /**
  * Vertical Registry Class
@@ -86,7 +84,7 @@ class VerticalRegistry {
         industry: vertical.industry,
         requiredCoreModules: vertical.requiredCoreModules,
         missingCoreModules: [],
-        routes: vertical.routes.length,
+        routes: vertical.routeConfig?.routes?.length || 0,
         navigationItems: vertical.navigation.length,
       };
     } catch (error) {
@@ -143,8 +141,10 @@ class VerticalRegistry {
       );
     }
 
-    if (!Array.isArray(vertical.routes)) {
-      throw new Error(`Vertical '${vertical.id}' must have routes array`);
+    if (!vertical.routeConfig || typeof vertical.routeConfig !== "object") {
+      throw new Error(
+        `Vertical '${vertical.id}' must have a valid routeConfig object`,
+      );
     }
 
     if (!Array.isArray(vertical.navigation)) {
@@ -168,13 +168,27 @@ class VerticalRegistry {
 
   /**
    * Get active vertical for context
-   * Currently returns the first enabled vertical
-   * TODO: In future, support tenant-specific vertical selection
+   * Uses tenant's configured vertical if available
    */
   getActiveVertical(context: ModuleContext): VerticalDefinition | null {
     const verticals = this.getAllVerticals();
 
-    // Find first enabled vertical
+    // If tenant has a specific vertical configured, use that
+    if (context.config?.vertical) {
+      const configuredVertical = this.verticals.get(context.config.vertical);
+      if (configuredVertical) {
+        console.log(
+          `[VerticalRegistry] Using configured vertical: ${context.config.vertical}`,
+        );
+        return configuredVertical;
+      } else {
+        console.warn(
+          `[VerticalRegistry] Configured vertical '${context.config.vertical}' not found in registry`,
+        );
+      }
+    }
+
+    // Fallback: Find first enabled vertical
     for (const vertical of verticals) {
       // Check if vertical is enabled
       if (vertical.isEnabled && !vertical.isEnabled(context)) {
@@ -225,41 +239,8 @@ class VerticalRegistry {
   }
 
   /**
-   * Get routes from active vertical and its required core modules
-   * @deprecated Use getRouteConfig() for new dynamic routing system
-   */
-  getRoutes(context: ModuleContext): RouteObject[] {
-    const vertical = this.getActiveVertical(context);
-
-    if (!vertical) {
-      console.warn(
-        "[VerticalRegistry] No active vertical found, returning empty routes",
-      );
-      return [];
-    }
-
-    // Get routes from required core modules
-    const coreRoutes = coreRegistry.getRoutesByIds(
-      vertical.requiredCoreModules,
-      context,
-    );
-
-    // Get routes from vertical
-    const verticalRoutes = vertical.routes.map((route) =>
-      this.transformRoute(route),
-    );
-
-    // Merge: core routes first, then vertical routes
-    return [...coreRoutes, ...verticalRoutes];
-  }
-
-  /**
    * Get route configuration from active vertical
-   * NEW: For dynamic routing system
-   *
-   * This method supports both legacy and new routing systems:
-   * - If vertical has routeConfig, use it (preferred)
-   * - If vertical only has old routes, convert them temporarily
+   * Returns the routeConfig for the active vertical
    *
    * Note: Core module routes are handled separately by moduleRegistry
    */
@@ -270,48 +251,7 @@ class VerticalRegistry {
       return null;
     }
 
-    // Prefer new routeConfig if available
-    if (vertical.routeConfig) {
-      return vertical.routeConfig;
-    }
-
-    // Fallback: Convert legacy routes to new format
-    if (vertical.routes && vertical.routes.length > 0) {
-      console.warn(
-        `[VerticalRegistry] Vertical '${vertical.id}' using legacy routes. Please migrate to routeConfig.`,
-      );
-
-      return {
-        verticalId: vertical.id,
-        routes: vertical.routes.map((r) => ({
-          path: r.path || "",
-          element: r.element,
-          children: r.children as any,
-          index: r.index,
-        })),
-      };
-    }
-
-    return null;
-  }
-
-  /**
-   * Transform a ModuleRoute to RouteObject
-   */
-  private transformRoute(route: any): RouteObject {
-    const transformed: any = { ...route };
-
-    if (transformed.element && !isValidElement(transformed.element)) {
-      transformed.element = createElement(transformed.element);
-    }
-
-    if (route.children) {
-      transformed.children = route.children.map((child: any) =>
-        this.transformRoute(child),
-      );
-    }
-
-    return transformed as RouteObject;
+    return vertical.routeConfig;
   }
 
   /**
@@ -422,7 +362,10 @@ class VerticalRegistry {
       byIndustry,
       locked: this.locked,
       initialized: this.initialized,
-      totalRoutes: verticals.reduce((sum, v) => sum + v.routes.length, 0),
+      totalRoutes: verticals.reduce(
+        (sum, v) => sum + (v.routeConfig?.routes?.length || 0),
+        0,
+      ),
       totalNavigationItems: verticals.reduce(
         (sum, v) => sum + v.navigation.length,
         0,

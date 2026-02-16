@@ -6,23 +6,7 @@
  */
 
 import { ModuleDefinition } from "@/product";
-import { lazy } from "react";
 import { clientsRoutes } from "./routes.config";
-
-// Lazy load pages for code splitting
-const ClientsPage = lazy(() =>
-  import("./pages/ClientsPage").then((m) => ({ default: m.ClientsPage })),
-);
-const ClientDetailPage = lazy(() =>
-  import("./pages/ClientDetailPage").then((m) => ({
-    default: m.ClientDetailPage,
-  })),
-);
-const ClientWizardPage = lazy(() =>
-  import("./pages/ClientWizardPage").then((m) => ({
-    default: m.ClientWizardPage,
-  })),
-);
 
 /**
  * Clients module definition
@@ -35,33 +19,9 @@ export const clientsModule: ModuleDefinition = {
   vertical: "general",
 
   /**
-   * NEW: Dynamic route configuration
-   * Defines routes using the new dynamic router system
+   * Dynamic route configuration
    */
   routeConfig: clientsRoutes,
-
-  /**
-   * Module routes
-   * @deprecated Use routeConfig instead. Kept for backward compatibility during migration.
-   */
-  routes: [
-    {
-      path: "/clients",
-      element: ClientsPage,
-    },
-    {
-      path: "/clients/new",
-      element: ClientWizardPage,
-    },
-    {
-      path: "/clients/:id",
-      element: ClientDetailPage,
-    },
-    {
-      path: "/clients/:id/edit",
-      element: ClientWizardPage,
-    },
-  ],
 
   /**
    * Navigation structure

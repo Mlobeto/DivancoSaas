@@ -16,7 +16,7 @@ export interface DashboardStats {
     totalBusinessUnits: number;
     activeModules: number;
   };
-  equipment?: {
+  assets?: {
     total: number;
     available: number;
     rented: number;
@@ -87,7 +87,7 @@ export async function getBusinessUnitStats(
     include: {
       userBusinessUnits: true,
       enabledModules: true,
-      equipment: true,
+      assets: true,
     },
   });
 
@@ -131,8 +131,8 @@ export async function getBusinessUnitStats(
   };
 
   // Si tiene equipos, agregar estadísticas de equipos
-  if (businessUnit.equipment && businessUnit.equipment.length > 0) {
-    const equipmentByStatus = businessUnit.equipment.reduce(
+  if (businessUnit.assets && businessUnit.assets.length > 0) {
+    const assetsByStatus = businessUnit.assets.reduce(
       (acc, eq: any) => {
         acc[eq.status] = (acc[eq.status] || 0) + 1;
         return acc;
@@ -140,12 +140,12 @@ export async function getBusinessUnitStats(
       {} as Record<string, number>,
     );
 
-    stats.equipment = {
-      total: businessUnit.equipment.length,
-      available: equipmentByStatus.AVAILABLE || 0,
-      rented: equipmentByStatus.RENTED || 0,
-      maintenance: equipmentByStatus.MAINTENANCE || 0,
-      outOfService: equipmentByStatus.OUT_OF_SERVICE || 0,
+    stats.assets = {
+      total: businessUnit.assets.length,
+      available: assetsByStatus.AVAILABLE || 0,
+      rented: assetsByStatus.RENTED || 0,
+      maintenance: assetsByStatus.MAINTENANCE || 0,
+      outOfService: assetsByStatus.OUT_OF_SERVICE || 0,
     };
   }
 

@@ -48,16 +48,10 @@ export interface ModuleDefinition {
   description?: string;
 
   /**
-   * LEGACY: React Router route definitions (supports lazy components)
-   * @deprecated Use routeConfig instead for new dynamic routing system
+   * Dynamic route configuration
+   * Defines routes with full protection/permission support
    */
-  routes: ModuleRoute[];
-
-  /**
-   * NEW: Dynamic route configuration
-   * Preferred method for defining routes with full protection/permission support
-   */
-  routeConfig?: ModuleRouteConfig;
+  routeConfig: ModuleRouteConfig;
 
   /** Navigation menu items */
   navigation: NavigationItem[];

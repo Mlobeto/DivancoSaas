@@ -20,6 +20,7 @@ import {
   ShoppingCart,
   FileText,
   ChevronDown,
+  Building2,
 } from "lucide-react";
 
 /**
@@ -31,6 +32,7 @@ const iconMap: Record<string, React.ReactNode> = {
   clients: <Users className="w-5 h-5" />,
   purchases: <ShoppingCart className="w-5 h-5" />,
   rental: <FileText className="w-5 h-5" />,
+  building: <Building2 className="w-5 h-5" />,
 };
 
 /**
@@ -214,43 +216,103 @@ export default function DynamicNavigation({
 }: {
   isMobile?: boolean;
 }) {
-  const { user, tenant, businessUnit, role } = useAuthStore();
+  const { user, tenant, businessUnit, role, permissions } = useAuthStore();
 
   // Build navigation from modules
   const navigation = React.useMemo(() => {
-    if (!user || !tenant) return [];
+    if (!user) return [];
 
-    // Load module assignments from localStorage (temporary)
-    let assignedModules: string[] = [];
-    if (businessUnit) {
-      const key = `module-assignments-${tenant.id}`;
-      const stored = localStorage.getItem(key);
-      if (stored) {
-        try {
-          const assignments = JSON.parse(stored);
-          assignedModules = assignments[businessUnit.id] || [];
-        } catch (error) {
-          console.error("Failed to parse module assignments:", error);
-        }
-      }
+    // SUPER_ADMIN: Show platform administration menu
+    if (user.role === "SUPER_ADMIN") {
+      return [
+        {
+          id: "platform-admin",
+          label: "Administración",
+          path: "/admin/tenants",
+          icon: "building",
+          children: [
+            {
+              id: "tenants",
+              label: "Gestión de Tenants",
+              path: "/admin/tenants",
+              icon: "building",
+            },
+            // TODO: Add module management
+            // {
+            //   id: "modules",
+            //   label: "Gestión de Módulos",
+            //   path: "/admin/modules",
+            //   icon: "package",
+            // },
+            // TODO: Add vertical management
+            // {
+            //   id: "verticals",
+            //   label: "Gestión de Verticales",
+            //   path: "/admin/verticals",
+            //   icon: "shapes",
+            // },
+          ],
+        },
+      ] as NavigationItem[];
     }
 
-    // TODO: Derive permissions from role or fetch from backend
-    const permissions: string[] = role ? [role] : [];
+    // Regular users: require tenant
+    if (!tenant) return [];
+
+    // Get enabled modules from tenant (from API)
+    // Fallback to businessUnit.enabledModules if tenant doesn't have them
+    const assignedModules =
+      tenant.enabledModules || businessUnit?.enabledModules || [];
+
+    console.log("[DynamicNavigation] Tenant modules:", {
+      tenantModules: tenant.enabledModules,
+      buModules: businessUnit?.enabledModules,
+      assignedModules,
+      vertical: tenant.vertical,
+    });
+
+    console.log("[DynamicNavigation] User role:", role);
+    console.log(
+      "[DynamicNavigation] User permissions from backend:",
+      permissions,
+    );
+
+    // Use permissions from backend (auth store)
+    const userPermissions = permissions || [];
+
+    // Include tenant config (enabledModules, vertical) in context
+    const config = {
+      enabledModules: tenant.enabledModules || [],
+      vertical: tenant.vertical || null,
+    };
 
     const context = createModuleContext(
       tenant.id,
       businessUnit?.id || "",
-      permissions,
+      userPermissions,
+      config,
     );
 
     const allNavigation = navigationBuilder.buildNavigation(context);
 
+    console.log(
+      "[DynamicNavigation] All navigation items:",
+      allNavigation.map((n) => n.id),
+    );
+
     // Filter by assigned modules (if assignments exist)
     if (assignedModules.length > 0) {
-      return allNavigation.filter((item) => assignedModules.includes(item.id));
+      const filtered = allNavigation.filter((item) =>
+        assignedModules.includes(item.id),
+      );
+      console.log(
+        "[DynamicNavigation] Filtered navigation:",
+        filtered.map((n) => n.id),
+      );
+      return filtered;
     }
 
+    console.log("[DynamicNavigation] Returning all navigation (no filter)");
     return allNavigation;
   }, [user, tenant, businessUnit, role]);
 

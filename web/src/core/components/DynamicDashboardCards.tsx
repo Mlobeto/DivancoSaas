@@ -84,32 +84,67 @@ interface ModuleGroup {
 }
 
 export function DynamicDashboardCards() {
-  const { tenant, businessUnit, role } = useAuthStore();
+  const { user, tenant, businessUnit, role } = useAuthStore();
 
   const moduleGroups = React.useMemo(() => {
+    if (!user) return [];
+
+    // SUPER_ADMIN: Show platform administration cards
+    if (user.role === "SUPER_ADMIN") {
+      return [
+        {
+          id: "platform-admin",
+          label: "Administración de Plataforma",
+          icon: "building",
+          color: "border-primary-800",
+          items: [
+            {
+              id: "tenants",
+              label: "Gestión de Tenants",
+              path: "/admin/tenants",
+              icon: "building",
+            },
+            // TODO: Add module management
+            // {
+            //   id: "modules",
+            //   label: "Gestión de Módulos",
+            //   path: "/admin/modules",
+            //   icon: "package",
+            // },
+            // TODO: Add vertical management
+            // {
+            //   id: "verticals",
+            //   label: "Gestión de Verticales",
+            //   path: "/admin/verticals",
+            //   icon: "shapes",
+            // },
+          ],
+        },
+      ] as ModuleGroup[];
+    }
+
+    // Regular users: require tenant
     if (!tenant) return [];
 
-    // Load module assignments from localStorage (temporary)
-    let assignedModules: string[] = [];
-    if (businessUnit) {
-      const key = `module-assignments-${tenant.id}`;
-      const stored = localStorage.getItem(key);
-      if (stored) {
-        try {
-          const assignments = JSON.parse(stored);
-          assignedModules = assignments[businessUnit.id] || [];
-        } catch (error) {
-          console.error("Failed to parse module assignments:", error);
-        }
-      }
-    }
+    // Get enabled modules from tenant (from API)
+    // Fallback to businessUnit.enabledModules if tenant doesn't have them
+    const assignedModules =
+      tenant.enabledModules || businessUnit?.enabledModules || [];
 
     // Create module context
     const permissions: string[] = role ? [role] : [];
+
+    // Include tenant config (enabledModules, vertical) in context
+    const config = {
+      enabledModules: tenant.enabledModules || [],
+      vertical: tenant.vertical || null,
+    };
+
     const context = createModuleContext(
       tenant.id,
       businessUnit?.id || "",
       permissions,
+      config,
     );
 
     const groups: ModuleGroup[] = [];
@@ -171,7 +206,7 @@ export function DynamicDashboardCards() {
     });
 
     return groups;
-  }, [tenant, businessUnit, role]);
+  }, [user, tenant, businessUnit, role]);
 
   if (moduleGroups.length === 0) {
     return (

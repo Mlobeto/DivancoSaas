@@ -7,12 +7,14 @@ interface AuthState {
   tenant: Tenant | null;
   businessUnit: BusinessUnit | null;
   role: string | null;
+  permissions: string[]; // User permissions from backend
   isAuthenticated: boolean;
   setAuth: (data: {
     user: User;
     tenant?: Tenant; // ← Optional for SUPER_ADMIN
     businessUnit?: BusinessUnit;
     role?: string;
+    permissions?: string[]; // Permissions from backend
   }) => void;
   clearAuth: () => void;
 }
@@ -24,6 +26,7 @@ export const useAuthStore = create<AuthState>()(
       tenant: null,
       businessUnit: null,
       role: null,
+      permissions: [],
       isAuthenticated: false,
 
       setAuth: (data) =>
@@ -32,6 +35,7 @@ export const useAuthStore = create<AuthState>()(
           tenant: data.tenant || null,
           businessUnit: data.businessUnit || null,
           role: data.role || null,
+          permissions: data.permissions || [],
           isAuthenticated: true,
         }),
 
@@ -41,6 +45,7 @@ export const useAuthStore = create<AuthState>()(
           tenant: null,
           businessUnit: null,
           role: null,
+          permissions: [],
           isAuthenticated: false,
         }),
     }),

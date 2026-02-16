@@ -7,8 +7,6 @@
  * IMPORTANT: Registry is locked after initialization to prevent runtime mutations.
  */
 
-import { createElement, isValidElement } from "react";
-import type { RouteObject } from "react-router-dom";
 import type {
   CoreModuleDefinition,
   CoreRegistrationResult,
@@ -55,7 +53,7 @@ class CoreRegistry {
         moduleId: module.id,
         success: true,
         category: module.category,
-        routes: module.routes.length,
+        routes: module.routeConfig?.routes?.length || 0,
         navigationItems: module.navigation.length,
       };
     } catch (error) {
@@ -98,8 +96,10 @@ class CoreRegistry {
       throw new Error(`Core module '${module.id}' must have a category`);
     }
 
-    if (!Array.isArray(module.routes)) {
-      throw new Error(`Core module '${module.id}' must have routes array`);
+    if (!module.routeConfig || typeof module.routeConfig !== "object") {
+      throw new Error(
+        `Core module '${module.id}' must have a valid routeConfig object`,
+      );
     }
 
     if (!Array.isArray(module.navigation)) {
@@ -163,50 +163,6 @@ class CoreRegistry {
   ): CoreModuleDefinition[] {
     const enabled = this.getEnabledCoreModules(context);
     return enabled.filter((module) => ids.includes(module.id));
-  }
-
-  /**
-   * Get all routes from enabled core modules
-   */
-  getRoutes(context: ModuleContext): RouteObject[] {
-    const modules = this.getEnabledCoreModules(context);
-
-    return modules.flatMap((module) =>
-      module.routes.map((route) => this.transformRoute(route)),
-    );
-  }
-
-  /**
-   * Get routes from specific core modules by ID
-   */
-  getRoutesByIds(ids: string[], context: ModuleContext): RouteObject[] {
-    const modules = this.getCoreModulesByIds(ids, context);
-
-    return modules.flatMap((module) =>
-      module.routes.map((route) => this.transformRoute(route)),
-    );
-  }
-
-  /**
-   * Transform a ModuleRoute to RouteObject
-   * Wraps LazyExoticComponent in createElement if needed
-   */
-  private transformRoute(route: any): RouteObject {
-    const transformed: any = { ...route };
-
-    // If element is a LazyExoticComponent (not already a ReactElement), wrap it
-    if (transformed.element && !isValidElement(transformed.element)) {
-      transformed.element = createElement(transformed.element);
-    }
-
-    // Recursively transform children
-    if (route.children) {
-      transformed.children = route.children.map((child: any) =>
-        this.transformRoute(child),
-      );
-    }
-
-    return transformed as RouteObject;
   }
 
   /**
@@ -305,7 +261,10 @@ class CoreRegistry {
       byCategory,
       locked: this.locked,
       initialized: this.initialized,
-      totalRoutes: modules.reduce((sum, m) => sum + m.routes.length, 0),
+      totalRoutes: modules.reduce(
+        (sum, m) => sum + (m.routeConfig?.routes?.length || 0),
+        0,
+      ),
       totalNavigationItems: modules.reduce(
         (sum, m) => sum + m.navigation.length,
         0,

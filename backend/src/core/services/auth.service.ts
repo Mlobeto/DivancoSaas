@@ -11,6 +11,7 @@ import prisma from "@config/database";
 import { config } from "@config/index";
 import { AppError } from "@core/middlewares/error.middleware";
 import { emailService } from "./email.service";
+import { permissionService } from "./permission.service";
 
 interface RegisterInput {
   tenantName: string;
@@ -44,13 +45,20 @@ interface AuthResponse {
     name: string;
     slug: string;
     plan: string;
+    status?: string;
+    country?: string | null;
+    billingEmail?: string | null;
+    enabledModules?: string[];
+    vertical?: string | null;
   } | null;
   businessUnits: Array<{
     id: string;
     name: string;
     slug: string;
     role?: string; // Role within this BU (OWNER, ADMIN, etc.)
+    permissions?: string[]; // User permissions in this BU
   }>;
+  permissions?: string[]; // Permissions for the first/active business unit
 }
 
 export class AuthService {
@@ -161,6 +169,10 @@ export class AuthService {
           name: buName,
           slug: buSlug,
           tenantId: tenant.id,
+          settings: {
+            enabledModules: [],
+            vertical: null,
+          },
         },
       });
 
@@ -232,6 +244,8 @@ export class AuthService {
         name: result.tenant.name,
         slug: result.tenant.slug,
         plan: result.tenant.plan,
+        enabledModules: [],
+        vertical: null,
       },
       businessUnits: [
         {
@@ -348,6 +362,46 @@ export class AuthService {
       firstBusinessUnitId,
     );
 
+    // Get enabledModules and vertical from first BusinessUnit settings
+    let enabledModules: string[] = [];
+    let vertical: string | null = null;
+
+    if (firstBusinessUnitId) {
+      const bu = await prisma.businessUnit.findUnique({
+        where: { id: firstBusinessUnitId },
+        select: { settings: true },
+      });
+      const settings = (bu?.settings as any) || {};
+      enabledModules = settings.enabledModules || [];
+      vertical = settings.vertical || null;
+    }
+
+    // Get user permissions for the first business unit
+    let userPermissions: string[] = [];
+    if (firstBusinessUnitId) {
+      userPermissions = await permissionService.getUserPermissions(
+        user.id,
+        firstBusinessUnitId,
+      );
+    }
+
+    // Get permissions for all business units
+    const businessUnitsWithPermissions = await Promise.all(
+      user.businessUnits.map(async (ubu) => {
+        const permissions = await permissionService.getUserPermissions(
+          user.id,
+          ubu.businessUnit.id,
+        );
+        return {
+          id: ubu.businessUnit.id,
+          name: ubu.businessUnit.name,
+          slug: ubu.businessUnit.slug,
+          role: ubu.role?.name || "GUEST",
+          permissions,
+        };
+      }),
+    );
+
     return {
       token: tokens.accessToken,
       refreshToken: tokens.refreshToken,
@@ -365,14 +419,15 @@ export class AuthService {
             name: user.tenant.name,
             slug: user.tenant.slug,
             plan: user.tenant.plan,
+            status: user.tenant.status,
+            country: user.tenant.country,
+            billingEmail: user.tenant.billingEmail,
+            enabledModules,
+            vertical,
           }
         : null,
-      businessUnits: user.businessUnits.map((ubu) => ({
-        id: ubu.businessUnit.id,
-        name: ubu.businessUnit.name,
-        slug: ubu.businessUnit.slug,
-        role: ubu.role?.name || "GUEST", // ← Role within this BU (handle missing role)
-      })),
+      businessUnits: businessUnitsWithPermissions,
+      permissions: userPermissions, // Permissions for the first business unit
     };
   }
 
@@ -584,13 +639,35 @@ export class AuthService {
     const roles = Array.from(rolesMap.values());
 
     // Agregar permisos únicos desde todos los roles
+    // Use permissionService to get properly formatted permissions
     const permissionsSet = new Set<string>();
-    userWithRelations.businessUnits.forEach((ubu: any) => {
-      ubu.role.permissions.forEach((rp: any) => {
-        permissionsSet.add(rp.permission.name);
-      });
-    });
+
+    if (businessUnits.length > 0) {
+      // Get permissions for the first (active) business unit
+      const firstBUPermissions = await permissionService.getUserPermissions(
+        userId,
+        businessUnits[0]!.id,
+      );
+      firstBUPermissions.forEach((p) => permissionsSet.add(p));
+    }
+
     const permissions = Array.from(permissionsSet);
+
+    // Get enabledModules and vertical from first BusinessUnit settings
+    const firstBU = businessUnits[0];
+    let enabledModules: string[] = [];
+    let vertical: string | null = null;
+
+    if (firstBU) {
+      const buId = firstBU.id;
+      const bu = await prisma.businessUnit.findUnique({
+        where: { id: buId },
+        select: { settings: true },
+      });
+      const settings = (bu?.settings as any) || {};
+      enabledModules = settings.enabledModules || [];
+      vertical = settings.vertical || null;
+    }
 
     return {
       user: {
@@ -611,6 +688,8 @@ export class AuthService {
             plan: userWithRelations.tenant.plan,
             status: userWithRelations.tenant.status,
             country: userWithRelations.tenant.country,
+            enabledModules,
+            vertical,
           }
         : null,
       businessUnits,

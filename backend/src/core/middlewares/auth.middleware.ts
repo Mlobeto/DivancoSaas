@@ -9,6 +9,11 @@ declare global {
   namespace Express {
     interface Request {
       context?: RequestContext;
+      user?: {
+        userId: string;
+        tenantId: string | null;
+        role: string; // Global role (SUPER_ADMIN, USER, etc.)
+      };
     }
   }
 }
@@ -82,7 +87,19 @@ export async function authenticate(
       },
     });
 
-    if (!user || user.tenantId !== tenantId) {
+    if (!user) {
+      res.status(401).json({
+        success: false,
+        error: {
+          code: "UNAUTHORIZED",
+          message: "Invalid token",
+        },
+      });
+      return;
+    }
+
+    // SUPER_ADMIN can access any tenant (tenantId is null for platform owner)
+    if (user.role !== "SUPER_ADMIN" && user.tenantId !== tenantId) {
       res.status(401).json({
         success: false,
         error: {
@@ -105,7 +122,8 @@ export async function authenticate(
     }
 
     // SECURITY: Validate businessUnit belongs to user's tenant
-    if (businessUnitId) {
+    // (Skip for SUPER_ADMIN - they have cross-tenant access)
+    if (businessUnitId && user.role !== "SUPER_ADMIN") {
       const userBU = user.businessUnits.find(
         (ub) => ub.businessUnitId === businessUnitId,
       );
@@ -146,12 +164,27 @@ export async function authenticate(
         (rp) => `${rp.permission.resource}:${rp.permission.action}`,
       ) || [];
 
+    // For SUPER_ADMIN, tenantId can be from header (when managing other tenants) or null
+    const contextTenantId =
+      user.role === "SUPER_ADMIN"
+        ? tenantIdHeader || user.tenantId
+        : user.tenantId;
+
     req.context = {
       userId: user.id,
-      tenantId: tenantId as string,
+      tenantId: contextTenantId as string,
       businessUnitId: businessUnitId,
-      role: businessUnit?.role.name || "guest",
+      role:
+        businessUnit?.role.name ||
+        (user.role === "SUPER_ADMIN" ? "SUPER_ADMIN" : "guest"),
       permissions,
+    };
+
+    // Also set req.user with global role for SUPER_ADMIN checks
+    req.user = {
+      userId: user.id,
+      tenantId: user.tenantId,
+      role: user.role, // Global role (SUPER_ADMIN, USER, etc.)
     };
 
     next();

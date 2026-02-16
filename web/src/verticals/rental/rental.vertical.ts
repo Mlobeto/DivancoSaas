@@ -8,45 +8,7 @@
  */
 
 import { VerticalDefinition } from "@/product";
-import { lazy } from "react";
 import { rentalRoutes } from "./routes.config";
-
-// Lazy load pages for code splitting (from modules/rental temporarily)
-const QuotationsListPage = lazy(() =>
-  import("@/modules/rental/pages/QuotationsListPage").then((m) => ({
-    default: m.QuotationsListPage,
-  })),
-);
-const QuotationFormPage = lazy(() =>
-  import("@/modules/rental/pages/QuotationFormPage").then((m) => ({
-    default: m.QuotationFormPage,
-  })),
-);
-const ContractsListPage = lazy(() =>
-  import("@/modules/rental/pages/ContractsListPage").then((m) => ({
-    default: m.ContractsListPage,
-  })),
-);
-const QuotationTemplatesPage = lazy(() =>
-  import("@/modules/rental/pages/QuotationTemplatesPage").then((m) => ({
-    default: m.QuotationTemplatesPage,
-  })),
-);
-const TemplateFormPage = lazy(() =>
-  import("@/modules/rental/pages/TemplateFormPage").then((m) => ({
-    default: m.TemplateFormPage,
-  })),
-);
-const TemplatePreviewPage = lazy(() =>
-  import("@/modules/rental/pages/TemplatePreviewPage").then((m) => ({
-    default: m.TemplatePreviewPage,
-  })),
-);
-const AccountsListPage = lazy(() =>
-  import("@/modules/rental/pages/AccountsListPage").then((m) => ({
-    default: m.AccountsListPage,
-  })),
-);
 
 /**
  * Rental vertical definition for equipment rental industry
@@ -69,65 +31,9 @@ export const rentalVertical: VerticalDefinition = {
   optionalCoreModules: ["maintenance"],
 
   /**
-   * NEW: Dynamic route configuration
-   * Defines routes using the new dynamic router system
+   * Dynamic route configuration
    */
   routeConfig: rentalRoutes,
-
-  /**
-   * Vertical-specific routes
-   * These will be merged with core module routes
-   * @deprecated Use routeConfig instead. Kept for backward compatibility during migration.
-   */
-  routes: [
-    // Quotations
-    {
-      path: "/rental/quotations",
-      element: QuotationsListPage,
-    },
-    {
-      path: "/rental/quotations/new",
-      element: QuotationFormPage,
-    },
-    {
-      path: "/rental/quotations/:id/edit",
-      element: QuotationFormPage,
-    },
-
-    // Contracts
-    {
-      path: "/rental/contracts",
-      element: ContractsListPage,
-    },
-    {
-      path: "/rental/contracts/:id",
-      element: ContractsListPage,
-    },
-
-    // Templates
-    {
-      path: "/rental/templates",
-      element: QuotationTemplatesPage,
-    },
-    {
-      path: "/rental/templates/new",
-      element: TemplateFormPage,
-    },
-    {
-      path: "/rental/templates/:id/edit",
-      element: TemplateFormPage,
-    },
-    {
-      path: "/rental/templates/:id/preview",
-      element: TemplatePreviewPage,
-    },
-
-    // Accounts (billing)
-    {
-      path: "/rental/accounts",
-      element: AccountsListPage,
-    },
-  ],
 
   /**
    * Navigation structure

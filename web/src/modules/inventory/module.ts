@@ -6,36 +6,7 @@
  */
 
 import { ModuleDefinition } from "@/product";
-import { lazy } from "react";
 import { inventoryRoutes } from "./routes.config";
-
-// Lazy load pages for code splitting
-const AssetsListPage = lazy(() =>
-  import("./pages/AssetsListPage").then((m) => ({ default: m.AssetsListPage })),
-);
-const AssetFormPage = lazy(() =>
-  import("./pages/AssetFormPage").then((m) => ({ default: m.AssetFormPage })),
-);
-const AssetTemplatesPage = lazy(() =>
-  import("./pages/AssetTemplatesPage").then((m) => ({
-    default: m.AssetTemplatesPage,
-  })),
-);
-const TemplateWizardPage = lazy(() =>
-  import("./pages/TemplateWizardPage").then((m) => ({
-    default: m.TemplateWizardPage,
-  })),
-);
-const DocumentTypesPage = lazy(() =>
-  import("./pages/DocumentTypesPage").then((m) => ({
-    default: m.DocumentTypesPage,
-  })),
-);
-const AlertsDashboardPage = lazy(() =>
-  import("./pages/AlertsDashboardPage").then((m) => ({
-    default: m.AlertsDashboardPage,
-  })),
-);
 
 /**
  * Inventory module definition
@@ -48,56 +19,9 @@ export const inventoryModule: ModuleDefinition = {
   vertical: "general",
 
   /**
-   * NEW: Dynamic route configuration
-   * Defines routes using the new dynamic router system
+   * Dynamic route configuration
    */
   routeConfig: inventoryRoutes,
-
-  /**
-   * Module routes
-   * @deprecated Use routeConfig instead. Kept for backward compatibility during migration.
-   */
-  routes: [
-    // Assets
-    {
-      path: "/inventory",
-      element: AssetsListPage,
-    },
-    {
-      path: "/inventory/new",
-      element: AssetFormPage,
-    },
-    {
-      path: "/inventory/:id/edit",
-      element: AssetFormPage,
-    },
-
-    // Templates
-    {
-      path: "/inventory/templates",
-      element: AssetTemplatesPage,
-    },
-    {
-      path: "/inventory/templates/new",
-      element: TemplateWizardPage,
-    },
-    {
-      path: "/inventory/templates/:id/edit",
-      element: TemplateWizardPage,
-    },
-
-    // Document Types
-    {
-      path: "/inventory/document-types",
-      element: DocumentTypesPage,
-    },
-
-    // Alerts
-    {
-      path: "/inventory/alerts",
-      element: AlertsDashboardPage,
-    },
-  ],
 
   /**
    * Navigation structure

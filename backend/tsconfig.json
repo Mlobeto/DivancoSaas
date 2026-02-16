@@ -35,6 +35,7 @@
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
+    "types": ["node"],
 
     /* ======================================================
      * OUTPUT & DEBUGGING
@@ -47,7 +48,7 @@
   /* ======================================================
    * FILES
    * ====================================================== */
-  "include": ["src/**/*", "prisma/**/*"],
+  "include": ["src/**/*", "prisma/**/*", "scripts/**/*"],
   "exclude": [
     "node_modules",
     "dist",

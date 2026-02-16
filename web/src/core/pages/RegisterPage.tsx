@@ -34,6 +34,7 @@ export function RegisterPage() {
             }
           : undefined,
         role: firstBusinessUnit?.role, // Role within the selected BU
+        permissions: data.permissions || [], // Permissions from backend
       });
       navigate("/dashboard");
     },

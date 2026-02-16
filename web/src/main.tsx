@@ -68,7 +68,7 @@ const queryClient = new QueryClient({
  */
 function App() {
   const [modulesReady, setModulesReady] = useState(false);
-  const { tenant, businessUnit, role } = useAuthStore();
+  const { tenant, businessUnit } = useAuthStore();
 
   // Load modules on mount (uses global cache to prevent double-loading)
   useEffect(() => {
@@ -85,13 +85,37 @@ function App() {
   // Create module context - memoized to prevent unnecessary recalculations
   // Note: context is created even without auth (public routes like /login exist)
   const context = useMemo(() => {
-    const permissions: string[] = role ? [role] : [];
+    // Use permissions from auth store (comes from backend)
+    const permissions = useAuthStore.getState().permissions || [];
+
+    // Include tenant config (enabledModules, vertical) in context
+    const config = tenant
+      ? {
+          enabledModules: tenant.enabledModules || [],
+          vertical: tenant.vertical || null,
+        }
+      : undefined;
+
+    console.log("[App] Creating module context:", {
+      tenantId: tenant?.id,
+      businessUnitId: businessUnit?.id,
+      permissions,
+      config,
+    });
+
     return createModuleContext(
       tenant?.id || "",
       businessUnit?.id || "",
       permissions,
+      config,
     );
-  }, [tenant?.id, businessUnit?.id, role]);
+  }, [
+    tenant?.id,
+    tenant?.enabledModules,
+    tenant?.vertical,
+    businessUnit?.id,
+    // Removed 'role' from dependencies since we use permissions directly
+  ]);
 
   // Create router - memoized to only recreate when modules load or context changes
   const router = useMemo(() => {

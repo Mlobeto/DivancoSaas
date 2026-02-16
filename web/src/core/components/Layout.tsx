@@ -14,7 +14,7 @@ interface LayoutProps {
 }
 
 export function Layout({ children, title, subtitle, actions }: LayoutProps) {
-  const { user, tenant, businessUnit, role, setAuth, clearAuth } =
+  const { user, tenant, businessUnit, role, permissions, setAuth, clearAuth } =
     useAuthStore();
   const [showBuSelector, setShowBuSelector] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
@@ -35,11 +35,13 @@ export function Layout({ children, title, subtitle, actions }: LayoutProps) {
 
   const handleSwitchBu = (bu: BusinessUnit) => {
     // Update auth store with new business unit
+    // TODO: Re-fetch permissions for the new business unit
     if (user && tenant) {
       setAuth({
         user,
         tenant,
         businessUnit: bu,
+        permissions: bu.permissions || permissions || [], // Use BU permissions if available
       });
     }
     setShowBuSelector(false);
@@ -247,10 +249,10 @@ export function Layout({ children, title, subtitle, actions }: LayoutProps) {
                       )}
                     </div>
                     <div className="p-2">
-                      {/* Admin: Module Management (SUPER_ADMIN only) */}
+                      {/* Admin: Tenant Management (SUPER_ADMIN only) */}
                       {user?.role === "SUPER_ADMIN" && (
                         <a
-                          href="/admin/modules"
+                          href="/admin/tenants"
                           className="w-full flex items-center gap-3 px-4 py-2 text-sm text-primary-400 hover:bg-dark-700 rounded-lg transition-colors mb-2"
                           onClick={() => setShowUserMenu(false)}
                         >
@@ -264,10 +266,10 @@ export function Layout({ children, title, subtitle, actions }: LayoutProps) {
                               strokeLinecap="round"
                               strokeLinejoin="round"
                               strokeWidth={2}
-                              d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"
+                              d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
                             />
                           </svg>
-                          Gestión de Módulos
+                          Gestión de Tenants
                         </a>
                       )}
 

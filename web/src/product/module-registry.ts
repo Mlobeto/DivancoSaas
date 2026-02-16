@@ -13,8 +13,6 @@ import {
 } from "./types/module.types";
 import type { ModuleRouteConfig } from "./types/route.types";
 import { featureFlagService } from "./feature-flags";
-import { createElement, isValidElement } from "react";
-import type { RouteObject } from "react-router-dom";
 
 /**
  * Module Registry Class
@@ -55,7 +53,7 @@ class ModuleRegistry {
       return {
         moduleId: module.id,
         success: true,
-        routes: module.routes.length,
+        routes: module.routeConfig?.routes?.length || 0,
         navigationItems: module.navigation.length,
       };
     } catch (error) {
@@ -163,78 +161,11 @@ class ModuleRegistry {
   }
 
   /**
-   * Get all routes from enabled modules
-   * Transforms lazy components into React elements
-   * @deprecated Use getRouteConfigs() for new dynamic routing system
-   */
-  getRoutes(context: ModuleContext): RouteObject[] {
-    const modules = this.getEnabledModules(context);
-
-    return modules.flatMap((module) =>
-      module.routes.map((route) => this.transformRoute(route)),
-    );
-  }
-
-  /**
    * Get route configurations from all enabled modules
-   * NEW: For dynamic routing system
-   *
-   * This method supports both legacy and new routing systems:
-   * - If module has routeConfig, use it (preferred)
-   * - If module only has old routes, convert them temporarily
+   * Returns ModuleRouteConfig for each enabled module
    */
   getRouteConfigs(context: ModuleContext): ModuleRouteConfig[] {
-    const modules = this.getEnabledModules(context);
-    const configs: ModuleRouteConfig[] = [];
-
-    for (const module of modules) {
-      // Prefer new routeConfig if available
-      if (module.routeConfig) {
-        configs.push(module.routeConfig);
-      } else if (module.routes && module.routes.length > 0) {
-        // Fallback: Convert legacy routes to temporary config
-        console.warn(
-          `[ModuleRegistry] Module '${module.id}' using legacy routes. Please migrate to routeConfig.`,
-        );
-
-        // Create temporary config from legacy routes
-        configs.push({
-          moduleId: module.id,
-          basePath: "", // Legacy routes had paths hardcoded
-          routes: module.routes.map((r) => ({
-            path: r.path || "",
-            element: r.element,
-            children: r.children as any,
-            index: r.index,
-          })),
-        });
-      }
-    }
-
-    return configs;
-  }
-
-  /**
-   * Transform a ModuleRoute to RouteObject
-   * Wraps LazyExoticComponent in createElement if needed
-   */
-  private transformRoute(route: any): RouteObject {
-    const transformed: any = { ...route };
-
-    // If element is a LazyExoticComponent (not already a ReactElement), wrap it
-    if (transformed.element && !isValidElement(transformed.element)) {
-      // It's a lazy component, wrap it in createElement
-      transformed.element = createElement(transformed.element);
-    }
-
-    // Recursively transform children
-    if (route.children) {
-      transformed.children = route.children.map((child: any) =>
-        this.transformRoute(child),
-      );
-    }
-
-    return transformed as RouteObject;
+    return this.getEnabledModules(context).map((module) => module.routeConfig);
   }
 
   /**
@@ -313,8 +244,8 @@ class ModuleRegistry {
       throw new Error("Module must have a valid name");
     }
 
-    if (!Array.isArray(module.routes)) {
-      throw new Error("Module routes must be an array");
+    if (!module.routeConfig || typeof module.routeConfig !== "object") {
+      throw new Error("Module must have a valid routeConfig object");
     }
 
     if (!Array.isArray(module.navigation)) {
@@ -329,7 +260,10 @@ class ModuleRegistry {
     const modules = this.getAllModules();
     return {
       totalModules: modules.length,
-      totalRoutes: modules.reduce((sum, m) => sum + m.routes.length, 0),
+      totalRoutes: modules.reduce(
+        (sum, m) => sum + (m.routeConfig?.routes?.length || 0),
+        0,
+      ),
       totalNavigationItems: modules.reduce(
         (sum, m) => sum + m.navigation.length,
         0,
