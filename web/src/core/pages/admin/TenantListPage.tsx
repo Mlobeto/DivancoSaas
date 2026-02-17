@@ -9,7 +9,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/store/auth.store";
 import { Layout } from "@/core/components/Layout";
-import { api } from "@/lib/api";
+import api from "@/lib/api";
 import {
   Plus,
   Search,

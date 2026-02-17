@@ -10,7 +10,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useAuthStore } from "@/store/auth.store";
 import { moduleRegistry, verticalRegistry } from "@/product";
 import { Layout } from "@/core/components/Layout";
-import { api } from "@/lib/api";
+import api from "@/lib/api";
 import {
   Save,
   AlertTriangle,
