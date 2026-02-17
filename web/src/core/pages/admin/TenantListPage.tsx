@@ -84,16 +84,7 @@ export function TenantListPage() {
     }
 
     try {
-      const response = await fetch(`/api/v1/tenants/${tenantId}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to delete tenant");
-      }
+      await api.delete(`/tenants/${tenantId}`);
 
       // Remove from list
       setTenants(tenants.filter((t) => t.id !== tenantId));

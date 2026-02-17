@@ -10,6 +10,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useAuthStore } from "@/store/auth.store";
 import { moduleRegistry, verticalRegistry } from "@/product";
 import { Layout } from "@/core/components/Layout";
+import { api } from "@/lib/api";
 import {
   Save,
   AlertTriangle,
@@ -193,18 +194,8 @@ export function TenantFormPage() {
     const fetchTenant = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/v1/tenants/${id}`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch tenant");
-        }
-
-        const data = await response.json();
-        const tenant = data.data;
+        const response = await api.get(`/tenants/${id}`);
+        const tenant = response.data.data;
 
         setFormData({
           name: tenant.name,
@@ -283,21 +274,10 @@ export function TenantFormPage() {
       setSaving(true);
       setError(null);
 
-      const url = isEditing ? `/api/v1/tenants/${id}` : "/api/v1/tenants";
-      const method = isEditing ? "PUT" : "POST";
-
-      const response = await fetch(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Failed to save tenant");
+      if (isEditing) {
+        await api.put(`/tenants/${id}`, formData);
+      } else {
+        await api.post("/tenants", formData);
       }
 
       // Success - redirect to list
