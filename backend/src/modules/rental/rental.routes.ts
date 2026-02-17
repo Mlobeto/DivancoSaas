@@ -12,7 +12,7 @@ import { accountController } from "./controllers/account.controller";
 import { usageReportController } from "./controllers/usage-report.controller";
 import { rentalController } from "./controllers/rental.controller";
 import { jobsController } from "./controllers/jobs.controller";
-import { authenticate } from "@core/middlewares/auth.middleware";
+import { authenticate, authorize } from "@core/middlewares/auth.middleware";
 
 const router = Router();
 
@@ -45,38 +45,51 @@ const upload = multer({
 // ============================================
 
 // Crear cuenta de cliente
-router.post("/accounts", accountController.create.bind(accountController));
+router.post(
+  "/accounts",
+  authorize("accounts:create"),
+  accountController.create.bind(accountController),
+);
 
 // Obtener cuenta por ID
-router.get("/accounts/:id", accountController.getById.bind(accountController));
+router.get(
+  "/accounts/:id",
+  authorize("accounts:read"),
+  accountController.getById.bind(accountController),
+);
 
 // Obtener cuenta por clientId
 router.get(
   "/accounts/client/:clientId",
+  authorize("accounts:read"),
   accountController.getByClientId.bind(accountController),
 );
 
 // Recargar saldo
 router.post(
   "/accounts/:id/reload",
+  authorize("accounts:update"),
   accountController.reload.bind(accountController),
 );
 
 // Consultar saldo
 router.get(
   "/accounts/:id/balance",
+  authorize("accounts:read"),
   accountController.getBalance.bind(accountController),
 );
 
 // Historial de movimientos
 router.get(
   "/accounts/:id/movements",
+  authorize("accounts:read"),
   accountController.getMovements.bind(accountController),
 );
 
 // Estado de cuenta (PDF/JSON)
 router.get(
   "/accounts/:id/statement",
+  authorize("accounts:read"),
   accountController.getStatement.bind(accountController),
 );
 
@@ -85,50 +98,65 @@ router.get(
 // ============================================
 
 // Listar contratos
-router.get("/contracts", contractController.list.bind(contractController));
+router.get(
+  "/contracts",
+  authorize("contracts:read"),
+  contractController.list.bind(contractController),
+);
 
 // Obtener contrato por ID
 router.get(
   "/contracts/:id",
+  authorize("contracts:read"),
   contractController.getById.bind(contractController),
 );
 
 // Crear contrato
-router.post("/contracts", contractController.create.bind(contractController));
+router.post(
+  "/contracts",
+  authorize("contracts:create"),
+  contractController.create.bind(contractController),
+);
 
 // Retirar asset
 router.post(
   "/contracts/:id/withdraw",
+  authorize("contracts:update"),
   contractController.withdraw.bind(contractController),
 );
 
 // Devolver asset
 router.post(
   "/contracts/:id/return",
+  authorize("contracts:update"),
   contractController.return.bind(contractController),
 );
 
 // Suspender contrato
 router.patch(
   "/contracts/:id/suspend",
+  authorize("contracts:update"),
   contractController.suspend.bind(contractController),
 );
 
 // Reactivar contrato
 router.patch(
   "/contracts/:id/reactivate",
+  authorize("contracts:update"),
   contractController.reactivate.bind(contractController),
 );
 
 // Completar contrato
 router.patch(
   "/contracts/:id/complete",
+  authorize("contracts:update"),
   contractController.complete.bind(contractController),
 );
 
 // Proyectar consumo
 router.get(
   "/contracts/:id/projection",
+  authorize("contracts:read"),
   contractController.getProjection.bind(contractController),
 );
 
@@ -139,30 +167,35 @@ router.get(
 // Pre-validar reporte
 router.post(
   "/usage-reports/validate",
+  authorize("reports:create"),
   usageReportController.validate.bind(usageReportController),
 );
 
 // Crear reporte de uso
 router.post(
   "/usage-reports",
+  authorize("reports:create"),
   usageReportController.create.bind(usageReportController),
 );
 
 // Listar reportes por rental
 router.get(
   "/usage-reports/rental/:rentalId",
+  authorize("reports:read"),
   usageReportController.listByRental.bind(usageReportController),
 );
 
 // Obtener reporte por ID
 router.get(
   "/usage-reports/:id",
+  authorize("reports:read"),
   usageReportController.getById.bind(usageReportController),
 );
 
 // Estadísticas de uso
 router.get(
   "/usage-reports/stats/:rentalId",
+  authorize("reports:read"),
   usageReportController.getStats.bind(usageReportController),
 );
 
@@ -171,14 +204,23 @@ router.get(
 // ============================================
 
 // Listar rentals activos
-router.get("/rentals", rentalController.list.bind(rentalController));
+router.get(
+  "/rentals",
+  authorize("rental:read"),
+  rentalController.list.bind(rentalController),
+);
 
 // Obtener rental por ID
-router.get("/rentals/:id", rentalController.getById.bind(rentalController));
+router.get(
+  "/rentals/:id",
+  authorize("rental:read"),
+  rentalController.getById.bind(rentalController),
+);
 
 // Desglose de costos
 router.get(
   "/rentals/:id/costs",
+  authorize("rental:read"),
   rentalController.getCosts.bind(rentalController),
 );
 
@@ -189,24 +231,28 @@ router.get(
 // Cargo automático herramientas
 router.post(
   "/jobs/process-tools",
+  authorize("admin:system"),
   jobsController.processTools.bind(jobsController),
 );
 
 // Notificar reportes faltantes
 router.post(
   "/jobs/notify-missing",
+  authorize("admin:system"),
   jobsController.notifyMissing.bind(jobsController),
 );
 
 // Enviar estados de cuenta
 router.post(
   "/jobs/send-statements",
+  authorize("admin:system"),
   jobsController.sendStatements.bind(jobsController),
 );
 
 // Verificar alertas de saldo
 router.post(
   "/jobs/check-alerts",
+  authorize("admin:system"),
   jobsController.checkAlerts.bind(jobsController),
 );
 
@@ -215,41 +261,51 @@ router.post(
 // ============================================
 
 // Listar cotizaciones
-router.get("/quotations", quotationController.list.bind(quotationController));
+router.get(
+  "/quotations",
+  authorize("quotations:read"),
+  quotationController.list.bind(quotationController),
+);
 
 // Obtener cotización por ID
 router.get(
   "/quotations/:id",
+  authorize("quotations:read"),
   quotationController.getById.bind(quotationController),
 );
 
 // Crear cotización
 router.post(
   "/quotations",
+  authorize("quotations:create"),
   quotationController.create.bind(quotationController),
 );
 
 // Actualizar precios de items (override manual)
 router.patch(
   "/quotations/:id/update-prices",
+  authorize("quotations:update"),
   quotationController.updatePrices.bind(quotationController),
 );
 
 // Generar PDF
 router.post(
   "/quotations/:id/generate-pdf",
+  authorize("quotations:read"),
   quotationController.generatePDF.bind(quotationController),
 );
 
 // Solicitar firma digital
 router.post(
   "/quotations/:id/request-signature",
+  authorize("quotations:approve"),
   quotationController.requestSignature.bind(quotationController),
 );
 
 // Crear contrato desde cotización
 router.post(
   "/quotations/:id/create-contract",
+  authorize("quotations:approve"),
   quotationController.createContract.bind(quotationController),
 );
 
@@ -265,6 +321,7 @@ router.post(
 router.get(
   "/templates",
   authenticate,
+  authorize("templates:read"),
   templateController.list.bind(templateController),
 );
 
@@ -272,6 +329,7 @@ router.get(
 router.get(
   "/templates/:id",
   authenticate,
+  authorize("templates:read"),
   templateController.getById.bind(templateController),
 );
 
@@ -279,6 +337,7 @@ router.get(
 router.post(
   "/templates",
   authenticate,
+  authorize("templates:create"),
   templateController.create.bind(templateController),
 );
 
@@ -286,6 +345,7 @@ router.post(
 router.put(
   "/templates/:id",
   authenticate,
+  authorize("templates:update"),
   templateController.update.bind(templateController),
 );
 
@@ -293,6 +353,7 @@ router.put(
 router.delete(
   "/templates/:id",
   authenticate,
+  authorize("templates:delete"),
   templateController.delete.bind(templateController),
 );
 
@@ -301,6 +362,7 @@ router.delete(
 router.post(
   "/templates/:id/logo",
   authenticate,
+  authorize("templates:update"),
   upload.single("logo"),
   templateController.uploadLogo.bind(templateController),
 );

@@ -1,5 +1,5 @@
 import { Router, Request } from "express";
-import { authenticate } from "@core/middlewares/auth.middleware";
+import { authenticate, authorize } from "@core/middlewares/auth.middleware";
 import { UserService } from "@core/services/user.service";
 import { z } from "zod";
 
@@ -157,7 +157,7 @@ const listQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(10),
 });
 
-router.get("/", async (req, res, next) => {
+router.get("/", authorize("users:read"), async (req, res, next) => {
   try {
     const tenantId = (req as Request).context!.tenantId;
     const options = listQuerySchema.parse(req.query);
@@ -177,7 +177,7 @@ const createUserSchema = z.object({
   roleId: z.string().uuid(),
 });
 
-router.post("/", async (req, res, next) => {
+router.post("/", authorize("users:create"), async (req, res, next) => {
   try {
     const tenantId = (req as Request).context!.tenantId;
     const data = createUserSchema.parse(req.body);
@@ -339,7 +339,7 @@ router.post("/", async (req, res, next) => {
  *               $ref: '#/components/schemas/Error'
  */
 
-router.get("/:id", async (req, res, next) => {
+router.get("/:id", authorize("users:read"), async (req, res, next) => {
   try {
     const tenantId = (req as any).context.tenantId;
     const { id } = req.params;
@@ -358,7 +358,7 @@ const updateUserSchema = z.object({
   status: z.enum(["ACTIVE", "INACTIVE", "SUSPENDED"]).optional(),
 });
 
-router.put("/:id", async (req, res, next) => {
+router.put("/:id", authorize("users:update"), async (req, res, next) => {
   try {
     const tenantId = (req as any).context.tenantId;
     const { id } = req.params;
@@ -371,7 +371,7 @@ router.put("/:id", async (req, res, next) => {
   }
 });
 
-router.delete("/:id", async (req, res, next) => {
+router.delete("/:id", authorize("users:delete"), async (req, res, next) => {
   try {
     const tenantId = (req as any).context.tenantId;
     const { id } = req.params;
@@ -458,26 +458,30 @@ const assignRoleSchema = z.object({
   roleId: z.string().uuid(),
 });
 
-router.post("/:id/business-units", async (req, res, next) => {
-  try {
-    const tenantId = (req as any).context.tenantId;
-    const { id: userId } = req.params;
-    const data = assignRoleSchema.parse(req.body);
+router.post(
+  "/:id/business-units",
+  authorize("users:update"),
+  async (req, res, next) => {
+    try {
+      const tenantId = (req as any).context.tenantId;
+      const { id: userId } = req.params;
+      const data = assignRoleSchema.parse(req.body);
 
-    const result = await userService.assignRole(
-      {
-        userId,
-        businessUnitId: data.businessUnitId,
-        roleId: data.roleId,
-      },
-      tenantId,
-    );
+      const result = await userService.assignRole(
+        {
+          userId,
+          businessUnitId: data.businessUnitId,
+          roleId: data.roleId,
+        },
+        tenantId,
+      );
 
-    res.status(201).json({ success: true, data: result });
-  } catch (error) {
-    next(error);
-  }
-});
+      res.status(201).json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 
 /**
  * @openapi
@@ -532,17 +536,25 @@ router.post("/:id/business-units", async (req, res, next) => {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.delete("/:id/business-units/:businessUnitId", async (req, res, next) => {
-  try {
-    const tenantId = (req as any).context.tenantId;
-    const { id: userId, businessUnitId } = req.params;
+router.delete(
+  "/:id/business-units/:businessUnitId",
+  authorize("users:update"),
+  async (req, res, next) => {
+    try {
+      const tenantId = (req as any).context.tenantId;
+      const { id: userId, businessUnitId } = req.params;
 
-    await userService.removeFromBusinessUnit(userId, businessUnitId, tenantId);
-    res.json({ success: true, message: "User removed from Business Unit" });
-  } catch (error) {
-    next(error);
-  }
-});
+      await userService.removeFromBusinessUnit(
+        userId,
+        businessUnitId,
+        tenantId,
+      );
+      res.json({ success: true, message: "User removed from Business Unit" });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 
 /**
  * @openapi
@@ -588,16 +600,20 @@ router.delete("/:id/business-units/:businessUnitId", async (req, res, next) => {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post("/:id/deactivate", async (req, res, next) => {
-  try {
-    const tenantId = (req as any).context.tenantId;
-    const { id } = req.params;
+router.post(
+  "/:id/deactivate",
+  authorize("users:delete"),
+  async (req, res, next) => {
+    try {
+      const tenantId = (req as any).context.tenantId;
+      const { id } = req.params;
 
-    const user = await userService.deactivateUser(id, tenantId);
-    res.json({ success: true, data: user });
-  } catch (error) {
-    next(error);
-  }
-});
+      const user = await userService.deactivateUser(id, tenantId);
+      res.json({ success: true, data: user });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 
 export default router;

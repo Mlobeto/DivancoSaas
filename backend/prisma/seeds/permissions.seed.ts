@@ -188,6 +188,32 @@ const MODULE_PERMISSIONS: PermissionDefinition[] = [
     scope: "BUSINESS_UNIT",
   },
 
+  // CLIENT ACCOUNTS (Shared accounts for rental)
+  {
+    resource: "accounts",
+    action: "read",
+    description: "View client accounts",
+    scope: "BUSINESS_UNIT",
+  },
+  {
+    resource: "accounts",
+    action: "create",
+    description: "Create client accounts",
+    scope: "BUSINESS_UNIT",
+  },
+  {
+    resource: "accounts",
+    action: "update",
+    description: "Update client accounts (reload, movements)",
+    scope: "BUSINESS_UNIT",
+  },
+  {
+    resource: "accounts",
+    action: "delete",
+    description: "Delete client accounts",
+    scope: "BUSINESS_UNIT",
+  },
+
   // TEMPLATES
   {
     resource: "templates",
@@ -219,6 +245,12 @@ const MODULE_PERMISSIONS: PermissionDefinition[] = [
     resource: "reports",
     action: "read",
     description: "View reports",
+    scope: "BUSINESS_UNIT",
+  },
+  {
+    resource: "reports",
+    action: "create",
+    description: "Create usage reports",
     scope: "BUSINESS_UNIT",
   },
   {
@@ -266,6 +298,14 @@ const MODULE_PERMISSIONS: PermissionDefinition[] = [
     action: "delete",
     description: "Delete users",
     scope: "BUSINESS_UNIT",
+  },
+
+  // ADMIN (System-level operations)
+  {
+    resource: "admin",
+    action: "system",
+    description: "Execute system operations (cron jobs, maintenance)",
+    scope: "TENANT",
   },
 ];
 

@@ -6,7 +6,7 @@
 import { Router } from "express";
 import multer from "multer";
 import { brandingController } from "../controllers/branding.controller";
-import { authenticate } from "../middlewares/auth.middleware";
+import { authenticate, authorize } from "../middlewares/auth.middleware";
 
 const router = Router();
 
@@ -25,7 +25,7 @@ router.use(authenticate);
  * GET /api/branding/:businessUnitId
  * Get branding configuration for a business unit
  */
-router.get("/:businessUnitId", (req, res) =>
+router.get("/:businessUnitId", authorize("settings:read"), (req, res) =>
   brandingController.getBranding(req, res),
 );
 
@@ -33,13 +33,15 @@ router.get("/:businessUnitId", (req, res) =>
  * POST /api/branding
  * Create branding configuration
  */
-router.post("/", (req, res) => brandingController.createBranding(req, res));
+router.post("/", authorize("settings:update"), (req, res) =>
+  brandingController.createBranding(req, res),
+);
 
 /**
  * PUT /api/branding/:businessUnitId
  * Update branding configuration
  */
-router.put("/:businessUnitId", (req, res) =>
+router.put("/:businessUnitId", authorize("settings:update"), (req, res) =>
   brandingController.updateBranding(req, res),
 );
 
@@ -47,7 +49,7 @@ router.put("/:businessUnitId", (req, res) =>
  * DELETE /api/branding/:businessUnitId
  * Delete branding configuration
  */
-router.delete("/:businessUnitId", (req, res) =>
+router.delete("/:businessUnitId", authorize("settings:update"), (req, res) =>
   brandingController.deleteBranding(req, res),
 );
 
@@ -56,8 +58,10 @@ router.delete("/:businessUnitId", (req, res) =>
  * Generate preview PDF with current branding
  * Body: { documentType?: "quotation" | "contract" | "receipt", format?: "A4" | "ticket", sampleData?: any }
  */
-router.post("/:businessUnitId/preview", (req, res) =>
-  brandingController.generatePreview(req, res),
+router.post(
+  "/:businessUnitId/preview",
+  authorize("settings:read"),
+  (req, res) => brandingController.generatePreview(req, res),
 );
 
 /**
@@ -65,8 +69,10 @@ router.post("/:businessUnitId/preview", (req, res) =>
  * Get HTML for testing (without generating PDF)
  * Body: { documentType?: string, sampleData?: any }
  */
-router.post("/:businessUnitId/test-html", (req, res) =>
-  brandingController.getTestHTML(req, res),
+router.post(
+  "/:businessUnitId/test-html",
+  authorize("settings:read"),
+  (req, res) => brandingController.getTestHTML(req, res),
 );
 
 /**
@@ -74,8 +80,11 @@ router.post("/:businessUnitId/test-html", (req, res) =>
  * Upload logo for business unit branding
  * Multipart/form-data with 'logo' field
  */
-router.post("/:businessUnitId/upload-logo", upload.single("logo"), (req, res) =>
-  brandingController.uploadLogo(req, res),
+router.post(
+  "/:businessUnitId/upload-logo",
+  authorize("settings:update"),
+  upload.single("logo"),
+  (req, res) => brandingController.uploadLogo(req, res),
 );
 
 export default router;

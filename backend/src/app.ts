@@ -46,6 +46,7 @@ import { setShippingProviderFactory } from "@core/services/shipping.service";
 import authRouter from "@core/routes/auth.routes";
 import tenantRouter from "@core/routes/tenant.routes";
 import userRouter from "@core/routes/user.routes";
+import roleRouter from "@core/routes/role.routes";
 import businessUnitRouter from "@core/routes/business-unit.routes";
 import businessUnitIntegrationsRouter from "@core/routes/business-unit-integrations.routes";
 import moduleRouter from "@core/routes/module.routes";
@@ -150,6 +151,7 @@ export function createApp(): Application {
   app.use("/api/v1/auth", authRouter);
   app.use("/api/v1/tenants", tenantRouter);
   app.use("/api/v1/users", userRouter);
+  app.use("/api/v1", roleRouter); // Roles & Permissions
   app.use("/api/v1/business-units", businessUnitRouter);
   app.use("/api/v1/business-units", businessUnitIntegrationsRouter); // Rutas de integraciones
   app.use("/api/v1/modules", moduleRouter);
