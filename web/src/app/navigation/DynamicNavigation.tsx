@@ -21,6 +21,8 @@ import {
   FileText,
   ChevronDown,
   Building2,
+  Settings,
+  Palette,
 } from "lucide-react";
 
 /**
@@ -33,6 +35,8 @@ const iconMap: Record<string, React.ReactNode> = {
   purchases: <ShoppingCart className="w-5 h-5" />,
   rental: <FileText className="w-5 h-5" />,
   building: <Building2 className="w-5 h-5" />,
+  settings: <Settings className="w-5 h-5" />,
+  palette: <Palette className="w-5 h-5" />,
 };
 
 /**
@@ -295,25 +299,55 @@ export default function DynamicNavigation({
 
     const allNavigation = navigationBuilder.buildNavigation(context);
 
+    // Add Settings section for all authenticated users
+    const settingsNavigation: NavigationItem = {
+      id: "settings",
+      label: "Configuración",
+      path: "/settings",
+      icon: "settings",
+      children: [
+        {
+          id: "branding",
+          label: "Branding",
+          path: "/settings/branding",
+          icon: "palette",
+        },
+        // TODO: Add more settings sections
+        // {
+        //   id: "business-unit",
+        //   label: "Business Unit",
+        //   path: "/settings/business-unit",
+        //   icon: "building",
+        // },
+      ],
+    };
+
     console.log(
       "[DynamicNavigation] All navigation items:",
       allNavigation.map((n) => n.id),
     );
 
-    // Filter by assigned modules (if assignments exist)
-    if (assignedModules.length > 0) {
+    // Filter by assigned modules ONLY if there's NO vertical configured
+    // When a vertical is active, it already injects only its navigation
+    if (assignedModules.length > 0 && !tenant.vertical) {
       const filtered = allNavigation.filter((item) =>
         assignedModules.includes(item.id),
       );
       console.log(
-        "[DynamicNavigation] Filtered navigation:",
+        "[DynamicNavigation] Filtered navigation (no vertical):",
         filtered.map((n) => n.id),
       );
-      return filtered;
+      // Always add settings section
+      return [...filtered, settingsNavigation];
     }
 
-    console.log("[DynamicNavigation] Returning all navigation (no filter)");
-    return allNavigation;
+    console.log(
+      tenant.vertical
+        ? "[DynamicNavigation] Returning all navigation (vertical mode - no filter)"
+        : "[DynamicNavigation] Returning all navigation (no assignments)",
+    );
+    // Always add settings section
+    return [...allNavigation, settingsNavigation];
   }, [user, tenant, businessUnit, role]);
 
   if (navigation.length === 0) {

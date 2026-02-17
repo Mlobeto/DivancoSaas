@@ -20,6 +20,7 @@ export interface UploadFileParams {
   folder?: string; // ej: "quotations", "contracts", "invoices"
   tenantId: string;
   businessUnitId?: string;
+  containerName?: string; // Optional: override default container
 }
 
 export interface UploadFileResult {
@@ -71,9 +72,14 @@ export class AzureBlobStorageService {
    * Subir archivo a Azure Blob Storage
    */
   async uploadFile(params: UploadFileParams): Promise<UploadFileResult> {
-    if (!this.defaultContainerClient) {
+    if (!this.blobServiceClient) {
       throw new Error("Azure Blob Storage not configured");
     }
+
+    // Use specified container or default
+    const containerName = params.containerName || this.containerName;
+    const containerClient =
+      this.blobServiceClient.getContainerClient(containerName);
 
     // Estructura de path: tenantId/businessUnitId/folder/filename
     const pathParts = [
@@ -88,8 +94,7 @@ export class AzureBlobStorageService {
     const blobName = `${blobPath}/${uniqueFileName}`;
 
     // Obtener block blob client
-    const blockBlobClient =
-      this.defaultContainerClient.getBlockBlobClient(blobName);
+    const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
     // Subir archivo
     await blockBlobClient.upload(params.file, params.file.length, {
@@ -107,7 +112,7 @@ export class AzureBlobStorageService {
     return {
       url: blockBlobClient.url,
       blobName,
-      containerName: this.containerName,
+      containerName: containerName,
       size: params.file.length,
     };
   }
@@ -116,24 +121,26 @@ export class AzureBlobStorageService {
    * Generar URL con SAS token temporal (para acceso seguro)
    */
   async generateSasUrl(
+    containerName: string,
     blobName: string,
     expiresInMinutes: number = 60,
   ): Promise<string> {
-    if (!this.defaultContainerClient) {
+    if (!this.blobServiceClient) {
       throw new Error("Azure Blob Storage not configured");
     }
+
+    const containerClient =
+      this.blobServiceClient.getContainerClient(containerName);
 
     if (!this.accountName || !this.accountKey) {
       console.warn(
         "⚠️  Account credentials not available, returning direct URL",
       );
-      const blockBlobClient =
-        this.defaultContainerClient.getBlockBlobClient(blobName);
+      const blockBlobClient = containerClient.getBlockBlobClient(blobName);
       return blockBlobClient.url;
     }
 
-    const blockBlobClient =
-      this.defaultContainerClient.getBlockBlobClient(blobName);
+    const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
     // Crear credenciales compartidas
     const sharedKeyCredential = new StorageSharedKeyCredential(
@@ -150,7 +157,7 @@ export class AzureBlobStorageService {
     // Generar SAS token
     const sasToken = generateBlobSASQueryParameters(
       {
-        containerName: this.containerName,
+        containerName: containerName,
         blobName: blobName,
         permissions: BlobSASPermissions.parse("r"), // Read only
         startsOn,

@@ -27,7 +27,11 @@ export class AssetService {
     if (asset.imageUrl && !asset.imageUrl.startsWith("http")) {
       // Si imageUrl no es una URL completa, es un blobName - generar SAS URL
       try {
+        // Use default container from env (or 'uploads' if not set)
+        const containerName =
+          process.env.AZURE_STORAGE_CONTAINER_NAME || "uploads";
         const sasUrl = await azureBlobStorageService.generateSasUrl(
+          containerName,
           asset.imageUrl,
           1440, // 24 horas
         );

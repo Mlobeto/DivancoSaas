@@ -4,12 +4,15 @@ import { useAuthStore } from "@/store/auth.store";
 import { dashboardService } from "@/core/services/dashboard.service";
 import { Layout } from "@/core/components/Layout";
 import { DynamicDashboardCards } from "@/core/components/DynamicDashboardCards";
+import { BrandingStatusCard } from "@/core/components/BrandingStatusCard";
 import { ChevronDown, ChevronUp, BarChart3 } from "lucide-react";
 
 export function DashboardPage() {
   const { tenant, businessUnit } = useAuthStore();
   const [showTenantStats, setShowTenantStats] = useState(false);
   const [showBuStats, setShowBuStats] = useState(false);
+  const [showBranding, setShowBranding] = useState(true);
+  const [showQuickActions, setShowQuickActions] = useState(true);
 
   // Fetch tenant stats
   const { data: tenantStats, isLoading: loadingTenantStats } = useQuery({
@@ -49,6 +52,63 @@ export function DashboardPage() {
           {/* Dynamic Module Cards */}
           <DynamicDashboardCards />
         </div>
+
+        {/* Quick Access Cards */}
+        {businessUnit && (
+          <div className="mt-8 space-y-4">
+            {/* Branding Section - Collapsible */}
+            <div className="card">
+              <button
+                onClick={() => setShowBranding(!showBranding)}
+                className="w-full flex items-center justify-between py-2 hover:text-primary-400 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5" />
+                  <h3 className="text-lg font-semibold">
+                    Branding de la Unidad
+                  </h3>
+                </div>
+                {showBranding ? (
+                  <ChevronUp className="w-5 h-5" />
+                ) : (
+                  <ChevronDown className="w-5 h-5" />
+                )}
+              </button>
+
+              {showBranding && (
+                <div className="mt-4 pt-4 border-t border-dark-700">
+                  <BrandingStatusCard />
+                </div>
+              )}
+            </div>
+
+            {/* Quick Actions Section - Collapsible */}
+            <div className="card">
+              <button
+                onClick={() => setShowQuickActions(!showQuickActions)}
+                className="w-full flex items-center justify-between py-2 hover:text-primary-400 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5" />
+                  <h3 className="text-lg font-semibold">Acciones Rápidas</h3>
+                </div>
+                {showQuickActions ? (
+                  <ChevronUp className="w-5 h-5" />
+                ) : (
+                  <ChevronDown className="w-5 h-5" />
+                )}
+              </button>
+
+              {showQuickActions && (
+                <div className="mt-4 pt-4 border-t border-dark-700">
+                  <p className="text-dark-400 text-sm">
+                    Espacio para más widgets y accesos rápidos...
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Collapsible Statistics Panels */}
         <div className="mt-8 space-y-4">

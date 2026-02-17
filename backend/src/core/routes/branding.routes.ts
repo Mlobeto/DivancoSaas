@@ -4,10 +4,19 @@
  */
 
 import { Router } from "express";
+import multer from "multer";
 import { brandingController } from "../controllers/branding.controller";
 import { authenticate } from "../middlewares/auth.middleware";
 
 const router = Router();
+
+// Configure multer for memory storage
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 2 * 1024 * 1024, // 2MB max for logos
+  },
+});
 
 // All routes require authentication
 router.use(authenticate);
@@ -58,6 +67,15 @@ router.post("/:businessUnitId/preview", (req, res) =>
  */
 router.post("/:businessUnitId/test-html", (req, res) =>
   brandingController.getTestHTML(req, res),
+);
+
+/**
+ * POST /api/branding/:businessUnitId/upload-logo
+ * Upload logo for business unit branding
+ * Multipart/form-data with 'logo' field
+ */
+router.post("/:businessUnitId/upload-logo", upload.single("logo"), (req, res) =>
+  brandingController.uploadLogo(req, res),
 );
 
 export default router;

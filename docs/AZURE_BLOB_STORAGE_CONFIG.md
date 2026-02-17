@@ -88,7 +88,7 @@ AZURE_BLOB_CONTAINER_DOCUMENTS=documents
 
 ## 4. Estructura de Archivos en Blob Storage
 
-El servicio organiza automáticamente los archivos siguiendo esta estructura:
+El servicio organiza automáticamente los archivos siguiendo esta estructura multi-tenant:
 
 ```
 stdivancodev/
@@ -106,9 +106,21 @@ stdivancodev/
 ├── templates/
 │   ├── {tenantId}/
 │   │   ├── {businessUnitId}/
-│   │   │   ├── logos/
+│   │   │   ├── branding/
+│   │   │   │   ├── logos/
+│   │   │   │   │   ├── logo-123.png
+│   │   │   │   │   ├── logo-456.svg
 │   │   │   ├── headers/
+│   │   │   └── footers/
+├── documents/
+│   ├── {tenantId}/
+│   │   ├── {businessUnitId}/
+│   │   │   ├── general/
 ```
+
+**Estructura de carpetas para Branding:**
+- Ruta: `{tenantId}/{businessUnitId}/branding/logos/`
+- Ejemplo: `tenant-abc123/business-unit-xyz789/branding/logos/logo-uuid.png`
 
 Esto asegura **completa separación de datos** entre tenants y unidades de negocio.
 
@@ -310,6 +322,59 @@ az monitor metrics list \
 - [ ] Swagger actualizado con módulo rental
 - [ ] Soft delete habilitado
 - [ ] Métricas de monitoreo revisadas
+
+---
+
+## 11. Uso del Sistema de Branding con Azure Blob Storage
+
+### Upload de Logos
+
+El sistema de branding ahora soporta upload automático de logos a Azure Blob Storage:
+
+**Endpoint Backend:**
+```
+POST /api/v1/branding/:businessUnitId/upload-logo
+Content-Type: multipart/form-data
+Field: logo (archivo de imagen)
+```
+
+**Validaciones:**
+- Tipos permitidos: JPG, PNG, SVG, WebP
+- Tamaño máximo: 2MB
+- Estructura de carpetas: `{tenantId}/{businessUnitId}/branding/logos/`
+
+**Ejemplo de uso desde Frontend:**
+```typescript
+import { brandingApi } from "@/core/services/branding.api";
+
+async function uploadLogo(file: File, businessUnitId: string) {
+  const result = await brandingApi.uploadLogo(businessUnitId, file);
+  console.log("Logo URL:", result.logoUrl);
+  console.log("Size:", result.size);
+}
+```
+
+**Estructura del resultado:**
+```json
+{
+  "success": true,
+  "data": {
+    "logoUrl": "https://stdivancodev.blob.core.windows.net/templates/tenant-abc/business-unit-xyz/branding/logos/logo-uuid.png",
+    "blobName": "tenant-abc/business-unit-xyz/branding/logos/logo-uuid.png",
+    "size": 45678
+  }
+}
+```
+
+### Acceso a Logos en Documentos
+
+Los logos se cargan automáticamente en los documentos PDF generados usando el servicio de branding:
+
+```typescript
+// El sistema automáticamente usa el logo del Business Unit
+const branding = await brandingService.getOrCreateDefault(businessUnitId);
+// branding.logoUrl contiene la URL del logo en Azure Blob Storage
+```
 
 ---
 

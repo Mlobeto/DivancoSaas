@@ -4,8 +4,10 @@
  */
 
 import { Request, Response } from "express";
+import sharp from "sharp";
 import { brandingService } from "../services/branding.service";
 import { pdfGeneratorService } from "../services/pdf-generator.service";
+import { azureBlobStorageService } from "../../shared/storage/azure-blob-storage.service";
 import {
   buildDocument,
   buildQuotationContent,
@@ -264,6 +266,150 @@ class BrandingController {
       return res.status(500).json({
         success: false,
         message: error.message || "Error getting test HTML",
+      });
+    }
+  }
+
+  /**
+   * POST /api/branding/:businessUnitId/upload-logo
+   * Upload logo for business unit branding
+   */
+  async uploadLogo(req: Request, res: Response) {
+    try {
+      const businessUnitId = req.params.businessUnitId as string;
+      const file = req.file;
+
+      if (!file) {
+        return res.status(400).json({
+          success: false,
+          message: "No file provided",
+        });
+      }
+
+      // Validate file type (only images)
+      const allowedMimeTypes = [
+        "image/jpeg",
+        "image/png",
+        "image/svg+xml",
+        "image/webp",
+      ];
+      if (!allowedMimeTypes.includes(file.mimetype)) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Invalid file type. Only JPG, PNG, SVG, and WebP are allowed",
+        });
+      }
+
+      // Validate file size (max 2MB)
+      const maxSize = 2 * 1024 * 1024; // 2MB
+      if (file.size > maxSize) {
+        return res.status(400).json({
+          success: false,
+          message: "File size exceeds 2MB limit",
+        });
+      }
+
+      // Get tenant and business unit context from request
+      const user = (req as any).user;
+      if (!user || !user.tenantId) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized",
+        });
+      }
+
+      // Process image with Sharp (resize and optimize)
+      // Skip SVG files as they are vector-based
+      let processedBuffer = file.buffer;
+      let finalContentType = file.mimetype;
+      let finalFileName = file.originalname;
+
+      if (file.mimetype !== "image/svg+xml") {
+        try {
+          // Resize to max 600px width while maintaining aspect ratio
+          // Convert to PNG for transparency support or JPEG for photos
+          const isTransparent =
+            file.mimetype === "image/png" || file.mimetype === "image/webp";
+
+          if (isTransparent) {
+            // Use PNG for images with potential transparency
+            processedBuffer = await sharp(file.buffer)
+              .resize({ width: 600, fit: "inside", withoutEnlargement: true })
+              .png({ quality: 90, compressionLevel: 9 })
+              .toBuffer();
+
+            finalContentType = "image/png";
+            finalFileName = file.originalname.replace(
+              /\.(jpe?g|webp)$/i,
+              ".png",
+            );
+          } else {
+            // Use JPEG for photos (better compression)
+            processedBuffer = await sharp(file.buffer)
+              .resize({ width: 600, fit: "inside", withoutEnlargement: true })
+              .jpeg({ quality: 90, progressive: true })
+              .toBuffer();
+
+            finalContentType = "image/jpeg";
+            finalFileName = file.originalname.replace(/\.(png|webp)$/i, ".jpg");
+          }
+
+          console.log(
+            `[BrandingController] Image processed: ${file.size} bytes → ${processedBuffer.length} bytes (${((1 - processedBuffer.length / file.size) * 100).toFixed(1)}% reduction)`,
+          );
+        } catch (sharpError: any) {
+          console.error(
+            "[BrandingController] Error processing image with Sharp:",
+            sharpError,
+          );
+          // If Sharp fails, use original file
+          processedBuffer = file.buffer;
+          finalContentType = file.mimetype;
+          finalFileName = file.originalname;
+        }
+      }
+
+      // Upload to Azure Blob Storage with correct structure
+      // Container: templates
+      // Path: tenant/{tenantId}/business-unit/{businessUnitId}/branding/logos/{filename}
+      const uploadResult = await azureBlobStorageService.uploadFile({
+        file: processedBuffer,
+        fileName: finalFileName,
+        contentType: finalContentType,
+        folder: "branding/logos",
+        tenantId: user.tenantId,
+        businessUnitId: businessUnitId,
+        containerName: "templates", // Use templates container for branding assets
+      });
+
+      // Update branding with new logo URL
+      // Generate SAS URL with 1 year expiration for logos (they are semi-permanent)
+      const sasUrl = await azureBlobStorageService.generateSasUrl(
+        uploadResult.containerName,
+        uploadResult.blobName,
+        525600, // 1 year in minutes (365 * 24 * 60)
+      );
+
+      const branding = await brandingService.update(businessUnitId, {
+        logoUrl: sasUrl,
+      });
+
+      return res.json({
+        success: true,
+        data: {
+          logoUrl: sasUrl,
+          blobName: uploadResult.blobName,
+          size: uploadResult.size,
+          originalSize: file.size,
+          optimized: file.mimetype !== "image/svg+xml",
+        },
+      });
+    } catch (error: any) {
+      console.error("[BrandingController] Error uploading logo:", error);
+      return res.status(500).json({
+        success: false,
+        message: error.message || "Error uploading logo",
       });
     }
   }

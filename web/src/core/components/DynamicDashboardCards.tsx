@@ -157,8 +157,13 @@ export function DynamicDashboardCards() {
 
     // Process legacy modules (inventory, clients, purchases)
     legacyNavigation.forEach((navItem) => {
-      // Filter by assigned modules (if assignments exist)
-      if (assignedModules.length > 0 && !assignedModules.includes(navItem.id)) {
+      // Filter by assigned modules ONLY if there's NO vertical configured
+      // When a vertical is active, it already controls what navigation is shown
+      if (
+        assignedModules.length > 0 &&
+        !tenant.vertical &&
+        !assignedModules.includes(navItem.id)
+      ) {
         return; // Skip non-assigned modules
       }
 
@@ -182,10 +187,8 @@ export function DynamicDashboardCards() {
 
     // Process vertical modules (rental)
     verticalNavigation.forEach((navItem) => {
-      // Filter by assigned modules (if assignments exist)
-      if (assignedModules.length > 0 && !assignedModules.includes(navItem.id)) {
-        return; // Skip non-assigned modules
-      }
+      // Vertical modules should always be shown when the vertical is configured
+      // No filtering needed here
 
       if (navItem.children && navItem.children.length > 0) {
         groups.push({

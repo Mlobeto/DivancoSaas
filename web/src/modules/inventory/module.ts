@@ -68,7 +68,7 @@ export const inventoryModule: ModuleDefinition = {
   /**
    * Required permissions
    */
-  permissions: ["assets:read"],
+  permissions: ["inventory:read"],
 
   /**
    * Module initialization

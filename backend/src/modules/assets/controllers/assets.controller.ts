@@ -928,6 +928,7 @@ export class AssetsController {
 
       // Generar URL con SAS token (válido por 24 horas)
       const sasUrl = await azureBlobStorageService.generateSasUrl(
+        uploadResult.containerName,
         uploadResult.blobName,
         1440, // 24 horas
       );

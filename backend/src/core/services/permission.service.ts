@@ -44,11 +44,49 @@ export class PermissionService {
             },
           },
         },
+        businessUnit: {
+          select: {
+            settings: true,
+          },
+        },
       },
     });
 
     if (!userBU || !userBU.role) {
       return [];
+    }
+
+    // SPECIAL CASE: OWNER role gets all permissions automatically
+    // This is the business owner who should have full access
+    if (userBU.role.name === "OWNER") {
+      const settings = (userBU.businessUnit.settings as any) || {};
+      const enabledModules = settings.enabledModules || [];
+
+      // Generate full permissions for enabled modules
+      const ownerPermissions: string[] = [];
+
+      // Add permissions for each enabled module
+      enabledModules.forEach((module: string) => {
+        ownerPermissions.push(
+          `${module}:create`,
+          `${module}:read`,
+          `${module}:update`,
+          `${module}:delete`,
+        );
+      });
+
+      // Add general permissions
+      ownerPermissions.push(
+        "settings:read",
+        "settings:update",
+        "users:create",
+        "users:read",
+        "users:update",
+        "users:delete",
+        "dashboard:read",
+      );
+
+      return ownerPermissions;
     }
 
     // Extract permissions as "resource:action" strings

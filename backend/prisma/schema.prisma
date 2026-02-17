@@ -55,6 +55,8 @@ model Tenant {
   stockLevels       StockLevel[]
   stockMovements    StockMovement[]
   bulkRentalItems   BulkRentalItem[]
+  documentTemplates DocumentTemplate[]
+  emailTemplates    EmailTemplate[]
 
   @@index([slug])
   @@index([country])
@@ -109,6 +111,8 @@ model BusinessUnit {
   clientBUs              ClientBusinessUnit[]
   assetDocumentTypes     AssetDocumentType[]
   branding               BusinessUnitBranding?
+  documentTemplates      DocumentTemplate[]
+  emailTemplates         EmailTemplate[]
 
   @@unique([tenantId, slug])
   @@index([tenantId])
@@ -2349,4 +2353,94 @@ model BusinessUnitBranding {
 
   @@index([businessUnitId])
   @@map("business_unit_branding")
+}
+
+// Plantillas de Documentos Personalizadas
+model DocumentTemplate {
+  id             String @id @default(uuid())
+  businessUnitId String
+  tenantId       String // Multi-tenant isolation
+
+  // Información básica
+  name         String // Nombre de la plantilla (ej: "Cotización Premium", "Contrato Estándar")
+  description  String?
+  documentType String // quotation | contract | receipt | note | report
+  isActive     Boolean @default(true)
+  isDefault    Boolean @default(false) // Si es la plantilla por defecto para este tipo
+
+  // Configuración de diseño (JSON)
+  // { format: "A4" | "Letter", orientation: "portrait" | "landscape", margins: {...} }
+  layoutConfig Json @default("{\"format\":\"A4\",\"orientation\":\"portrait\",\"margins\":{\"top\":20,\"right\":20,\"bottom\":20,\"left\":20}}")
+
+  // Secciones del documento (JSON array)
+  // [{ type: "header"|"content"|"footer"|"table"|"signature", config: {...}, order: number }]
+  sections Json @default("[]")
+
+  // Contenido HTML personalizado (con variables Handlebars)
+  // Variables disponibles: {{businessUnitName}}, {{logoUrl}}, {{date}}, {{items}}, etc.
+  htmlContent String? @db.Text
+
+  // Estilos CSS personalizados
+  customStyles String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+
+  // Relaciones
+  businessUnit BusinessUnit @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([businessUnitId, documentType, isDefault]) // Solo una plantilla por defecto por tipo
+  @@index([tenantId, businessUnitId])
+  @@index([documentType, isActive])
+  @@map("document_templates")
+}
+
+// Plantillas de Emails
+model EmailTemplate {
+  id             String @id @default(uuid())
+  businessUnitId String
+  tenantId       String // Multi-tenant isolation
+
+  // Información básica
+  name        String // Nombre de la plantilla (ej: "Bienvenida Cliente", "Recordatorio Pago")
+  description String?
+  emailType   String // welcome | quotation_sent | contract_signed | payment_reminder | invoice | custom
+  isActive    Boolean @default(true)
+  isDefault   Boolean @default(false)
+
+  // Configuración del email
+  subject      String // Puede contener variables: "Cotización {{code}} - {{clientName}}"
+  fromName     String? // Nombre del remitente (si es null, usa el nombre de la BU)
+  replyToEmail String? // Email de respuesta
+
+  // Contenido del email
+  // HTML con variables Handlebars: {{clientName}}, {{amount}}, {{dueDate}}, etc.
+  htmlContent String  @db.Text
+  textContent String? @db.Text // Versión texto plano (fallback)
+
+  // Pre-header (preview text que aparece en clientes de email)
+  preheader String?
+
+  // Configuración de branding
+  useBranding  Boolean @default(true) // Si usa los colores/logo de BusinessUnitBranding
+  customColors Json? // Override de colores: { primary: "#...", secondary: "#..." }
+
+  // Adjuntos por defecto (JSON array)
+  // [{ type: "quotation_pdf" | "contract_pdf" | "custom", filename: "..." }]
+  defaultAttachments Json @default("[]")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+
+  // Relaciones
+  businessUnit BusinessUnit @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([businessUnitId, emailType, isDefault]) // Solo una plantilla por defecto por tipo
+  @@index([tenantId, businessUnitId])
+  @@index([emailType, isActive])
+  @@map("email_templates")
 }

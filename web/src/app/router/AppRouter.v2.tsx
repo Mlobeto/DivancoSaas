@@ -64,6 +64,12 @@ const TenantFormPage = lazy(() =>
   import("@/core/pages/admin").then((m) => ({ default: m.TenantFormPage })),
 );
 
+const BrandingPage = lazy(() =>
+  import("@/core/pages/settings/BrandingPage").then((m) => ({
+    default: m.BrandingPage,
+  })),
+);
+
 //================================================================
 // CORE ROUTE DEFINITIONS
 //================================================================
@@ -110,6 +116,16 @@ const coreProtectedRoutes: DynamicRouteDefinition[] = [
     meta: {
       title: "Dashboard",
       icon: "home",
+    },
+  },
+  {
+    path: "/settings/branding",
+    element: BrandingPage,
+    protection: RouteProtection.AUTHENTICATED,
+    layout: RouteLayout.APP,
+    meta: {
+      title: "Branding",
+      icon: "palette",
     },
   },
 ];
