@@ -9,6 +9,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/store/auth.store";
 import { Layout } from "@/core/components/Layout";
+import { api } from "@/lib/api";
 import {
   Plus,
   Search,
@@ -60,18 +61,8 @@ export function TenantListPage() {
     const fetchTenants = async () => {
       try {
         setLoading(true);
-        const response = await fetch("/api/v1/tenants", {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch tenants");
-        }
-
-        const data = await response.json();
-        setTenants(data.data || []);
+        const response = await api.get("/tenants");
+        setTenants(response.data.data || []);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error");
       } finally {
