@@ -23,6 +23,7 @@ export class PermissionService {
 
   /**
    * Get all permissions for a user in a specific business unit
+   * Combines role permissions + user-specific  additional permissions
    */
   async getUserPermissions(
     userId: string,
@@ -89,13 +90,34 @@ export class PermissionService {
       return ownerPermissions;
     }
 
-    // Extract permissions as "resource:action" strings
-    const permissions = userBU.role.permissions.map((rp) => {
+    // Extract permissions from role as "resource:action" strings
+    const rolePermissions = userBU.role.permissions.map((rp) => {
       const p = rp.permission;
       return `${p.resource}:${p.action}`;
     });
 
-    return permissions;
+    // Get additional user-specific permissions
+    const userAdditionalPermissions = await prisma.userPermission.findMany({
+      where: {
+        userId,
+        businessUnitId,
+      },
+      include: {
+        permission: true,
+      },
+    });
+
+    const additionalPermissions = userAdditionalPermissions.map((up) => {
+      const p = up.permission;
+      return `${p.resource}:${p.action}`;
+    });
+
+    // Combine and deduplicate permissions
+    const allPermissions = [
+      ...new Set([...rolePermissions, ...additionalPermissions]),
+    ];
+
+    return allPermissions;
   }
 
   /**
@@ -211,6 +233,105 @@ export class PermissionService {
     return await prisma.permission.findMany({
       where: { resource },
       orderBy: { action: "asc" },
+    });
+  }
+
+  // ============================================
+  // USER-SPECIFIC ADDITIONAL PERMISSIONS
+  // ============================================
+
+  /**
+   * Grant additional permission to a specific user
+   * These permissions are added ON TOP of role permissions
+   */
+  async grantUserPermission(
+    userId: string,
+    businessUnitId: string,
+    permissionId: string,
+    grantedBy?: string,
+  ): Promise<void> {
+    await prisma.userPermission.create({
+      data: {
+        userId,
+        businessUnitId,
+        permissionId,
+        createdBy: grantedBy,
+      },
+    });
+  }
+
+  /**
+   * Revoke additional permission from a specific user
+   */
+  async revokeUserPermission(
+    userId: string,
+    businessUnitId: string,
+    permissionId: string,
+  ): Promise<void> {
+    await prisma.userPermission.deleteMany({
+      where: {
+        userId,
+        businessUnitId,
+        permissionId,
+      },
+    });
+  }
+
+  /**
+   * Get all additional permissions for a user
+   * Returns only the ADDITIONAL permissions, not role permissions
+   */
+  async getUserAdditionalPermissions(
+    userId: string,
+    businessUnitId: string,
+  ): Promise<Permission[]> {
+    const userPermissions = await prisma.userPermission.findMany({
+      where: {
+        userId,
+        businessUnitId,
+      },
+      include: {
+        permission: true,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    return userPermissions.map((up) => up.permission);
+  }
+
+  /**
+   * Sync user additional permissions
+   * Replaces all additional permissions with a new set
+   */
+  async syncUserPermissions(
+    userId: string,
+    businessUnitId: string,
+    permissionIds: string[],
+    grantedBy?: string,
+  ): Promise<void> {
+    await prisma.$transaction(async (tx) => {
+      // Remove all existing additional permissions
+      await tx.userPermission.deleteMany({
+        where: {
+          userId,
+          businessUnitId,
+        },
+      });
+
+      // Add new permissions
+      if (permissionIds.length > 0) {
+        await tx.userPermission.createMany({
+          data: permissionIds.map((permissionId) => ({
+            userId,
+            businessUnitId,
+            permissionId,
+            createdBy: grantedBy,
+          })),
+          skipDuplicates: true,
+        });
+      }
     });
   }
 }

@@ -170,16 +170,22 @@ export class UserService {
    * Crear un nuevo usuario (invitación)
    */
   async createUser(data: CreateUserInput, tenantId: string) {
-    // Validar que el email no exista en el tenant
+    // Verificar si el usuario ya existe en el tenant
     const existingUser = await prisma.user.findFirst({
       where: { email: data.email, tenantId },
+      include: {
+        businessUnits: {
+          where: { businessUnitId: data.businessUnitId },
+        },
+      },
     });
 
-    if (existingUser) {
+    // Si el usuario ya existe en esta Business Unit, rechazar
+    if (existingUser && existingUser.businessUnits.length > 0) {
       throw new AppError(
         409,
-        "USER_EXISTS",
-        "A user with this email already exists in this tenant",
+        "USER_ALREADY_IN_BU",
+        `El usuario ${data.email} ya está asignado a esta unidad de negocio`,
       );
     }
 
@@ -205,7 +211,50 @@ export class UserService {
       throw new AppError(404, "ROLE_NOT_FOUND", "Role not found");
     }
 
-    // Generar password temporal si no se proporciona
+    // Si el usuario ya existe pero en otra BU, solo agregarlo a esta BU
+    if (existingUser) {
+      await prisma.userBusinessUnit.create({
+        data: {
+          userId: existingUser.id,
+          businessUnitId: data.businessUnitId,
+          roleId: data.roleId,
+        },
+      });
+
+      // Retornar el usuario existente con la nueva asignación
+      const updatedUser = await prisma.user.findUnique({
+        where: { id: existingUser.id },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          status: true,
+          createdAt: true,
+          businessUnits: {
+            include: {
+              businessUnit: {
+                select: {
+                  id: true,
+                  name: true,
+                  slug: true,
+                },
+              },
+              role: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      return updatedUser;
+    }
+
+    // Usuario nuevo - crear con password temporal
     const temporaryPassword =
       data.password || `Temp${Math.random().toString(36).slice(-8)}!`;
 

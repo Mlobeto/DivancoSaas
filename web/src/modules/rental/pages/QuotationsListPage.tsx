@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { Layout } from "@/core/components/Layout";
+import { ProtectedAction } from "@/core/components/ProtectedAction";
 import { useAuthStore } from "@/store/auth.store";
 import { quotationService } from "../services/quotation.service";
 import { Quotation, QuotationStatus } from "../types/quotation.types";
@@ -86,19 +87,23 @@ export function QuotationsListPage() {
       subtitle={`Gestión de cotizaciones con auto-cálculo y firma digital - ${businessUnit.name}`}
       actions={
         <>
-          <button
-            onClick={() => navigate("/quotations/templates")}
-            className="btn-secondary mr-2"
-          >
-            <FileSignature className="w-4 h-4 inline mr-1" />
-            Plantillas PDF
-          </button>
-          <button
-            onClick={() => navigate("/quotations/new")}
-            className="btn-primary"
-          >
-            + Nueva Cotización
-          </button>
+          <ProtectedAction permission="templates:read">
+            <button
+              onClick={() => navigate("/quotations/templates")}
+              className="btn-secondary mr-2"
+            >
+              <FileSignature className="w-4 h-4 inline mr-1" />
+              Plantillas PDF
+            </button>
+          </ProtectedAction>
+          <ProtectedAction permission="quotations:create">
+            <button
+              onClick={() => navigate("/quotations/new")}
+              className="btn-primary"
+            >
+              + Nueva Cotización
+            </button>
+          </ProtectedAction>
           <a href="/dashboard" className="btn-ghost">
             ← Dashboard
           </a>

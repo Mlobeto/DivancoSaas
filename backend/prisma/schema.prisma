@@ -87,6 +87,7 @@ model BusinessUnit {
   enabledModules         BusinessUnitModule[]
   workflows              Workflow[]
   userBusinessUnits      UserBusinessUnit[]
+  userPermissions        UserPermission[] // Permisos adicionales de usuarios en esta BU
   integrationCredentials IntegrationCredential[]
   integrations           BusinessUnitIntegration[]
   channelConfigs         BusinessUnitChannelConfig[]
@@ -126,7 +127,7 @@ model BusinessUnit {
 model User {
   id        String     @id @default(uuid())
   tenantId  String? // Nullable para SUPER_ADMIN
-  email     String     @unique
+  email     String
   password  String
   firstName String
   lastName  String
@@ -146,6 +147,7 @@ model User {
   // Relations
   tenant             Tenant?               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   businessUnits      UserBusinessUnit[]
+  userPermissions    UserPermission[] // Permisos adicionales específicos del usuario
   auditLogs          AuditLog[]
   channelIdentities  UserChannelIdentity[]
   eventQueue         EventQueue[]
@@ -235,7 +237,8 @@ model Permission {
   updatedAt DateTime @updatedAt
 
   // Relations
-  roles RolePermission[]
+  roles           RolePermission[]
+  userPermissions UserPermission[] // Permisos asignados directamente a usuarios
 
   @@unique([resource, action])
   @@map("permissions")
@@ -260,6 +263,27 @@ model RolePermission {
 
   @@unique([roleId, permissionId])
   @@map("role_permissions")
+}
+
+// Permisos adicionales asignados directamente a usuarios
+// Se SUMAN a los permisos del rol
+model UserPermission {
+  id             String @id @default(uuid())
+  userId         String
+  businessUnitId String // Los permisos adicionales son por BU
+  permissionId   String
+
+  createdAt DateTime @default(now())
+  createdBy String? // Usuario que otorgó el permiso
+
+  // Relations
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  businessUnit BusinessUnit @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
+  permission   Permission   @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, businessUnitId, permissionId])
+  @@index([userId, businessUnitId])
+  @@map("user_permissions")
 }
 
 // ============================================

@@ -70,6 +70,18 @@ const BrandingPage = lazy(() =>
   })),
 );
 
+const StaffListPage = lazy(() =>
+  import("@/core/pages/settings").then((m) => ({
+    default: m.StaffListPage,
+  })),
+);
+
+const StaffFormPage = lazy(() =>
+  import("@/core/pages/settings").then((m) => ({
+    default: m.StaffFormPage,
+  })),
+);
+
 //================================================================
 // CORE ROUTE DEFINITIONS
 //================================================================
@@ -126,6 +138,37 @@ const coreProtectedRoutes: DynamicRouteDefinition[] = [
     meta: {
       title: "Branding",
       icon: "palette",
+    },
+  },
+  {
+    path: "/settings/staff",
+    element: StaffListPage,
+    protection: RouteProtection.AUTHENTICATED,
+    layout: RouteLayout.APP,
+    permissions: ["users:read"],
+    meta: {
+      title: "Personal",
+      icon: "users",
+    },
+  },
+  {
+    path: "/settings/staff/new",
+    element: StaffFormPage,
+    protection: RouteProtection.AUTHENTICATED,
+    layout: RouteLayout.APP,
+    permissions: ["users:create"],
+    meta: {
+      title: "Nuevo Usuario",
+    },
+  },
+  {
+    path: "/settings/staff/:id",
+    element: StaffFormPage,
+    protection: RouteProtection.AUTHENTICATED,
+    layout: RouteLayout.APP,
+    permissions: ["users:update"],
+    meta: {
+      title: "Editar Usuario",
     },
   },
 ];

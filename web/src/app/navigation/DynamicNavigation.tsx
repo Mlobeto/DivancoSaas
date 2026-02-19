@@ -32,6 +32,7 @@ const iconMap: Record<string, React.ReactNode> = {
   dashboard: <LayoutDashboard className="w-5 h-5" />,
   inventory: <Package className="w-5 h-5" />,
   clients: <Users className="w-5 h-5" />,
+  users: <Users className="w-5 h-5" />,
   purchases: <ShoppingCart className="w-5 h-5" />,
   rental: <FileText className="w-5 h-5" />,
   building: <Building2 className="w-5 h-5" />,
@@ -300,26 +301,35 @@ export default function DynamicNavigation({
     const allNavigation = navigationBuilder.buildNavigation(context);
 
     // Add Settings section for all authenticated users
+    const settingsChildren: NavigationItem[] = [
+      {
+        id: "branding",
+        label: "Branding",
+        path: "/settings/branding",
+        icon: "palette",
+      },
+    ];
+
+    // Add Staff/Personal option if user has permission
+    if (
+      userPermissions.includes("users:read") ||
+      role === "OWNER" ||
+      role === "SUPER_ADMIN"
+    ) {
+      settingsChildren.push({
+        id: "staff",
+        label: "Personal",
+        path: "/settings/staff",
+        icon: "users",
+      });
+    }
+
     const settingsNavigation: NavigationItem = {
       id: "settings",
       label: "Configuración",
       path: "/settings",
       icon: "settings",
-      children: [
-        {
-          id: "branding",
-          label: "Branding",
-          path: "/settings/branding",
-          icon: "palette",
-        },
-        // TODO: Add more settings sections
-        // {
-        //   id: "business-unit",
-        //   label: "Business Unit",
-        //   path: "/settings/business-unit",
-        //   icon: "building",
-        // },
-      ],
+      children: settingsChildren,
     };
 
     console.log(

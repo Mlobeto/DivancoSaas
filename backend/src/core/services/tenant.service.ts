@@ -137,7 +137,7 @@ export class TenantService {
 
       // 2. Create default "OWNER" role if it doesn't exist
       let ownerRole = await tx.role.findFirst({
-        where: { name: "OWNER" },
+        where: { name: "OWNER", isSystem: true },
       });
 
       if (!ownerRole) {
@@ -145,7 +145,7 @@ export class TenantService {
           data: {
             name: "OWNER",
             description: "Business owner with full access",
-            isSystem: false,
+            isSystem: true,
           },
         });
       }

@@ -174,7 +174,7 @@ const createUserSchema = z.object({
   firstName: z.string().min(2),
   lastName: z.string().min(2),
   businessUnitId: z.string().uuid(),
-  roleId: z.string().uuid(),
+  roleId: z.string().min(1), // Acepta UUIDs o IDs de roles del sistema (role-employee, role-admin, etc.)
 });
 
 router.post("/", authorize("users:create"), async (req, res, next) => {
@@ -183,11 +183,23 @@ router.post("/", authorize("users:create"), async (req, res, next) => {
     const data = createUserSchema.parse(req.body);
 
     const user = await userService.createUser(data, tenantId);
-    res.status(201).json({ success: true, data: user });
-  } catch (error) {
+
+    // Determinar si es nuevo o se asignó a nueva BU
+    const isNewAssignment =
+      user?.businessUnits && user.businessUnits.length > 1;
+
+    res.status(201).json({
+      success: true,
+      data: user,
+      message: isNewAssignment
+        ? `Usuario ${user!.email} asignado a nueva unidad de negocio`
+        : `Usuario ${user!.email} creado exitosamente`,
+    });
+  } catch (error: any) {
     next(error);
   }
 });
+
 /**
  * @openapi
  * /users/{id}:
@@ -610,6 +622,188 @@ router.post(
 
       const user = await userService.deactivateUser(id, tenantId);
       res.json({ success: true, data: user });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+// ============================================
+// USER ADDITIONAL PERMISSIONS MANAGEMENT
+// ============================================
+
+/**
+ * @openapi
+ * /users/{id}/permissions:
+ *   get:
+ *     tags: [Users]
+ *     summary: Obtener permisos adicionales de un usuario
+ *     description: Devuelve los permisos adicionales asignados específicamente a este usuario (no incluye permisos del rol)
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: query
+ *         name: businessUnitId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Lista de permisos adicionales del usuario
+ */
+router.get(
+  "/:id/permissions",
+  authorize("users:read"),
+  async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const { businessUnitId } = req.query;
+      const tenantId = (req as any).context.tenantId;
+
+      if (!businessUnitId) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: "MISSING_BUSINESS_UNIT",
+            message: "businessUnitId query parameter is required",
+          },
+        });
+      }
+
+      const { permissionService } =
+        await import("@core/services/permission.service");
+      const permissions = await permissionService.getUserAdditionalPermissions(
+        id,
+        businessUnitId as string,
+      );
+
+      res.json({ success: true, data: permissions });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+/**
+ * @openapi
+ * /users/{id}/permissions:
+ *   post:
+ *     tags: [Users]
+ *     summary: Asignar permisos adicionales a un usuario
+ *     description: Agrega permisos específicos que se SUMAN a los permisos del rol del usuario
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [businessUnitId, permissionIds]
+ *             properties:
+ *               businessUnitId: { type: string, format: uuid }
+ *               permissionIds: { type: array, items: { type: string, format: uuid } }
+ *     responses:
+ *       200:
+ *         description: Permisos asignados exitosamente
+ */
+const assignPermissionsSchema = z.object({
+  businessUnitId: z.string().uuid(),
+  permissionIds: z.array(z.string().uuid()),
+});
+
+router.post(
+  "/:id/permissions",
+  authorize("users:update"),
+  async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const currentUserId = (req as any).context.userId;
+      const data = assignPermissionsSchema.parse(req.body);
+
+      const { permissionService } =
+        await import("@core/services/permission.service");
+      await permissionService.syncUserPermissions(
+        id,
+        data.businessUnitId,
+        data.permissionIds,
+        currentUserId,
+      );
+
+      res.json({
+        success: true,
+        message: "User permissions updated successfully",
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+/**
+ * @openapi
+ * /users/{id}/permissions/{permissionId}:
+ *   delete:
+ *     tags: [Users]
+ *     summary: Revocar permiso adicional de un usuario
+ *     description: Elimina un permiso específico asignado al usuario
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: permissionId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: query
+ *         name: businessUnitId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Permiso revocado exitosamente
+ */
+router.delete(
+  "/:id/permissions/:permissionId",
+  authorize("users:update"),
+  async (req, res, next) => {
+    try {
+      const { id, permissionId } = req.params;
+      const { businessUnitId } = req.query;
+
+      if (!businessUnitId) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: "MISSING_BUSINESS_UNIT",
+            message: "businessUnitId query parameter is required",
+          },
+        });
+      }
+
+      const { permissionService } =
+        await import("@core/services/permission.service");
+      await permissionService.revokeUserPermission(
+        id,
+        businessUnitId as string,
+        permissionId,
+      );
+
+      res.json({
+        success: true,
+        message: "Permission revoked successfully",
+      });
     } catch (error) {
       next(error);
     }
