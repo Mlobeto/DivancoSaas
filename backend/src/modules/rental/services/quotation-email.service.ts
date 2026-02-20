@@ -5,6 +5,7 @@
 
 import { emailService } from "@core/services/email.service";
 import { quotationService } from "./quotation.service";
+import { azureBlobStorageService } from "@shared/storage/azure-blob-storage.service";
 import prisma from "@config/database";
 
 export class QuotationEmailService {
@@ -40,8 +41,25 @@ export class QuotationEmailService {
       throw new Error("PDF must be generated before sending email");
     }
 
-    // 2. Descargar PDF desde Azure Blob Storage
-    const pdfResponse = await fetch(quotation.pdfUrl);
+    // 2. Extraer containerName y blobName de la URL
+    // URL format: https://[account].blob.core.windows.net/[container]/[blobPath]
+    const url = new URL(quotation.pdfUrl);
+    const pathParts = url.pathname.split("/").filter((p) => p);
+    const containerName = pathParts[0];
+    const blobName = pathParts.slice(1).join("/");
+
+    // 3. Generar SAS URL temporal (60 minutos)
+    const pdfUrlWithSas = await azureBlobStorageService.generateSasUrl(
+      containerName,
+      blobName,
+      60,
+    );
+
+    // 4. Descargar PDF desde Azure Blob Storage con SAS
+    const pdfResponse = await fetch(pdfUrlWithSas);
+    if (!pdfResponse.ok) {
+      throw new Error(`Failed to download PDF: ${pdfResponse.statusText}`);
+    }
     const pdfBuffer = Buffer.from(await pdfResponse.arrayBuffer());
 
     // 3. Preparar email

@@ -563,16 +563,23 @@ export class QuotationService {
       businessUnitId: quotation.businessUnitId,
     });
 
-    // Actualizar cotización con URL del PDF
+    // Actualizar cotización con URL del PDF (sin SAS, se genera bajo demanda)
     await prisma.quotation.update({
       where: { id: quotationId },
       data: {
-        pdfUrl: uploadResult.url,
+        pdfUrl: uploadResult.url, // Guardamos URL base
         templateId: template.id,
       },
     });
 
-    return uploadResult.url;
+    // Generar URL con SAS token temporal (7 días de acceso)
+    const sasUrl = await azureBlobStorageService.generateSasUrl(
+      uploadResult.containerName,
+      uploadResult.blobName,
+      60 * 24 * 7, // 7 días en minutos
+    );
+
+    return sasUrl; // Retornamos URL con SAS token
   }
 
   /**

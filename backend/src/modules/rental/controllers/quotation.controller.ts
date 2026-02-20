@@ -6,6 +6,54 @@
 import { Request, Response } from "express";
 import { quotationService } from "../services/quotation.service";
 import { quotationEmailService } from "../services/quotation-email.service";
+import { azureBlobStorageService } from "@shared/storage/azure-blob-storage.service";
+
+/**
+ * Helper: Generar SAS URL para pdfUrl si existe
+ */
+async function enrichQuotationWithSasUrl(quotation: any): Promise<any> {
+  if (!quotation) return quotation;
+
+  // Si existe pdfUrl, generar SAS URL temporal (7 días)
+  if (quotation.pdfUrl) {
+    try {
+      const url = new URL(quotation.pdfUrl);
+      const pathParts = url.pathname.split("/").filter((p) => p);
+      const containerName = pathParts[0];
+      const blobName = pathParts.slice(1).join("/");
+
+      quotation.pdfUrl = await azureBlobStorageService.generateSasUrl(
+        containerName,
+        blobName,
+        60 * 24 * 7, // 7 días
+      );
+    } catch (error) {
+      console.error("Error generating SAS URL for pdfUrl:", error);
+      // Mantener URL original si falla
+    }
+  }
+
+  // Si existe signedPdfUrl, generar SAS URL temporal
+  if (quotation.signedPdfUrl) {
+    try {
+      const url = new URL(quotation.signedPdfUrl);
+      const pathParts = url.pathname.split("/").filter((p) => p);
+      const containerName = pathParts[0];
+      const blobName = pathParts.slice(1).join("/");
+
+      quotation.signedPdfUrl = await azureBlobStorageService.generateSasUrl(
+        containerName,
+        blobName,
+        60 * 24 * 7, // 7 días
+      );
+    } catch (error) {
+      console.error("Error generating SAS URL for signedPdfUrl:", error);
+      // Mantener URL original si falla
+    }
+  }
+
+  return quotation;
+}
 
 export class QuotationController {
   /**
@@ -22,9 +70,14 @@ export class QuotationController {
         clientId: clientId as string,
       });
 
+      // Enriquecer con SAS URLs
+      const enrichedQuotations = await Promise.all(
+        quotations.map((q) => enrichQuotationWithSasUrl(q)),
+      );
+
       res.json({
         success: true,
-        data: quotations,
+        data: enrichedQuotations,
       });
     } catch (error: any) {
       res.status(400).json({
@@ -53,9 +106,12 @@ export class QuotationController {
         return;
       }
 
+      // Enriquecer con SAS URL
+      const enrichedQuotation = await enrichQuotationWithSasUrl(quotation);
+
       res.json({
         success: true,
-        data: quotation,
+        data: enrichedQuotation,
       });
     } catch (error: any) {
       res.status(400).json({
