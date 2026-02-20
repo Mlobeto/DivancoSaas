@@ -152,7 +152,7 @@ router.post(
       console.error("[FileRoutes] Upload error:", error);
       res.status(500).json({ error: error.message });
     }
-  },
+  } as any,
 );
 
 /**
@@ -228,7 +228,7 @@ router.get(
       console.error("[FileRoutes] Download error:", error);
       res.status(500).json({ error: error.message });
     }
-  },
+  } as any,
 );
 
 /**
@@ -294,7 +294,7 @@ router.delete(
       console.error("[FileRoutes] Delete error:", error);
       res.status(500).json({ error: error.message });
     }
-  },
+  } as any,
 );
 
 /**
@@ -388,7 +388,7 @@ router.post(
       console.error("[FileRoutes] SAS token error:", error);
       res.status(500).json({ error: error.message });
     }
-  },
+  } as any,
 );
 
 /**
@@ -453,7 +453,7 @@ router.get(
       console.error("[FileRoutes] List error:", error);
       res.status(500).json({ error: error.message });
     }
-  },
+  } as any,
 );
 
 /**
@@ -524,7 +524,7 @@ router.get(
       console.error("[FileRoutes] Exists error:", error);
       res.status(500).json({ error: error.message });
     }
-  },
+  } as any,
 );
 
 /**
@@ -588,7 +588,7 @@ router.get(
       console.error("[FileRoutes] Metadata error:", error);
       res.status(500).json({ error: error.message });
     }
-  },
+  } as any,
 );
 
 export { router as fileRouter };
