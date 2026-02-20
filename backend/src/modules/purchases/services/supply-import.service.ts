@@ -191,7 +191,7 @@ export class SupplyImportService {
               stock: currentStock,
               minStock: minStock,
               maxStock: maxStock,
-              description: record.description || undefined,
+              notes: record.description || undefined,
             },
           });
 
