@@ -119,4 +119,20 @@ export const quotationService = {
     );
     return response.data.data;
   },
+
+  /**
+   * Enviar cotización por email
+   */
+  async sendEmail(
+    quotationId: string,
+    options?: {
+      customMessage?: string;
+      cc?: string[];
+    },
+  ): Promise<void> {
+    await apiClient.post(
+      `${BASE_URL}/quotations/${quotationId}/send-email`,
+      options || {},
+    );
+  },
 };

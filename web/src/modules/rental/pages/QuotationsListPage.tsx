@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { Layout } from "@/core/components/Layout";
 import { ProtectedAction } from "@/core/components/ProtectedAction";
@@ -15,10 +15,13 @@ import {
   CheckCircle,
   Clock,
   XCircle,
+  Mail,
+  X,
 } from "lucide-react";
 
 export function QuotationsListPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { tenant, businessUnit } = useAuthStore();
   const [filters, setFilters] = useState<{
     status?: QuotationStatus;
@@ -30,11 +33,56 @@ export function QuotationsListPage() {
     limit: 20,
   });
 
+  // Email modal state
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const [selectedQuotationForEmail, setSelectedQuotationForEmail] =
+    useState<Quotation | null>(null);
+  const [customMessage, setCustomMessage] = useState("");
+
   const { data, isLoading, error } = useQuery({
     queryKey: ["quotations", tenant?.id, businessUnit?.id, filters],
     queryFn: () => quotationService.list(filters),
     enabled: !!tenant?.id && !!businessUnit?.id,
   });
+
+  // Send email mutation
+  const sendEmailMutation = useMutation({
+    mutationFn: ({
+      quotationId,
+      message,
+    }: {
+      quotationId: string;
+      message?: string;
+    }) =>
+      quotationService.sendEmail(quotationId, {
+        customMessage: message,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["quotations"] });
+      setEmailModalOpen(false);
+      setSelectedQuotationForEmail(null);
+      setCustomMessage("");
+      alert("✅ Cotización enviada por email exitosamente");
+    },
+    onError: (error: any) => {
+      alert(
+        `❌ Error al enviar email: ${error.message || "Error desconocido"}`,
+      );
+    },
+  });
+
+  const handleSendEmail = (quotation: Quotation) => {
+    setSelectedQuotationForEmail(quotation);
+    setEmailModalOpen(true);
+  };
+
+  const handleConfirmSendEmail = () => {
+    if (!selectedQuotationForEmail) return;
+    sendEmailMutation.mutate({
+      quotationId: selectedQuotationForEmail.id,
+      message: customMessage || undefined,
+    });
+  };
 
   const statusColors: Record<QuotationStatus, string> = {
     draft: "bg-gray-700/30 text-gray-400 border-gray-600",
@@ -191,7 +239,7 @@ export function QuotationsListPage() {
               No hay cotizaciones registradas aún
             </p>
             <button
-              onClick={() => navigate("/quotations/new")}
+              onClick={() => navigate("/rental/quotations/new")}
               className="btn-primary"
             >
               + Crear primera cotización
@@ -286,14 +334,26 @@ export function QuotationsListPage() {
                         )}
                       </td>
                       <td className="p-4 text-right">
-                        <button
-                          onClick={() =>
-                            navigate(`/rental/quotations/${quotation.id}`)
-                          }
-                          className="btn-ghost btn-sm"
-                        >
-                          Ver
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() =>
+                              navigate(`/rental/quotations/${quotation.id}`)
+                            }
+                            className="btn-ghost btn-sm"
+                            title="Ver detalles"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          {quotation.client?.email && quotation.pdfUrl && (
+                            <button
+                              onClick={() => handleSendEmail(quotation)}
+                              className="btn-primary btn-sm"
+                              title="Enviar por email"
+                            >
+                              <Mail className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -329,6 +389,85 @@ export function QuotationsListPage() {
             >
               Siguiente →
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Email Modal */}
+      {emailModalOpen && selectedQuotationForEmail && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-dark-900 rounded-xl border border-dark-700 max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <Mail className="w-5 h-5 text-blue-400" />
+                Enviar Cotización por Email
+              </h2>
+              <button
+                onClick={() => {
+                  setEmailModalOpen(false);
+                  setSelectedQuotationForEmail(null);
+                  setCustomMessage("");
+                }}
+                className="text-dark-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="mb-4 p-3 bg-dark-800 rounded-lg border border-dark-700">
+              <div className="text-sm text-dark-300 mb-1">
+                <strong>Cotización:</strong> {selectedQuotationForEmail.code}
+              </div>
+              <div className="text-sm text-dark-300 mb-1">
+                <strong>Cliente:</strong>{" "}
+                {selectedQuotationForEmail.client?.name}
+              </div>
+              <div className="text-sm text-dark-300">
+                <strong>Email:</strong>{" "}
+                {selectedQuotationForEmail.client?.email}
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-dark-300 mb-2">
+                Mensaje Personalizado (Opcional)
+              </label>
+              <textarea
+                value={customMessage}
+                onChange={(e) => setCustomMessage(e.target.value)}
+                className="w-full px-3 py-2 bg-dark-800 border border-dark-700 rounded-lg text-white placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                rows={4}
+                placeholder="Escribe un mensaje personalizado que se incluirá en el email..."
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setEmailModalOpen(false);
+                  setSelectedQuotationForEmail(null);
+                  setCustomMessage("");
+                }}
+                className="flex-1 px-4 py-2 border border-dark-600 rounded-lg text-dark-300 hover:bg-dark-800 transition-colors"
+                disabled={sendEmailMutation.isPending}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmSendEmail}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                disabled={sendEmailMutation.isPending}
+              >
+                {sendEmailMutation.isPending ? (
+                  <>Enviando...</>
+                ) : (
+                  <>
+                    <Mail className="w-4 h-4" />
+                    Enviar Email
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}
