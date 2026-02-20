@@ -78,26 +78,4 @@ export const templateService = {
     });
     return response.data.data;
   },
-
-  /**
-   * Upload logo image for template
-   */
-  async uploadLogo(
-    templateId: string,
-    file: File,
-  ): Promise<{ logoUrl: string }> {
-    const formData = new FormData();
-    formData.append("logo", file);
-
-    const response = await apiClient.post(
-      `${BASE_URL}/templates/${templateId}/logo`,
-      formData,
-      {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      },
-    );
-    return response.data.data;
-  },
 };
