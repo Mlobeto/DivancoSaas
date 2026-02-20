@@ -8,6 +8,18 @@ process.env.JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
 process.env.PORT = process.env.PORT || "3000";
 process.env.CORS_ORIGIN = process.env.CORS_ORIGIN || "http://localhost:5173";
 
+// Mock sharp module for testing (native dependencies not needed in tests)
+jest.mock("sharp", () => {
+  return jest.fn().mockImplementation(() => ({
+    resize: jest.fn().mockReturnThis(),
+    jpeg: jest.fn().mockReturnThis(),
+    png: jest.fn().mockReturnThis(),
+    webp: jest.fn().mockReturnThis(),
+    toBuffer: jest.fn().mockResolvedValue(Buffer.from("mock-image")),
+    toFile: jest.fn().mockResolvedValue({}),
+  }));
+});
+
 import { prisma } from "@config/database";
 
 // Setup before all tests
