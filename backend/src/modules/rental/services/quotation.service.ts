@@ -431,7 +431,11 @@ export class QuotationService {
           },
         },
         client: true,
-        businessUnit: true,
+        businessUnit: {
+          include: {
+            branding: true,
+          },
+        },
       },
     });
 
@@ -540,8 +544,8 @@ export class QuotationService {
       notes: quotation.notes,
       termsAndConditions: quotation.termsAndConditions,
 
-      // Logo del template
-      logoUrl: template.logoUrl,
+      // Logo desde BusinessUnit Branding
+      logoUrl: quotation.businessUnit.branding?.logoUrl || null,
 
       // Información del BusinessUnit
       businessUnitName: quotation.businessUnit.name,
