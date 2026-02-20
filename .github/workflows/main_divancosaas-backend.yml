@@ -25,6 +25,9 @@ jobs:
 
       - name: npm install and build
         working-directory: ./backend
+        env:
+          PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: true
+          PUPPETEER_SKIP_DOWNLOAD: true
         run: |
           npm install
           npm run build
