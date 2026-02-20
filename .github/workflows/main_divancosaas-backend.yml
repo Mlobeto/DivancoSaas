@@ -27,7 +27,9 @@ jobs:
         working-directory: ./backend
         run: |
           npm install
-          npm run build --if-present
+          npm run build
+          echo "Build completed. Checking dist directory:"
+          ls -la dist/ || echo "dist/ not found!"
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
@@ -48,9 +50,15 @@ jobs:
         with:
           name: node-app
           path: .
-      
+
       - name: List files for debugging
-        run: ls -la
+        run: |
+          echo "Root directory:"
+          ls -la
+          echo "Checking for dist directory:"
+          ls -la dist/ || echo "dist/ not found in artifact!"
+          echo "Checking node_modules:"
+          ls node_modules/ | head -10 || echo "node_modules not found"
 
       - name: Login to Azure
         uses: azure/login@v2
