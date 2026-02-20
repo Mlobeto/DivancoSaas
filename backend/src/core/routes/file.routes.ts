@@ -77,83 +77,81 @@ const upload = multer({
  *       401:
  *         description: No autorizado
  */
-router.post(
-  "/upload",
-  authenticate as any,
-  upload.single("file"),
-  async (req: AuthenticatedRequest, res: Response): Promise<any> => {
-    try {
-      const { businessUnitId } = req.body;
-      const file = req.file;
+router.post("/upload", authenticate as any, upload.single("file"), (async (
+  req: AuthenticatedRequest,
+  res: Response,
+): Promise<any> => {
+  try {
+    const { businessUnitId } = req.body;
+    const file = req.file;
 
-      if (!file) {
-        return res.status(400).json({ error: "No file provided" });
-      }
-
-      if (typeof businessUnitId !== "string") {
-        return res.status(400).json({ error: "businessUnitId is required" });
-      }
-
-      // Validar autenticación
-      if (!req.user || !req.user.tenantId) {
-        return res.status(401).json({ error: "Unauthorized" });
-      }
-
-      const {
-        container,
-        folder,
-        processImage,
-        resize,
-        format,
-        quality,
-        generateThumbnail,
-      } = req.body;
-
-      if (!container) {
-        return res.status(400).json({ error: "container is required" });
-      }
-
-      // Preparar opciones de procesamiento de imagen
-      let imageOptions = undefined;
-      if (processImage === "true" || processImage === true) {
-        imageOptions = {
-          resize: resize
-            ? {
-                width: parseInt(resize.split("x")[0]),
-                height: parseInt(resize.split("x")[1]),
-              }
-            : undefined,
-          format: format as "jpeg" | "png" | "webp" | "avif" | undefined,
-          quality: quality ? parseInt(quality) : undefined,
-          thumbnail:
-            generateThumbnail === "true" || generateThumbnail === true
-              ? { width: 200, height: 200 }
-              : undefined,
-        };
-      }
-
-      const result = await fileStorageService.uploadFile({
-        file: file.buffer,
-        fileName: file.originalname,
-        mimeType: file.mimetype,
-        container,
-        folder,
-        tenantId: req.user.tenantId,
-        businessUnitId,
-        processImage:
-          processImage === "true" ||
-          processImage === true ||
-          imageOptions !== undefined,
-        imageOptions,
-      });
-
-      res.json(result);
-    } catch (error: any) {
-      console.error("[FileRoutes] Upload error:", error);
-      res.status(500).json({ error: error.message });
+    if (!file) {
+      return res.status(400).json({ error: "No file provided" });
     }
-  } as any,
-);
+
+    if (typeof businessUnitId !== "string") {
+      return res.status(400).json({ error: "businessUnitId is required" });
+    }
+
+    // Validar autenticación
+    if (!req.user || !req.user.tenantId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const {
+      container,
+      folder,
+      processImage,
+      resize,
+      format,
+      quality,
+      generateThumbnail,
+    } = req.body;
+
+    if (!container) {
+      return res.status(400).json({ error: "container is required" });
+    }
+
+    // Preparar opciones de procesamiento de imagen
+    let imageOptions = undefined;
+    if (processImage === "true" || processImage === true) {
+      imageOptions = {
+        resize: resize
+          ? {
+              width: parseInt(resize.split("x")[0]),
+              height: parseInt(resize.split("x")[1]),
+            }
+          : undefined,
+        format: format as "jpeg" | "png" | "webp" | "avif" | undefined,
+        quality: quality ? parseInt(quality) : undefined,
+        thumbnail:
+          generateThumbnail === "true" || generateThumbnail === true
+            ? { width: 200, height: 200 }
+            : undefined,
+      };
+    }
+
+    const result = await fileStorageService.uploadFile({
+      file: file.buffer,
+      fileName: file.originalname,
+      mimeType: file.mimetype,
+      container,
+      folder,
+      tenantId: req.user.tenantId,
+      businessUnitId,
+      processImage:
+        processImage === "true" ||
+        processImage === true ||
+        imageOptions !== undefined,
+      imageOptions,
+    });
+
+    res.json(result);
+  } catch (error: any) {
+    console.error("[FileRoutes] Upload error:", error);
+    res.status(500).json({ error: error.message });
+  }
+}) as any);
 
 /**
  * @swagger
@@ -193,7 +191,7 @@ router.post(
 router.get(
   "/download",
   authenticate as any,
-  async (req: AuthenticatedRequest, res: Response): Promise<any> => {
+  (async (req: AuthenticatedRequest, res: Response): Promise<any> => {
     try {
       const { blobName, container, businessUnitId } = req.query;
 
@@ -228,7 +226,7 @@ router.get(
       console.error("[FileRoutes] Download error:", error);
       res.status(500).json({ error: error.message });
     }
-  } as any,
+  }) as any,
 );
 
 /**
@@ -264,7 +262,7 @@ router.get(
 router.delete(
   "/delete",
   authenticate as any,
-  async (req: AuthenticatedRequest, res: Response): Promise<any> => {
+  (async (req: AuthenticatedRequest, res: Response): Promise<any> => {
     try {
       const { blobName, container, businessUnitId } = req.query;
 
@@ -294,7 +292,7 @@ router.delete(
       console.error("[FileRoutes] Delete error:", error);
       res.status(500).json({ error: error.message });
     }
-  } as any,
+  }) as any,
 );
 
 /**
@@ -347,7 +345,7 @@ router.delete(
 router.post(
   "/sas-token",
   authenticate as any,
-  async (req: AuthenticatedRequest, res: Response): Promise<any> => {
+  (async (req: AuthenticatedRequest, res: Response): Promise<any> => {
     try {
       const {
         blobName,
@@ -388,7 +386,7 @@ router.post(
       console.error("[FileRoutes] SAS token error:", error);
       res.status(500).json({ error: error.message });
     }
-  } as any,
+  }) as any,
 );
 
 /**
@@ -425,7 +423,7 @@ router.post(
 router.get(
   "/list",
   authenticate as any,
-  async (req: AuthenticatedRequest, res: Response): Promise<any> => {
+  (async (req: AuthenticatedRequest, res: Response): Promise<any> => {
     try {
       const { container, businessUnitId, prefix, maxResults } = req.query;
 
@@ -453,7 +451,7 @@ router.get(
       console.error("[FileRoutes] List error:", error);
       res.status(500).json({ error: error.message });
     }
-  } as any,
+  }) as any,
 );
 
 /**
@@ -494,7 +492,7 @@ router.get(
 router.get(
   "/exists",
   authenticate as any,
-  async (req: AuthenticatedRequest, res: Response): Promise<any> => {
+  (async (req: AuthenticatedRequest, res: Response): Promise<any> => {
     try {
       const { blobName, container, businessUnitId } = req.query;
 
@@ -524,7 +522,7 @@ router.get(
       console.error("[FileRoutes] Exists error:", error);
       res.status(500).json({ error: error.message });
     }
-  } as any,
+  }) as any,
 );
 
 /**
@@ -558,7 +556,7 @@ router.get(
 router.get(
   "/metadata",
   authenticate as any,
-  async (req: AuthenticatedRequest, res: Response): Promise<any> => {
+  (async (req: AuthenticatedRequest, res: Response): Promise<any> => {
     try {
       const { blobName, container, businessUnitId } = req.query;
 
@@ -588,7 +586,7 @@ router.get(
       console.error("[FileRoutes] Metadata error:", error);
       res.status(500).json({ error: error.message });
     }
-  } as any,
+  }) as any,
 );
 
 export { router as fileRouter };
