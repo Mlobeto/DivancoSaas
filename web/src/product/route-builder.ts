@@ -190,9 +190,18 @@ export class RouteBuilder {
     }
 
     // Build path (prepend basePath if provided)
-    const fullPath = options.basePath
-      ? `${options.basePath}${routeDef.path}`.replace(/\/+/g, "/")
-      : routeDef.path;
+    let fullPath: string;
+    if (options.basePath) {
+      // Handle empty path (index route)
+      if (!routeDef.path || routeDef.path === "") {
+        fullPath = options.basePath;
+      } else {
+        // Ensure single slash between basePath and path
+        fullPath = `${options.basePath}/${routeDef.path}`.replace(/\/+/g, "/");
+      }
+    } else {
+      fullPath = routeDef.path;
+    }
 
     // Transform element (wrap lazy components in Suspense)
     const element = routeDef.element

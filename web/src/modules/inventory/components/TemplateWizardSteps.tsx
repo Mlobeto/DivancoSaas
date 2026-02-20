@@ -1,63 +1,158 @@
 /**
  * TEMPLATE WIZARD STEPS
- * Componentes de pasos del wizard
+ * Componentes mejorados de pasos del wizard
+ * - Categoría con iconos grandes
+ * - Drag & Drop para archivos
+ * - Adaptativo según categoría
  */
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import {
   FileText,
-  Settings,
-  Edit,
-  Trash,
-  Eye,
-  Plus,
-  FileSignature,
+  Upload,
+  X,
+  Check,
+  AlertTriangle,
   Truck,
-  Wrench,
-  Hammer,
-  Drill,
-  Construction,
-  Box,
-  Package,
-  Factory,
-  HardHat,
-  PackageOpen,
-  Container,
-  Ruler,
-  Fence,
-  Pickaxe,
+  User,
+  Shield,
+  Trash2,
+  FileIcon,
 } from "lucide-react";
-import type {
-  CreateTemplateInput,
-  CustomField,
-} from "@/modules/inventory/services/asset-template.service";
+import type { CreateTemplateInput } from "@/modules/inventory/services/asset-template.service";
 import {
-  FieldType,
-  FieldTypeLabels,
   AssetCategory,
   AssetCategoryLabels,
 } from "@/modules/inventory/services/asset-template.service";
 
 // ============================================
-// STEP 1: BASIC INFO
+// STEP 1: CATEGORY SELECTION
 // ============================================
 
-const COMMON_ICONS = [
-  { icon: Construction, name: "construction" },
-  { icon: Truck, name: "truck" },
-  { icon: HardHat, name: "hardhat" },
-  { icon: Wrench, name: "wrench" },
-  { icon: Hammer, name: "hammer" },
-  { icon: Drill, name: "drill" },
-  { icon: Box, name: "box" },
-  { icon: Package, name: "package" },
-  { icon: Factory, name: "factory" },
-  { icon: PackageOpen, name: "packageopen" },
-  { icon: Container, name: "container" },
-  { icon: Ruler, name: "ruler" },
-  { icon: Fence, name: "fence" },
-  { icon: Pickaxe, name: "pickaxe" },
-];
+const CATEGORY_GROUPS = {
+  equipos: {
+    label: "Equipos",
+    categories: [
+      {
+        value: AssetCategory.MACHINERY,
+        icon: "🏗️",
+        desc: "Maquinaria pesada (retroexcavadoras, excavadoras, etc.)",
+      },
+      {
+        value: AssetCategory.IMPLEMENT,
+        icon: "🔧",
+        desc: "Implementos y andamios certificados",
+      },
+      {
+        value: AssetCategory.VEHICLE,
+        icon: "🚚",
+        desc: "Vehículos de carga y transporte",
+      },
+      {
+        value: AssetCategory.TOOL,
+        icon: "🔨",
+        desc: "Herramientas eléctricas y manuales",
+      },
+    ],
+  },
+  insumos: {
+    label: "Insumos",
+    categories: [
+      {
+        value: AssetCategory.SUPPLY_FUEL,
+        icon: "⛽",
+        desc: "Combustibles (diesel, gasolina, gas)",
+      },
+      {
+        value: AssetCategory.SUPPLY_OIL,
+        icon: "🛢️",
+        desc: "Aceites y lubricantes (motor, hidráulico, etc.)",
+      },
+      {
+        value: AssetCategory.SUPPLY_PAINT,
+        icon: "🎨",
+        desc: "Pinturas, solventes y adhesivos",
+      },
+      {
+        value: AssetCategory.SUPPLY_SPARE_PART,
+        icon: "⚙️",
+        desc: "Repuestos y partes de equipos",
+      },
+      {
+        value: AssetCategory.SUPPLY_CONSUMABLE,
+        icon: "📦",
+        desc: "Consumibles generales (guantes, trapos, etc.)",
+      },
+      {
+        value: AssetCategory.SUPPLY_SAFETY,
+        icon: "🦺",
+        desc: "Equipos de seguridad (cascos, arneses, etc.)",
+      },
+    ],
+  },
+};
+
+export function CategorySelectionStep({
+  formData,
+  setFormData,
+}: {
+  formData: CreateTemplateInput;
+  setFormData: React.Dispatch<React.SetStateAction<CreateTemplateInput>>;
+}) {
+  return (
+    <div className="card space-y-6">
+      <div>
+        <h2 className="text-2xl font-semibold text-white mb-2">
+          ¿Qué tipo de producto vas a crear?
+        </h2>
+        <p className="text-dark-400">
+          Selecciona la categoría que mejor describa el producto
+        </p>
+      </div>
+
+      {Object.entries(CATEGORY_GROUPS).map(([groupKey, group]) => (
+        <div key={groupKey}>
+          <h3 className="text-lg font-medium text-white mb-4 border-b border-dark-700 pb-2">
+            {group.label}
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {group.categories.map((cat) => (
+              <button
+                key={cat.value}
+                type="button"
+                onClick={() =>
+                  setFormData({ ...formData, category: cat.value })
+                }
+                className={`p-6 rounded-lg border-2 transition text-left hover:scale-105 ${
+                  formData.category === cat.value
+                    ? "border-primary-500 bg-primary-900/20"
+                    : "border-dark-700 hover:border-dark-600"
+                }`}
+              >
+                <div className="flex items-start gap-4">
+                  <div className="text-4xl">{cat.icon}</div>
+                  <div className="flex-1">
+                    <div className="font-semibold text-white text-lg mb-1">
+                      {AssetCategoryLabels[cat.value]}
+                    </div>
+                    <div className="text-sm text-dark-400">{cat.desc}</div>
+                  </div>
+                  {formData.category === cat.value && (
+                    <Check className="w-6 h-6 text-primary-500" />
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ============================================
+// STEP 2: BASIC INFO
+// ============================================
 
 export function BasicInfoStep({
   formData,
@@ -66,7 +161,7 @@ export function BasicInfoStep({
   formData: CreateTemplateInput;
   setFormData: React.Dispatch<React.SetStateAction<CreateTemplateInput>>;
 }) {
-  const [customIcon, setCustomIcon] = useState("");
+  const isSupply = formData.category.startsWith("SUPPLY_");
 
   return (
     <div className="card space-y-6">
@@ -75,917 +170,640 @@ export function BasicInfoStep({
       </h2>
 
       <div>
-        <label className="label">Nombre de la Plantilla *</label>
+        <label className="label">Nombre del Producto *</label>
         <input
           type="text"
           className="input"
-          placeholder="Ej: Retroexcavadora"
+          placeholder="Ej: Retroexcavadora CAT 416F"
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
           required
         />
       </div>
 
-      {/* Category */}
       <div>
-        <label className="label">Categoría *</label>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {Object.values(AssetCategory).map((cat) => (
-            <button
-              key={cat}
-              type="button"
-              className={`p-4 rounded-lg border-2 transition ${
-                formData.category === cat
-                  ? "border-primary-500 bg-primary-900/20"
-                  : "border-dark-700 hover:border-dark-600"
-              }`}
-              onClick={() => setFormData({ ...formData, category: cat })}
-            >
-              <div className="text-center">
-                <div className="font-semibold">{AssetCategoryLabels[cat]}</div>
-              </div>
-            </button>
-          ))}
-        </div>
+        <label className="label">Descripción</label>
+        <textarea
+          className="input"
+          rows={3}
+          placeholder="Descripción breve del producto..."
+          value={formData.description || ""}
+          onChange={(e) =>
+            setFormData({ ...formData, description: e.target.value })
+          }
+        />
       </div>
 
-      {/* Icon */}
-      <div>
-        <label className="label">Icono</label>
-        <div className="grid grid-cols-5 md:grid-cols-7 gap-2 mb-3">
-          {COMMON_ICONS.map(({ icon: IconComponent, name }) => (
-            <button
-              key={name}
-              type="button"
-              className={`p-3 rounded border-2 transition flex items-center justify-center ${
-                formData.icon === name
-                  ? "border-primary-500 bg-primary-900/20 text-primary-400"
-                  : "border-dark-700 hover:border-dark-600 text-white"
-              }`}
-              onClick={() => setFormData({ ...formData, icon: name })}
-            >
-              <IconComponent className="w-6 h-6" />
-            </button>
-          ))}
-        </div>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            className="input flex-1"
-            placeholder="O escribe un nombre de icono personalizado..."
-            value={customIcon}
-            onChange={(e) => setCustomIcon(e.target.value)}
-          />
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={() => {
-              if (customIcon.trim()) {
-                setFormData({ ...formData, icon: customIcon.trim() });
-                setCustomIcon("");
+      {/* Presentation for supplies */}
+      {isSupply && (
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <label className="label">Unidad de Medida</label>
+            <input
+              type="text"
+              className="input"
+              placeholder="litro, galón, kg"
+              value={formData.presentation?.unit || ""}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  presentation: {
+                    ...formData.presentation,
+                    unit: e.target.value,
+                  },
+                })
               }
-            }}
-          >
-            Usar
-          </button>
-        </div>
-      </div>
-
-      {/* Requires Preventive Maintenance */}
-      <div className="flex items-center gap-3">
-        <input
-          type="checkbox"
-          id="requiresMaintenance"
-          checked={formData.requiresPreventiveMaintenance}
-          onChange={(e) =>
-            setFormData({
-              ...formData,
-              requiresPreventiveMaintenance: e.target.checked,
-            })
-          }
-        />
-        <label htmlFor="requiresMaintenance" className="text-sm cursor-pointer">
-          Requiere mantenimiento preventivo
-        </label>
-      </div>
-
-      {/* Requires Documentation */}
-      <div className="flex items-center gap-3">
-        <input
-          type="checkbox"
-          id="requiresDocumentation"
-          checked={formData.requiresDocumentation}
-          onChange={(e) =>
-            setFormData({
-              ...formData,
-              requiresDocumentation: e.target.checked,
-            })
-          }
-        />
-        <label
-          htmlFor="requiresDocumentation"
-          className="text-sm cursor-pointer"
-        >
-          Requiere documentación (SOAT, Seguro, Certificaciones, etc.)
-        </label>
-      </div>
-    </div>
-  );
-}
-
-// ============================================
-// STEP 2: CUSTOM FIELDS
-// ============================================
-
-export function CustomFieldsStep({
-  formData,
-  setFormData,
-}: {
-  formData: CreateTemplateInput;
-  setFormData: React.Dispatch<React.SetStateAction<CreateTemplateInput>>;
-}) {
-  const [editingField, setEditingField] = useState<CustomField | null>(null);
-  const [showFieldModal, setShowFieldModal] = useState(false);
-
-  if (!formData.name) {
-    return (
-      <div className="card">
-        <div className="text-center py-12 text-dark-400">
-          <p>Primero completa el nombre de la plantilla arriba ↑</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Agrupar campos por sección
-  const sections = formData.customFields.reduce(
-    (acc, field) => {
-      if (!acc[field.section]) {
-        acc[field.section] = [];
-      }
-      acc[field.section].push(field);
-      return acc;
-    },
-    {} as Record<string, CustomField[]>,
-  );
-
-  // Ordenar campos por order
-  Object.keys(sections).forEach((section) => {
-    sections[section].sort((a, b) => a.order - b.order);
-  });
-
-  const handleAddField = () => {
-    setEditingField(null);
-    setShowFieldModal(true);
-  };
-
-  const handleEditField = (field: CustomField) => {
-    setEditingField(field);
-    setShowFieldModal(true);
-  };
-
-  const handleDeleteField = (key: string) => {
-    if (confirm("¿Eliminar este campo?")) {
-      setFormData({
-        ...formData,
-        customFields: formData.customFields.filter((f) => f.key !== key),
-      });
-    }
-  };
-
-  const handleSaveField = (field: CustomField) => {
-    if (editingField) {
-      // Actualizar campo existente
-      setFormData({
-        ...formData,
-        customFields: formData.customFields.map((f) =>
-          f.key === editingField.key ? field : f,
-        ),
-      });
-    } else {
-      // Agregar nuevo campo
-      setFormData({
-        ...formData,
-        customFields: [...formData.customFields, field],
-      });
-    }
-    setShowFieldModal(false);
-  };
-
-  const moveField = (key: string, direction: "up" | "down") => {
-    const fields = [...formData.customFields];
-    const index = fields.findIndex((f) => f.key === key);
-    if (index === -1) return;
-
-    const field = fields[index];
-    const sectionFields = fields.filter((f) => f.section === field.section);
-    const sectionIndex = sectionFields.indexOf(field);
-
-    if (direction === "up" && sectionIndex > 0) {
-      const prevField = sectionFields[sectionIndex - 1];
-      const temp = field.order;
-      field.order = prevField.order;
-      prevField.order = temp;
-    } else if (
-      direction === "down" &&
-      sectionIndex < sectionFields.length - 1
-    ) {
-      const nextField = sectionFields[sectionIndex + 1];
-      const temp = field.order;
-      field.order = nextField.order;
-      nextField.order = temp;
-    }
-
-    setFormData({ ...formData, customFields: fields });
-  };
-
-  return (
-    <div className="space-y-6">
-      <div className="card">
-        <h2 className="text-xl font-semibold text-white border-b border-dark-700 pb-3 mb-6 flex items-center gap-2">
-          <Settings className="w-5 h-5" /> Campos Personalizados
-        </h2>
-        <div className="flex items-center justify-between mb-6">
-          <p className="text-dark-400 text-sm">
-            Define los campos que se solicitarán al crear este tipo de activo
-          </p>
-          <button
-            onClick={handleAddField}
-            className="btn-primary flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" /> Agregar Campo
-          </button>
-        </div>
-
-        {formData.customFields.length === 0 ? (
-          <div className="text-center py-12">
-            <FileSignature className="w-16 h-16 mx-auto mb-4 text-dark-500" />
-            <p className="text-dark-400 mb-4">
-              No hay campos configurados todavía
-            </p>
-            <button onClick={handleAddField} className="btn-secondary">
-              Agregar primer campo
-            </button>
+            />
           </div>
-        ) : (
-          <div className="space-y-6">
-            {Object.entries(sections).map(([sectionName, fields]) => (
-              <div
-                key={sectionName}
-                className="border border-dark-700 rounded-lg p-4"
+          <div>
+            <label className="label">Tamaño de Contenedor</label>
+            <input
+              type="number"
+              className="input"
+              placeholder="20"
+              value={formData.presentation?.containerSize || ""}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  presentation: {
+                    ...formData.presentation,
+                    containerSize: Number(e.target.value),
+                  },
+                })
+              }
+            />
+          </div>
+          <div>
+            <label className="label">Tipo de Contenedor</label>
+            <input
+              type="text"
+              className="input"
+              placeholder="Caneca, Tambor"
+              value={formData.presentation?.containerType || ""}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  presentation: {
+                    ...formData.presentation,
+                    containerType: e.target.value,
+                  },
+                })
+              }
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Safety info for supplies */}
+      {isSupply && (
+        <div className="bg-dark-800 p-4 rounded-lg space-y-3">
+          <h3 className="font-medium text-white">Control de Insumos</h3>
+
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              id="hasExpiryDate"
+              checked={formData.hasExpiryDate}
+              onChange={(e) =>
+                setFormData({ ...formData, hasExpiryDate: e.target.checked })
+              }
+            />
+            <label htmlFor="hasExpiryDate" className="text-sm cursor-pointer">
+              Tiene fecha de vencimiento
+            </label>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              id="requiresLotTracking"
+              checked={formData.requiresLotTracking}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  requiresLotTracking: e.target.checked,
+                })
+              }
+            />
+            <label
+              htmlFor="requiresLotTracking"
+              className="text-sm cursor-pointer"
+            >
+              Requiere control de lotes
+            </label>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              id="isDangerous"
+              checked={formData.isDangerous}
+              onChange={(e) =>
+                setFormData({ ...formData, isDangerous: e.target.checked })
+              }
+            />
+            <label htmlFor="isDangerous" className="text-sm cursor-pointer">
+              Producto peligroso
+            </label>
+          </div>
+
+          {formData.isDangerous && (
+            <div>
+              <label className="label">Clasificación de Peligrosidad</label>
+              <select
+                className="input"
+                value={formData.hazardClass || ""}
+                onChange={(e) =>
+                  setFormData({ ...formData, hazardClass: e.target.value })
+                }
               >
-                <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-primary-400" />
-                  {sectionName}
-                </h3>
+                <option value="">Seleccionar...</option>
+                <option value="FLAMMABLE">Inflamable</option>
+                <option value="CORROSIVE">Corrosivo</option>
+                <option value="TOXIC">Tóxico</option>
+                <option value="EXPLOSIVE">Explosivo</option>
+                <option value="OXIDIZING">Oxidante</option>
+              </select>
+            </div>
+          )}
+        </div>
+      )}
 
-                <div className="space-y-2">
-                  {fields.map((field) => (
-                    <div
-                      key={field.key}
-                      className="flex items-center gap-3 p-3 rounded bg-dark-800 hover:bg-dark-750 transition-colors"
-                    >
-                      <div className="flex flex-col gap-1">
-                        <button
-                          onClick={() => moveField(field.key, "up")}
-                          className="text-dark-500 hover:text-dark-300 text-xs"
-                          disabled={field.order === 0}
-                        >
-                          ▲
-                        </button>
-                        <button
-                          onClick={() => moveField(field.key, "down")}
-                          className="text-dark-500 hover:text-dark-300 text-xs"
-                        >
-                          ▼
-                        </button>
-                      </div>
-
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{field.label}</span>
-                          {field.required && (
-                            <span className="text-red-400 text-xs">*</span>
-                          )}
-                          <span className="text-xs px-2 py-0.5 rounded bg-primary-900/30 text-primary-400 border border-primary-800">
-                            {FieldTypeLabels[field.type]}
-                          </span>
-                        </div>
-                        <div className="text-sm text-dark-400 mt-1">
-                          key: {field.key}
-                          {field.placeholder && ` • ${field.placeholder}`}
-                        </div>
-                      </div>
-
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleEditField(field)}
-                          className="btn-ghost text-sm px-3 flex items-center gap-1"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteField(field.key)}
-                          className="btn-ghost text-red-400 hover:bg-red-900/20 text-sm px-3 flex items-center gap-1"
-                        >
-                          <Trash className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
+      {/* Maintenance flags for equipment */}
+      {!isSupply && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              id="requiresMaintenance"
+              checked={formData.requiresPreventiveMaintenance}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  requiresPreventiveMaintenance: e.target.checked,
+                })
+              }
+            />
+            <label
+              htmlFor="requiresMaintenance"
+              className="text-sm cursor-pointer"
+            >
+              Requiere mantenimiento preventivo
+            </label>
           </div>
-        )}
-      </div>
 
-      {/* Field Modal */}
-      {showFieldModal && (
-        <FieldEditorModal
-          field={editingField}
-          existingKeys={formData.customFields
-            .filter((f) => f.key !== editingField?.key)
-            .map((f) => f.key)}
-          onSave={handleSaveField}
-          onClose={() => setShowFieldModal(false)}
-        />
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              id="requiresDocumentation"
+              checked={formData.requiresDocumentation}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  requiresDocumentation: e.target.checked,
+                })
+              }
+            />
+            <label
+              htmlFor="requiresDocumentation"
+              className="text-sm cursor-pointer"
+            >
+              Requiere documentación (SOAT, Seguro, Certificaciones)
+            </label>
+          </div>
+        </div>
       )}
     </div>
   );
 }
 
 // ============================================
-// FIELD EDITOR MODAL
+// STEP 3: TECHNICAL SPECS
 // ============================================
 
-function FieldEditorModal({
-  field,
-  existingKeys,
-  onSave,
-  onClose,
+export function TechnicalSpecsStep({
+  formData,
+  setFormData,
 }: {
-  field: CustomField | null;
-  existingKeys: string[];
-  onSave: (field: CustomField) => void;
-  onClose: () => void;
+  formData: CreateTemplateInput;
+  setFormData: React.Dispatch<React.SetStateAction<CreateTemplateInput>>;
 }) {
-  const [formData, setFormData] = useState<CustomField>(
-    field || {
-      key: "",
-      label: "",
-      type: FieldType.TEXT,
-      section: "Información General",
-      order: 0,
-      required: false,
-    },
-  );
+  const [newKey, setNewKey] = useState("");
+  const [newValue, setNewValue] = useState("");
 
-  const [showValidations, setShowValidations] = useState(
-    !!field?.validations && Object.keys(field.validations).length > 0,
-  );
+  const specs = formData.technicalSpecs || {};
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // Validar key único
-    if (!field && existingKeys.includes(formData.key)) {
-      alert("Ya existe un campo con ese key");
-      return;
+  const addSpec = () => {
+    if (newKey && newValue) {
+      setFormData({
+        ...formData,
+        technicalSpecs: {
+          ...specs,
+          [newKey]: newValue,
+        },
+      });
+      setNewKey("");
+      setNewValue("");
     }
-
-    // Validar que SELECT tenga opciones
-    if (
-      (formData.type === FieldType.SELECT ||
-        formData.type === FieldType.MULTISELECT) &&
-      (!formData.validations?.options ||
-        formData.validations.options.length === 0)
-    ) {
-      alert("Los campos de selección deben tener al menos una opción");
-      return;
-    }
-
-    onSave(formData);
   };
 
-  const generateKey = (label: string) => {
-    return label
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^a-z0-9]/g, "_")
-      .replace(/_+/g, "_")
-      .replace(/^_|_$/g, "");
+  const removeSpec = (key: string) => {
+    const newSpecs = { ...specs };
+    delete newSpecs[key];
+    setFormData({ ...formData, technicalSpecs: newSpecs });
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
-      <div className="bg-dark-800 border border-dark-700 rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-6 border-b border-dark-700 flex items-center justify-between sticky top-0 bg-dark-800">
-          <h2 className="text-xl font-bold">
-            {field ? "Editar Campo" : "Nuevo Campo"}
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-dark-400 hover:text-white text-2xl"
-          >
-            ×
-          </button>
-        </div>
+    <div className="card space-y-6">
+      <h2 className="text-xl font-semibold text-white border-b border-dark-700 pb-3">
+        Especificaciones Técnicas
+      </h2>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {/* Label */}
-          <div>
-            <label className="block text-sm font-medium mb-2">Etiqueta *</label>
-            <input
-              type="text"
-              className="input"
-              placeholder="Ej: Marca, Año de fabricación..."
-              value={formData.label}
-              onChange={(e) => {
-                const label = e.target.value;
-                setFormData({
-                  ...formData,
-                  label,
-                  key: !field ? generateKey(label) : formData.key,
-                });
-              }}
-              required
-            />
-          </div>
+      <p className="text-dark-400 text-sm">
+        Agrega las características técnicas del producto (potencia, capacidad,
+        dimensiones, etc.)
+      </p>
 
-          {/* Key - Hidden from UI but auto-generated from label */}
-          <input type="hidden" value={formData.key} name="key" />
-
-          {/* Type & Section */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Tipo de campo *
-                <span className="text-xs text-dark-400 ml-2 font-normal">
-                  (tipo de dato a capturar)
-                </span>
-              </label>
-              <select
-                className="input"
-                value={formData.type}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    type: e.target.value as FieldType,
-                  })
-                }
-              >
-                <option value={FieldType.TEXT}>Texto corto</option>
-                <option value={FieldType.TEXTAREA}>
-                  Texto largo (párrafo)
-                </option>
-                <option value={FieldType.NUMBER}>Número</option>
-                <option value={FieldType.DATE}>Fecha</option>
-                <option value={FieldType.SELECT}>Selección (una opción)</option>
-                <option value={FieldType.MULTISELECT}>
-                  Selección múltiple
-                </option>
-                <option value={FieldType.BOOLEAN}>Sí/No (checkbox)</option>
-              </select>
-              <p className="text-xs text-dark-500 mt-1">
-                {formData.type === FieldType.TEXT && "Ej: Marca, Modelo, Serie"}
-                {formData.type === FieldType.TEXTAREA &&
-                  "Ej: Observaciones, Descripción"}
-                {formData.type === FieldType.NUMBER &&
-                  "Ej: Potencia, Peso, Capacidad"}
-                {formData.type === FieldType.DATE &&
-                  "Ej: Fecha de compra, Último mantenimiento"}
-                {formData.type === FieldType.SELECT &&
-                  "Ej: Estado (Nuevo/Usado), Color"}
-                {formData.type === FieldType.MULTISELECT &&
-                  "Ej: Accesorios incluidos"}
-                {formData.type === FieldType.BOOLEAN &&
-                  "Ej: Tiene garantía, Requiere calibración"}
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Sección *
-                <span className="text-xs text-dark-400 ml-2 font-normal">
-                  (agrupa campos visualmente)
-                </span>
-              </label>
-              <input
-                type="text"
-                className="input"
-                placeholder="Ej: Información Técnica"
-                value={formData.section}
-                onChange={(e) =>
-                  setFormData({ ...formData, section: e.target.value })
-                }
-                list="section-suggestions"
-                required
-              />
-              <datalist id="section-suggestions">
-                <option value="Información General" />
-                <option value="Datos Técnicos" />
-                <option value="Características" />
-                <option value="Documentación" />
-                <option value="Mantenimiento" />
-              </datalist>
-              <p className="text-xs text-dark-500 mt-1">
-                Los campos de la misma sección se mostrarán juntos
-              </p>
-            </div>
-          </div>
-
-          {/* Preview Box */}
-          {formData.label && (
-            <div className="bg-primary-900/10 border border-primary-800 rounded-lg p-4">
-              <p className="text-xs text-primary-400 font-semibold mb-2 flex items-center gap-2">
-                <Eye className="w-4 h-4" /> VISTA PREVIA - Así se verá en el
-                formulario:
-              </p>
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  {formData.label}
-                  {formData.required && (
-                    <span className="text-red-400"> *</span>
-                  )}
-                </label>
-                {formData.type === FieldType.TEXT && (
-                  <input
-                    type="text"
-                    className="input"
-                    placeholder="Escribe aquí..."
-                    disabled
-                  />
-                )}
-                {formData.type === FieldType.TEXTAREA && (
-                  <textarea
-                    className="input"
-                    rows={3}
-                    placeholder="Escribe aquí..."
-                    disabled
-                  />
-                )}
-                {formData.type === FieldType.NUMBER && (
-                  <input
-                    type="number"
-                    className="input"
-                    placeholder="0"
-                    disabled
-                  />
-                )}
-                {formData.type === FieldType.DATE && (
-                  <input type="date" className="input" disabled />
-                )}
-                {formData.type === FieldType.SELECT && (
-                  <select className="input" disabled>
-                    <option>Seleccionar...</option>
-                    {formData.validations?.options?.slice(0, 3).map((opt) => (
-                      <option key={opt}>{opt}</option>
-                    ))}
-                  </select>
-                )}
-                {formData.type === FieldType.MULTISELECT && (
-                  <div className="space-y-2">
-                    {(
-                      formData.validations?.options?.slice(0, 3) || [
-                        "Opción 1",
-                        "Opción 2",
-                      ]
-                    ).map((opt) => (
-                      <div key={opt} className="flex items-center gap-2">
-                        <input type="checkbox" disabled />
-                        <span className="text-sm">{opt}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {formData.type === FieldType.BOOLEAN && (
-                  <div className="flex items-center gap-2">
-                    <input type="checkbox" disabled />
-                    <span className="text-sm">Sí/No</span>
-                  </div>
-                )}
+      {/* Existing specs */}
+      {Object.keys(specs).length > 0 && (
+        <div className="space-y-2">
+          {Object.entries(specs).map(([key, value]) => (
+            <div
+              key={key}
+              className="flex items-center gap-3 bg-dark-800 p-3 rounded-lg"
+            >
+              <div className="flex-1 grid grid-cols-2 gap-3">
+                <div className="text-sm font-medium text-dark-400">{key}</div>
+                <div className="text-sm text-white">{value as string}</div>
               </div>
+              <button
+                onClick={() => removeSpec(key)}
+                className="text-red-400 hover:text-red-300"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
             </div>
-          )}
+          ))}
+        </div>
+      )}
 
-          {/* Required */}
-          <div className="flex items-center gap-3">
-            <input
-              type="checkbox"
-              id="field-required"
-              checked={formData.required}
-              onChange={(e) =>
-                setFormData({ ...formData, required: e.target.checked })
-              }
-            />
-            <label htmlFor="field-required">Campo obligatorio</label>
-          </div>
-
-          {/* Validations */}
-          <div>
-            <button
-              type="button"
-              onClick={() => setShowValidations(!showValidations)}
-              className="text-sm text-primary-400 hover:text-primary-300"
-            >
-              {showValidations ? "▼" : "▶"} Validaciones avanzadas
-            </button>
-          </div>
-
-          {showValidations && (
-            <div className="space-y-4 p-4 bg-dark-700/50 rounded-lg border border-dark-600">
-              {/* Options for SELECT */}
-              {(formData.type === FieldType.SELECT ||
-                formData.type === FieldType.MULTISELECT) && (
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Opciones disponibles (una por línea) *
-                  </label>
-                  <textarea
-                    className="input font-mono"
-                    rows={5}
-                    placeholder="Aluminio&#10;Acero inoxidable&#10;Fibra de vidrio&#10;Madera tratada"
-                    value={formData.validations?.options?.join("\n") || ""}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        validations: {
-                          ...formData.validations,
-                          options: e.target.value
-                            .split("\n")
-                            .filter((o) => o.trim() !== ""),
-                        },
-                      })
-                    }
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.stopPropagation();
-                      }
-                    }}
-                  />
-                  <p className="text-xs text-dark-400 mt-1">
-                    💡 Presiona Enter para agregar una nueva opción
-                  </p>
-                </div>
-              )}
-
-              {/* Min/Max for NUMBER */}
-              {formData.type === FieldType.NUMBER && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
-                      Valor mínimo
-                    </label>
-                    <input
-                      type="number"
-                      className="input"
-                      value={formData.validations?.min || ""}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          validations: {
-                            ...formData.validations,
-                            min: e.target.value
-                              ? Number(e.target.value)
-                              : undefined,
-                          },
-                        })
-                      }
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
-                      Valor máximo
-                    </label>
-                    <input
-                      type="number"
-                      className="input"
-                      value={formData.validations?.max || ""}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          validations: {
-                            ...formData.validations,
-                            max: e.target.value
-                              ? Number(e.target.value)
-                              : undefined,
-                          },
-                        })
-                      }
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Pattern for TEXT */}
-              {formData.type === FieldType.TEXT && (
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Patrón (regex)
-                  </label>
-                  <input
-                    type="text"
-                    className="input font-mono"
-                    placeholder="^[A-Z0-9-]+$"
-                    value={formData.validations?.pattern || ""}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        validations: {
-                          ...formData.validations,
-                          pattern: e.target.value,
-                        },
-                      })
-                    }
-                  />
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Submit */}
-          <div className="flex gap-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="btn-ghost flex-1"
-            >
-              Cancelar
-            </button>
-            <button type="submit" className="btn-primary flex-1">
-              {field ? "Actualizar" : "Agregar"}
-            </button>
-          </div>
-        </form>
+      {/* Add new spec */}
+      <div className="flex gap-3">
+        <input
+          type="text"
+          className="input flex-1"
+          placeholder="Nombre (ej: Potencia)"
+          value={newKey}
+          onChange={(e) => setNewKey(e.target.value)}
+        />
+        <input
+          type="text"
+          className="input flex-1"
+          placeholder="Valor (ej: 75 HP)"
+          value={newValue}
+          onChange={(e) => setNewValue(e.target.value)}
+        />
+        <button onClick={addSpec} className="btn-primary">
+          Agregar
+        </button>
       </div>
     </div>
   );
 }
 
 // ============================================
-// STEP 3: PREVIEW
+// STEP 4: BUSINESS RULES
 // ============================================
 
-export function PreviewStep({ formData }: { formData: CreateTemplateInput }) {
-  const sections = formData.customFields.reduce(
-    (acc, field) => {
-      if (!acc[field.section]) {
-        acc[field.section] = [];
-      }
-      acc[field.section].push(field);
-      return acc;
-    },
-    {} as Record<string, CustomField[]>,
-  );
+export function BusinessRulesStep({
+  formData,
+  setFormData,
+}: {
+  formData: CreateTemplateInput;
+  setFormData: React.Dispatch<React.SetStateAction<CreateTemplateInput>>;
+}) {
+  const rules = formData.businessRules || {};
 
-  Object.keys(sections).forEach((section) => {
-    sections[section].sort((a, b) => a.order - b.order);
-  });
+  const updateRule = (key: keyof typeof rules, value: boolean) => {
+    setFormData({
+      ...formData,
+      businessRules: {
+        ...rules,
+        [key]: value,
+      },
+    });
+  };
 
   return (
-    <div className="card">
-      <h2 className="text-xl font-semibold text-white border-b border-dark-700 pb-3 mb-6">
-        👁️ Vista Previa
+    <div className="card space-y-6">
+      <h2 className="text-xl font-semibold text-white border-b border-dark-700 pb-3">
+        Reglas de Negocio
       </h2>
-      <div className="space-y-6">
-        <div className="bg-primary-900/10 border border-primary-800 rounded-lg p-6">
-          <div className="flex items-start gap-4">
-            <div className="text-4xl">{formData.icon || "📋"}</div>
-            <div className="flex-1">
-              <h3 className="text-2xl font-bold mb-2">
-                {formData.name || "Sin nombre"}
-              </h3>
-              <div className="flex gap-4 mt-4 text-sm">
-                <div>
-                  <span className="text-dark-400">Categoría: </span>
-                  <span className="font-semibold">
-                    {AssetCategoryLabels[formData.category] ||
-                      formData.category}
-                  </span>
-                </div>
-                {formData.requiresPreventiveMaintenance && (
-                  <div className="text-green-400">
-                    ✓ Requiere mantenimiento preventivo
-                  </div>
-                )}
-                {formData.requiresDocumentation && (
-                  <div className="text-blue-400">📄 Requiere documentación</div>
-                )}
+
+      <p className="text-dark-400 text-sm">
+        Define qué servicios o condiciones son necesarios cuando se cotiza este
+        producto
+      </p>
+
+      <div className="space-y-4">
+        <div className="flex items-center justify-between p-4 bg-dark-800 rounded-lg">
+          <div className="flex items-center gap-3">
+            <Truck className="w-5 h-5 text-primary-400" />
+            <div>
+              <div className="font-medium text-white">Requiere Transporte</div>
+              <div className="text-sm text-dark-400">
+                Se debe incluir costo de transporte en la cotización
               </div>
             </div>
           </div>
+          <input
+            type="checkbox"
+            className="toggle"
+            checked={rules.requiresTransport || false}
+            onChange={(e) => updateRule("requiresTransport", e.target.checked)}
+          />
         </div>
 
-        <div className="bg-dark-800 rounded-lg p-6">
-          <h4 className="text-md font-semibold mb-4 text-dark-300">
-            Así se verá el formulario al crear un activo:
-          </h4>
-
-          <div className="space-y-6">
-            {/* Código (siempre presente) */}
+        <div className="flex items-center justify-between p-4 bg-dark-800 rounded-lg">
+          <div className="flex items-center gap-3">
+            <User className="w-5 h-5 text-primary-400" />
             <div>
-              <label className="block text-sm font-medium mb-2">
-                Código interno *
-              </label>
-              <input
-                type="text"
-                className="input"
-                placeholder="Ej: RET-001, AND-045..."
-                disabled
-              />
+              <div className="font-medium text-white">Requiere Operario</div>
+              <div className="text-sm text-dark-400">
+                Se debe asignar operario calificado
+              </div>
             </div>
+          </div>
+          <input
+            type="checkbox"
+            className="toggle"
+            checked={rules.requiresOperator || false}
+            onChange={(e) => updateRule("requiresOperator", e.target.checked)}
+          />
+        </div>
 
-            {/* Custom Fields por sección */}
-            {Object.entries(sections).map(([sectionName, fields]) => (
-              <div key={sectionName}>
-                <h4 className="font-semibold text-md mb-3 text-primary-400">
-                  {sectionName}
-                </h4>
-                <div className="space-y-4">
-                  {fields.map((field) => (
-                    <div key={field.key}>
-                      <label className="block text-sm font-medium mb-2">
-                        {field.label}{" "}
-                        {field.required && (
-                          <span className="text-red-400">*</span>
-                        )}
-                      </label>
-                      {renderFieldPreview(field)}
-                    </div>
-                  ))}
+        <div className="flex items-center justify-between p-4 bg-dark-800 rounded-lg">
+          <div className="flex items-center gap-3">
+            <Shield className="w-5 h-5 text-primary-400" />
+            <div>
+              <div className="font-medium text-white">Requiere Seguro</div>
+              <div className="text-sm text-dark-400">
+                Se debe incluir póliza de seguro en el contrato
+              </div>
+            </div>
+          </div>
+          <input
+            type="checkbox"
+            className="toggle"
+            checked={rules.requiresInsurance || false}
+            onChange={(e) => updateRule("requiresInsurance", e.target.checked)}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================
+// STEP 5: ATTACHMENTS (Drag & Drop)
+// ============================================
+
+export function AttachmentsStep({
+  formData,
+  
+}: {
+  formData: CreateTemplateInput;
+  setFormData: React.Dispatch<React.SetStateAction<CreateTemplateInput>>;
+}) {
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+
+    const files = Array.from(e.dataTransfer.files);
+    console.log("Files dropped:", files);
+    // TODO: Upload to Azure Blob Storage
+  }, []);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    console.log("Files selected:", files);
+    // TODO: Upload to Azure Blob Storage
+  };
+
+  const attachments = formData.attachments || {};
+
+  return (
+    <div className="card space-y-6">
+      <h2 className="text-xl font-semibold text-white border-b border-dark-700 pb-3">
+        Archivos y Documentación
+      </h2>
+
+      <p className="text-dark-400 text-sm">
+        Sube manuales, imágenes, certificaciones o fichas de seguridad
+      </p>
+
+      {/* Drag & Drop Zone */}
+      <div
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        className={`border-2 border-dashed rounded-lg p-12 text-center transition ${
+          isDragging
+            ? "border-primary-500 bg-primary-900/20"
+            : "border-dark-700 hover:border-dark-600"
+        }`}
+      >
+        <Upload className="w-12 h-12 mx-auto mb-4 text-dark-400" />
+        <div className="text-white font-medium mb-2">
+          Arrastra archivos aquí o haz clic para seleccionar
+        </div>
+        <div className="text-sm text-dark-400 mb-4">
+          PDFs, imágenes, documentos (máx 10MB por archivo)
+        </div>
+        <input
+          type="file"
+          multiple
+          className="hidden"
+          id="file-upload"
+          onChange={handleFileSelect}
+          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+        />
+        <label
+          htmlFor="file-upload"
+          className="btn-primary cursor-pointer inline-block"
+        >
+          <Upload className="w-4 h-4 inline mr-2" />
+          Seleccionar Archivos
+        </label>
+      </div>
+
+      {/* Uploaded Files List */}
+      {attachments.manuals && attachments.manuals.length > 0 && (
+        <div>
+          <h3 className="text-sm font-medium text-white mb-2">Manuales</h3>
+          <div className="space-y-2">
+            {attachments.manuals.map((file, idx) => (
+              <div
+                key={idx}
+                className="flex items-center gap-3 bg-dark-800 p-3 rounded-lg"
+              >
+                <FileIcon className="w-5 h-5 text-blue-400" />
+                <div className="flex-1">
+                  <div className="text-sm font-medium text-white">
+                    {file.name}
+                  </div>
+                  <div className="text-xs text-dark-400">{file.type}</div>
                 </div>
+                <button className="text-red-400 hover:text-red-300">
+                  <X className="w-4 h-4" />
+                </button>
               </div>
             ))}
           </div>
         </div>
+      )}
+
+      {attachments.images && attachments.images.length > 0 && (
+        <div>
+          <h3 className="text-sm font-medium text-white mb-2">Imágenes</h3>
+          <div className="grid grid-cols-4 gap-3">
+            {attachments.images.map((img, idx) => (
+              <div key={idx} className="relative group">
+                <img
+                  src={img.url}
+                  alt={img.description || ""}
+                  className="w-full h-24 object-cover rounded-lg"
+                />
+                <button className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition">
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="bg-blue-900/20 border border-blue-800 rounded-lg p-4 text-sm text-blue-300">
+        <AlertTriangle className="w-4 h-4 inline mr-2" />
+        Los archivos se subirán a Azure Blob Storage cuando guardes la plantilla
       </div>
     </div>
   );
 }
 
-function renderFieldPreview(field: CustomField) {
-  switch (field.type) {
-    case FieldType.TEXT:
-      return (
-        <input
-          type="text"
-          className="input"
-          placeholder={field.placeholder}
-          disabled
-        />
-      );
-    case FieldType.NUMBER:
-      return (
-        <input
-          type="number"
-          className="input"
-          placeholder={field.placeholder}
-          disabled
-        />
-      );
-    case FieldType.DATE:
-      return <input type="date" className="input" disabled />;
-    case FieldType.TEXTAREA:
-      return (
-        <textarea
-          className="input"
-          rows={3}
-          placeholder={field.placeholder}
-          disabled
-        />
-      );
-    case FieldType.BOOLEAN:
-      return (
-        <div className="flex items-center gap-2">
-          <input type="checkbox" disabled />
-          <span className="text-sm text-dark-400">Sí</span>
+// ============================================
+// STEP 6: PREVIEW
+// ============================================
+
+export function PreviewStep({ formData }: { formData: CreateTemplateInput }) {
+  return (
+    <div className="card space-y-6">
+      <h2 className="text-xl font-semibold text-white border-b border-dark-700 pb-3">
+        Vista Previa
+      </h2>
+
+      <div className="grid grid-cols-2 gap-6">
+        <div>
+          <div className="text-sm text-dark-400 mb-1">Categoría</div>
+          <div className="text-white font-medium">
+            {AssetCategoryLabels[formData.category]}
+          </div>
         </div>
-      );
-    case FieldType.SELECT:
-      return (
-        <select className="input" disabled>
-          <option>Seleccionar...</option>
-          {field.validations?.options?.map((opt) => (
-            <option key={opt} value={opt}>
-              {opt}
-            </option>
-          ))}
-        </select>
-      );
-    case FieldType.MULTISELECT:
-      return (
-        <div className="space-y-2">
-          {field.validations?.options?.slice(0, 3).map((opt) => (
-            <div key={opt} className="flex items-center gap-2">
-              <input type="checkbox" disabled />
-              <span className="text-sm">{opt}</span>
+
+        <div>
+          <div className="text-sm text-dark-400 mb-1">Nombre</div>
+          <div className="text-white font-medium">{formData.name}</div>
+        </div>
+
+        {formData.description && (
+          <div className="col-span-2">
+            <div className="text-sm text-dark-400 mb-1">Descripción</div>
+            <div className="text-white">{formData.description}</div>
+          </div>
+        )}
+
+        {formData.presentation && (
+          <div className="col-span-2">
+            <div className="text-sm text-dark-400 mb-1">Presentación</div>
+            <div className="text-white">
+              {formData.presentation.containerSize} {formData.presentation.unit}{" "}
+              por {formData.presentation.containerType}
             </div>
-          ))}
-        </div>
-      );
-    default:
-      return <input type="text" className="input" disabled />;
-  }
+          </div>
+        )}
+
+        {formData.technicalSpecs &&
+          Object.keys(formData.technicalSpecs).length > 0 && (
+            <div className="col-span-2">
+              <div className="text-sm text-dark-400 mb-2">
+                Especificaciones Técnicas
+              </div>
+              <div className="bg-dark-800 p-4 rounded-lg space-y-2">
+                {Object.entries(formData.technicalSpecs).map(([key, value]) => (
+                  <div key={key} className="flex justify-between text-sm">
+                    <span className="text-dark-400">{key}:</span>
+                    <span className="text-white font-medium">
+                      {value as string}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+        {formData.businessRules && (
+          <div className="col-span-2">
+            <div className="text-sm text-dark-400 mb-2">Reglas de Negocio</div>
+            <div className="flex gap-2 flex-wrap">
+              {formData.businessRules.requiresTransport && (
+                <span className="badge badge-sm bg-primary-900/30 text-primary-300">
+                  Requiere transporte
+                </span>
+              )}
+              {formData.businessRules.requiresOperator && (
+                <span className="badge badge-sm bg-primary-900/30 text-primary-300">
+                  Requiere operario
+                </span>
+              )}
+              {formData.businessRules.requiresInsurance && (
+                <span className="badge badge-sm bg-primary-900/30 text-primary-300">
+                  Requiere seguro
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {formData.isDangerous && (
+          <div className="col-span-2">
+            <div className="bg-orange-900/20 border border-orange-800 rounded-lg p-4 flex items-center gap-3">
+              <AlertTriangle className="w-5 h-5 text-orange-400" />
+              <div>
+                <div className="font-medium text-orange-300">
+                  Producto Peligroso
+                </div>
+                {formData.hazardClass && (
+                  <div className="text-sm text-orange-400">
+                    {formData.hazardClass}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }

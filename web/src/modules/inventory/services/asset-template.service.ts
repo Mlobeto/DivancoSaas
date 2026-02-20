@@ -20,17 +20,31 @@ export enum FieldType {
 }
 
 export enum AssetCategory {
+  // Equipos
   MACHINERY = "MACHINERY",
   IMPLEMENT = "IMPLEMENT",
   VEHICLE = "VEHICLE",
   TOOL = "TOOL",
+  // Insumos
+  SUPPLY_FUEL = "SUPPLY_FUEL",
+  SUPPLY_OIL = "SUPPLY_OIL",
+  SUPPLY_PAINT = "SUPPLY_PAINT",
+  SUPPLY_SPARE_PART = "SUPPLY_SPARE_PART",
+  SUPPLY_CONSUMABLE = "SUPPLY_CONSUMABLE",
+  SUPPLY_SAFETY = "SUPPLY_SAFETY",
 }
 
 export const AssetCategoryLabels: Record<AssetCategory, string> = {
-  [AssetCategory.MACHINERY]: "Maquinaria",
-  [AssetCategory.IMPLEMENT]: "Implemento",
-  [AssetCategory.VEHICLE]: "Vehículo",
-  [AssetCategory.TOOL]: "Herramienta",
+  [AssetCategory.MACHINERY]: "Maquinaria Pesada",
+  [AssetCategory.IMPLEMENT]: "Implementos",
+  [AssetCategory.VEHICLE]: "Vehículos",
+  [AssetCategory.TOOL]: "Herramientas",
+  [AssetCategory.SUPPLY_FUEL]: "Combustibles",
+  [AssetCategory.SUPPLY_OIL]: "Aceites y Lubricantes",
+  [AssetCategory.SUPPLY_PAINT]: "Pinturas y Solventes",
+  [AssetCategory.SUPPLY_SPARE_PART]: "Repuestos y Partes",
+  [AssetCategory.SUPPLY_CONSUMABLE]: "Consumibles Generales",
+  [AssetCategory.SUPPLY_SAFETY]: "Equipo de Seguridad",
 };
 
 export const FieldTypeLabels: Record<FieldType, string> = {
@@ -69,12 +83,66 @@ export interface AssetTemplate {
   icon?: string;
   requiresPreventiveMaintenance: boolean;
   requiresDocumentation: boolean;
+
+  // Nuevos campos RENTAL
+  attachments?: TemplateAttachments;
+  presentation?: ProductPresentation;
+  technicalSpecs?: Record<string, any>;
+  compatibleWith?: CompatibilityConfig;
+  businessRules?: BusinessRules;
+  hasExpiryDate: boolean;
+  requiresLotTracking: boolean;
+  isDangerous: boolean;
+  hazardClass?: string;
+
   customFields: CustomField[];
   createdAt: string;
   updatedAt: string;
   _count?: {
     assets: number;
   };
+}
+
+export interface TemplateAttachments {
+  manuals?: AttachmentFile[];
+  images?: AttachmentImage[];
+  certifications?: AttachmentFile[];
+  msds?: {
+    url: string;
+    version: string;
+    updatedAt: string;
+  };
+}
+
+export interface AttachmentFile {
+  name: string;
+  url: string;
+  type: string;
+  uploadedAt: string;
+}
+
+export interface AttachmentImage {
+  url: string;
+  description?: string;
+  isPrimary?: boolean;
+}
+
+export interface ProductPresentation {
+  unit?: string;
+  containerSize?: number;
+  containerType?: string;
+}
+
+export interface CompatibilityConfig {
+  equipmentCategories?: AssetCategory[];
+  equipmentIds?: string[];
+}
+
+export interface BusinessRules {
+  requiresTransport?: boolean;
+  requiresOperator?: boolean;
+  requiresInsurance?: boolean;
+  autoSuggestSupplies?: string[];
 }
 
 export interface CreateTemplateInput {
@@ -84,6 +152,18 @@ export interface CreateTemplateInput {
   icon?: string;
   requiresPreventiveMaintenance: boolean;
   requiresDocumentation: boolean;
+
+  // Nuevos campos RENTAL
+  attachments?: TemplateAttachments;
+  presentation?: ProductPresentation;
+  technicalSpecs?: Record<string, any>;
+  compatibleWith?: CompatibilityConfig;
+  businessRules?: BusinessRules;
+  hasExpiryDate?: boolean;
+  requiresLotTracking?: boolean;
+  isDangerous?: boolean;
+  hazardClass?: string;
+
   customFields: CustomField[];
 }
 
@@ -93,6 +173,18 @@ export interface UpdateTemplateInput {
   icon?: string;
   requiresPreventiveMaintenance?: boolean;
   requiresDocumentation?: boolean;
+
+  // Nuevos campos RENTAL
+  attachments?: TemplateAttachments;
+  presentation?: ProductPresentation;
+  technicalSpecs?: Record<string, any>;
+  compatibleWith?: CompatibilityConfig;
+  businessRules?: BusinessRules;
+  hasExpiryDate?: boolean;
+  requiresLotTracking?: boolean;
+  isDangerous?: boolean;
+  hazardClass?: string;
+
   customFields?: CustomField[];
 }
 

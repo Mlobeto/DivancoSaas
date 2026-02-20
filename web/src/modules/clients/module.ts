@@ -37,9 +37,9 @@ export const clientsModule: ModuleDefinition = {
   ],
 
   /**
-   * Required permissions
+   * Required permissions (removed - handled at route level)
    */
-  permissions: ["clients:read"],
+  // permissions: ["clients:read"],
 
   /**
    * Module initialization

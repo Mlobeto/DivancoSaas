@@ -709,6 +709,39 @@ model AssetTemplate {
   requiresPreventiveMaintenance Boolean @default(false)
   requiresDocumentation         Boolean @default(false) // Si requiere SOAT, Seguro, Certificaciones, etc.
 
+  // ═══════════════════════════════════════
+  // RENTAL VERTICAL: Archivos y documentación
+  // ═══════════════════════════════════════
+  attachments Json? // { manuals: [{name, url, type}], images: [{url, description, isPrimary}], certifications: [...], msds: {...} }
+
+  // ═══════════════════════════════════════
+  // RENTAL VERTICAL: Presentación del producto
+  // ═══════════════════════════════════════
+  presentation Json? // { unit: "litros", containerSize: 20, containerType: "Caneca" }
+
+  // ═══════════════════════════════════════
+  // RENTAL VERTICAL: Especificaciones técnicas
+  // ═══════════════════════════════════════
+  technicalSpecs Json? // Flexible: { power: "75HP", fuelType: "Diesel" } o { viscosity: "SAE 15W-40", apiGrade: "CI-4" }
+
+  // ═══════════════════════════════════════
+  // RENTAL VERTICAL: Compatibilidad con equipos
+  // ═══════════════════════════════════════
+  compatibleWith Json? // { equipmentCategories: ["MACHINERY"], equipmentIds: ["uuid1", "uuid2"] }
+
+  // ═══════════════════════════════════════
+  // RENTAL VERTICAL: Reglas de negocio para cotizaciones
+  // ═══════════════════════════════════════
+  businessRules Json? // { requiresTransport: true, requiresOperator: true, requiresInsurance: true, autoSuggestSupplies: ["uuid1"] }
+
+  // ═══════════════════════════════════════
+  // RENTAL VERTICAL: Control de insumos
+  // ═══════════════════════════════════════
+  hasExpiryDate       Boolean @default(false) // Si el producto tiene fecha de vencimiento
+  requiresLotTracking Boolean @default(false) // Si requiere control de lotes/batch
+  isDangerous         Boolean @default(false) // Si es un producto peligroso
+  hazardClass         String? // Clasificación: "FLAMMABLE", "CORROSIVE", "TOXIC", etc.
+
   // Array de definiciones de campos personalizados (opcional)
   customFields Json? // CustomField[]
 
@@ -730,10 +763,19 @@ model AssetTemplate {
 }
 
 enum AssetCategory {
+  // ═══ EQUIPOS ═══
   MACHINERY // Maquinaria pesada (requiere mantenimiento preventivo típicamente)
   IMPLEMENT // Implementos (andamios, herramientas grandes)
   VEHICLE // Vehículos
   TOOL // Herramientas menores
+
+  // ═══ INSUMOS (RENTAL VERTICAL) ═══
+  SUPPLY_FUEL // Combustibles (diesel, gasolina, gas)
+  SUPPLY_OIL // Aceites y lubricantes (motor, hidráulico, transmisión)
+  SUPPLY_PAINT // Pinturas, solventes, adhesivos
+  SUPPLY_SPARE_PART // Repuestos y partes (filtros, mangueras, sellos)
+  SUPPLY_CONSUMABLE // Consumibles generales (trapos, guantes, EPP desechable)
+  SUPPLY_SAFETY // Equipos de seguridad reutilizables (cascos, arneses, gafas)
 }
 
 enum AssetManagementType {

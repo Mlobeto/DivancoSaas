@@ -12,15 +12,12 @@ import {
   assetsService,
   type Asset,
 } from "@/modules/inventory/services/assets.service";
-import { AlertCircle, FileText, Settings, Plus, Upload } from "lucide-react";
-import { CSVImportUpload } from "@/shared/components/CSVImportUpload";
+import { Settings, Plus } from "lucide-react";
 
 export function AssetsListPage() {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const { tenant, businessUnit } = useAuthStore();
   const [search, setSearch] = useState("");
-  const [showImportModal, setShowImportModal] = useState(false);
 
   // Fetch assets
   const { data: assets, isLoading } = useQuery({
@@ -37,13 +34,6 @@ export function AssetsListPage() {
           asset.name.toLowerCase().includes(search.toLowerCase())
         : true,
     ) || [];
-
-  const handleImport = async (file: File) => {
-    const result = await assetsService.importCSV(file);
-    // Invalidar query para refrescar la lista
-    queryClient.invalidateQueries({ queryKey: ["assets"] });
-    return result;
-  };
 
   if (!tenant || !businessUnit) {
     return (
@@ -62,31 +52,14 @@ export function AssetsListPage() {
 
   return (
     <Layout
-      title="Gestión de Activos"
-      subtitle={`Activos y equipos del negocio - ${businessUnit.name}`}
+      title="Inventario"
+      subtitle={
+        filteredAssets.length > 0
+          ? `${filteredAssets.length} ${filteredAssets.length === 1 ? "activo" : "activos"}`
+          : "Gestiona tus equipos y maquinaria"
+      }
       actions={
         <>
-          <button
-            onClick={() => setShowImportModal(true)}
-            className="autocad-btn-secondary flex items-center gap-2"
-          >
-            <Upload className="w-4 h-4" />
-            Importar CSV
-          </button>
-          <button
-            onClick={() => navigate("/inventory/alerts")}
-            className="autocad-btn-secondary flex items-center gap-2"
-          >
-            <AlertCircle className="w-4 h-4" />
-            Alertas
-          </button>
-          <button
-            onClick={() => navigate("/inventory/document-types")}
-            className="autocad-btn-secondary flex items-center gap-2"
-          >
-            <FileText className="w-4 h-4" />
-            Tipos de Docs
-          </button>
           <button
             onClick={() => navigate("/inventory/templates")}
             className="autocad-btn-secondary flex items-center gap-2"
@@ -95,7 +68,10 @@ export function AssetsListPage() {
             Plantillas
           </button>
           <button
-            onClick={() => navigate("/inventory/assets/new")}
+            onClick={() => {
+              console.log("Navegando a /inventory/new");
+              navigate("/inventory/new");
+            }}
             className="autocad-btn-primary flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
@@ -104,169 +80,139 @@ export function AssetsListPage() {
         </>
       }
     >
-      <div className="p-8 space-y-6">
-        {/* Search Bar */}
-        <div className="autocad-card">
-          <input
-            type="text"
-            placeholder="Buscar por código, nombre..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="autocad-input w-full"
-          />
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="autocad-card-alt">
-            <div className="autocad-text-secondary text-sm mb-1">
-              Total Activos
-            </div>
-            <div className="text-3xl font-bold autocad-text-primary">
-              {filteredAssets.length || 0}
-            </div>
-          </div>
-          <div className="autocad-card-alt">
-            <div className="autocad-text-secondary text-sm mb-1">
-              Disponibles
-            </div>
-            <div className="text-3xl font-bold autocad-accent">
-              {filteredAssets.filter(
-                (a: Asset) => !a.currentLocation?.includes("Rentado"),
-              ).length || 0}
-            </div>
-          </div>
-          <div className="autocad-card-alt">
-            <div className="autocad-text-secondary text-sm mb-1">
-              Con Operador
-            </div>
-            <div className="text-3xl font-bold autocad-text-primary">
-              {filteredAssets.filter((a: Asset) => a.requiresOperator).length ||
-                0}
-            </div>
-          </div>
-          <div className="autocad-card-alt">
-            <div className="autocad-text-secondary text-sm mb-1">
-              Con Seguimiento
-            </div>
-            <div className="text-3xl font-bold autocad-text-primary">
-              {filteredAssets.filter((a: Asset) => a.requiresTracking).length ||
-                0}
-            </div>
-          </div>
-        </div>
-
-        {/* Assets Grid */}
-        {isLoading && (
-          <div className="text-center py-12 autocad-text-secondary">
-            Cargando activos...
+      <div className="p-8">
+        {/* Search Bar - Only show if there are assets */}
+        {filteredAssets.length > 0 && (
+          <div className="mb-6">
+            <input
+              type="text"
+              placeholder="Buscar por código, nombre..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="autocad-input w-full"
+            />
           </div>
         )}
 
-        {!isLoading && filteredAssets.length === 0 && (
-          <div className="autocad-card text-center py-12">
-            <p className="autocad-text-secondary mb-4">
+        {/* Loading State */}
+        {isLoading && (
+          <div className="text-center py-16">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#0696d7]"></div>
+            <p className="mt-4 autocad-text-secondary">Cargando activos...</p>
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!isLoading && filteredAssets.length === 0 && !search && (
+          <div className="text-center py-16">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#0696d7]/10 mb-4">
+              <Plus className="w-8 h-8 text-[#0696d7]" />
+            </div>
+            <h3 className="text-xl font-semibold autocad-text-primary mb-2">
               No hay activos registrados
+            </h3>
+            <p className="autocad-text-secondary mb-6 max-w-md mx-auto">
+              Comienza agregando tu primera máquina, equipo o herramienta al
+              inventario
+            </p>
+            <div className="flex gap-3 justify-center">
+              <button
+                onClick={() => navigate("/inventory/templates")}
+                className="autocad-btn-secondary"
+              >
+                Ver Plantillas
+              </button>
+              <button
+                onClick={() => {
+                  console.log(
+                    "Click en Crear primer activo - navegando a /inventory/new",
+                  );
+                  navigate("/inventory/new");
+                }}
+                className="autocad-btn-primary"
+              >
+                Crear primer activo
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* No Results from Search */}
+        {!isLoading && filteredAssets.length === 0 && search && (
+          <div className="text-center py-16">
+            <p className="autocad-text-secondary mb-4">
+              No se encontraron activos que coincidan con "{search}"
             </p>
             <button
-              onClick={() => navigate("/inventory/assets/new")}
-              className="autocad-btn-primary"
+              onClick={() => setSearch("")}
+              className="autocad-btn-secondary"
             >
-              Crear primer activo
+              Limpiar búsqueda
             </button>
           </div>
         )}
 
+        {/* Assets List */}
         {!isLoading && filteredAssets.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredAssets.map((asset: Asset) => (
               <div
                 key={asset.id}
-                className="autocad-card hover:border-[#0696d7] transition-colors cursor-pointer"
-                onClick={() => navigate(`/machinery/assets/${asset.id}/edit`)}
+                className="autocad-card hover:border-[#0696d7] transition-all cursor-pointer group"
+                onClick={() => {
+                  console.log("Navegando a editar activo:", asset.id);
+                  navigate(`/inventory/${asset.id}/edit`);
+                }}
               >
                 {/* Image */}
                 {asset.imageUrl && (
-                  <div className="mb-4 -mx-6 -mt-6">
+                  <div className="mb-4 -mx-6 -mt-6 overflow-hidden rounded-t-lg">
                     <img
                       src={asset.imageUrl}
                       alt={asset.name}
-                      className="w-full h-48 object-cover"
+                      className="w-full h-48 object-cover group-hover:scale-105 transition-transform"
                     />
                   </div>
                 )}
 
-                {/* Header */}
-                <div className="mb-3">
-                  <h3 className="font-semibold text-lg autocad-text-primary">
-                    {asset.name}
-                  </h3>
-                  <p className="autocad-text-secondary text-sm">{asset.code}</p>
-                </div>
+                {/* Content */}
+                <div>
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-lg autocad-text-primary mb-1">
+                        {asset.name}
+                      </h3>
+                      <p className="text-xs autocad-text-secondary font-mono">
+                        {asset.code}
+                      </p>
+                    </div>
+                  </div>
 
-                {/* Details */}
-                <div className="space-y-2 mb-4">
-                  {asset.assetType && (
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="autocad-text-secondary">Tipo:</span>
-                      <span className="autocad-text-primary">
-                        {asset.assetType}
-                      </span>
-                    </div>
-                  )}
-                  {asset.currentLocation && (
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="autocad-text-secondary">Ubicación:</span>
-                      <span className="autocad-text-primary">
-                        {asset.currentLocation}
-                      </span>
-                    </div>
-                  )}
-                  {asset.acquisitionCost && (
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="autocad-text-secondary">Costo:</span>
-                      <span className="autocad-accent font-medium">
-                        ${asset.acquisitionCost.toLocaleString()}
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Badges */}
-                <div className="flex flex-wrap gap-2 pt-3 border-t autocad-border">
-                  {asset.requiresOperator && (
-                    <span className="autocad-badge-info text-xs">
-                      Requiere Operador
-                    </span>
-                  )}
-                  {asset.requiresTracking && (
-                    <span className="autocad-badge-info text-xs">
-                      Con Seguimiento
-                    </span>
-                  )}
-                  {asset.requiresClinic && (
-                    <span className="autocad-badge-info text-xs">
-                      Historia Clínica
-                    </span>
-                  )}
+                  {/* Key Info */}
+                  <div className="space-y-2">
+                    {asset.currentLocation && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="autocad-text-secondary">📍</span>
+                        <span className="autocad-text-primary">
+                          {asset.currentLocation}
+                        </span>
+                      </div>
+                    )}
+                    {asset.acquisitionCost && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="autocad-text-secondary">💰</span>
+                        <span className="autocad-accent font-medium">
+                          ${asset.acquisitionCost.toLocaleString()}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
           </div>
         )}
       </div>
-
-      {/* CSV Import Modal */}
-      {showImportModal && (
-        <CSVImportUpload
-          title="Importar Assets desde CSV"
-          description="Sube un archivo CSV con tus implementos y maquinaria. Descarga la plantilla para ver el formato requerido."
-          templateName="import_assets_initial.csv"
-          templateUrl="/templates/import_assets_initial.csv"
-          onImport={handleImport}
-          onClose={() => setShowImportModal(false)}
-        />
-      )}
     </Layout>
   );
 }

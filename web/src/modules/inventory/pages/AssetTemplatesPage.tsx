@@ -162,7 +162,7 @@ export function AssetTemplatesPage() {
             ← Inventario
           </button>
           <button
-            onClick={() => navigate("/inventory/templates/create")}
+            onClick={() => navigate("/inventory/templates/new")}
             className="btn-primary"
           >
             + Nueva Plantilla
@@ -265,7 +265,7 @@ export function AssetTemplatesPage() {
               personalizados. Por ejemplo: Retroexcavadora, Andamio, etc.
             </p>
             <button
-              onClick={() => navigate("/inventory/templates/create")}
+              onClick={() => navigate("/inventory/templates/new")}
               className="btn-primary"
             >
               Crear primera plantilla
@@ -315,7 +315,7 @@ export function AssetTemplatesPage() {
                       Campos personalizados:
                     </span>
                     <span className="font-medium">
-                      {template.customFields.length}
+                      {template.customFields?.length || 0}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
@@ -335,7 +335,7 @@ export function AssetTemplatesPage() {
                 <div className="flex gap-2 pt-4 border-t border-dark-700">
                   <button
                     onClick={() =>
-                      navigate(`/machinery/templates/${template.id}/edit`)
+                      navigate(`/inventory/templates/${template.id}/edit`)
                     }
                     className="btn-secondary flex-1 text-sm"
                   >

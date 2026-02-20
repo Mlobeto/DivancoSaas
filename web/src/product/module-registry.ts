@@ -165,7 +165,19 @@ class ModuleRegistry {
    * Returns ModuleRouteConfig for each enabled module
    */
   getRouteConfigs(context: ModuleContext): ModuleRouteConfig[] {
-    return this.getEnabledModules(context).map((module) => module.routeConfig);
+    const enabledModules = this.getEnabledModules(context);
+    console.log(
+      "[ModuleRegistry] Enabled modules:",
+      enabledModules.map((m) => m.id),
+    );
+    const configs = enabledModules
+      .map((module) => module.routeConfig)
+      .filter((c) => c != null);
+    console.log(
+      "[ModuleRegistry] Route configs:",
+      configs.map((c) => `${c.moduleId}:${c.basePath}`),
+    );
+    return configs;
   }
 
   /**

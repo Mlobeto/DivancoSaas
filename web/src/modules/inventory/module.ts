@@ -66,9 +66,9 @@ export const inventoryModule: ModuleDefinition = {
   ],
 
   /**
-   * Required permissions
+   * Required permissions (removed - handled at route level)
    */
-  permissions: ["inventory:read"],
+  // permissions: ["inventory:read"],
 
   /**
    * Module initialization

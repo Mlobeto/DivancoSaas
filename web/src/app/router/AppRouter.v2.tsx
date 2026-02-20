@@ -349,7 +349,16 @@ export function buildAllRoutes(context: ModuleContext): RouteObject[] {
 
   // Get module route configs (inventory, clients, purchases)
   const moduleConfigs = moduleRegistry.getRouteConfigs(context);
+  console.log("[AppRouter V2] Module configs count:", moduleConfigs.length);
   const builtModuleRoutes = builder.buildFromModules(moduleConfigs);
+  console.log(
+    "[AppRouter V2] Built module routes count:",
+    builtModuleRoutes.length,
+  );
+  console.log(
+    "[AppRouter V2] Module routes paths:",
+    builtModuleRoutes.map((r) => r.path),
+  );
 
   // Get vertical route config (rental)
   const verticalConfig = verticalRegistry.getRouteConfig(context);

@@ -62,9 +62,9 @@ export const purchasesModule: ModuleDefinition = {
   ],
 
   /**
-   * Required permissions
+   * Required permissions (removed - handled at route level)
    */
-  permissions: ["purchases:read"],
+  // permissions: ["purchases:read"],
 
   /**
    * Module initialization

@@ -131,7 +131,7 @@ export function AlertsDashboardPage() {
               </p>
               {doc.asset && (
                 <Link
-                  to={`/machinery/${doc.asset.id}`}
+                  to={`/inventory/${doc.asset.id}/edit`}
                   className="text-sm text-blue-400 hover:underline flex items-center gap-1"
                 >
                   <Package className="w-3 h-3" />
