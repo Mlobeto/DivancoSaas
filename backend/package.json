@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "echo 'Build completed - using tsx in production'",
-    "start": "tsx src/index.ts",
-    "start:prod": "prisma migrate deploy && tsx src/index.ts",
+    "start": "prisma migrate deploy && tsx src/index.ts",
+    "start:dev": "tsx src/index.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
