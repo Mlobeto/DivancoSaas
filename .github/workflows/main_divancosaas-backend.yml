@@ -34,8 +34,8 @@ jobs:
           npm run build
           echo "dist/ contents:"
           ls -la dist/
-          echo "dist/index.js exists:"
-          ls -la dist/index.js
+          echo "dist/src/index.js exists:"
+          ls -la dist/src/index.js
 
       - name: Create deployment zip
         working-directory: ./backend
@@ -61,4 +61,3 @@ jobs:
           app-name: "divancosaas-backend"
           slot-name: "Production"
           package: ./deploy.zip
-
