@@ -136,9 +136,8 @@ export function createApp(): Application {
   // pero lo registramos aquí para que esté disponible globalmente
   app.use(contextInjector);
 
-  // swagger
-  app.use("/api-docs", swaggerUi.serve);
-  app.use("/api-docs", swaggerUi.setup(swaggerSpec));
+  // swagger - type assertions necesarias por conflicto de tipos en monorepo
+  app.use("/api-docs", swaggerUi.serve as any, swaggerUi.setup(swaggerSpec) as any);
 
   // Health check
   app.get("/health", (req, res) => {
