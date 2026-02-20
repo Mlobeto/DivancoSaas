@@ -211,12 +211,16 @@ export class AssetTemplateService {
         requiresDocumentation: data.requiresDocumentation ?? false,
         customFields: data.customFields as any,
       },
+      include: {
+        businessUnit: true,
+      },
     });
 
     // If BULK management type, create initial stock level
     if (data.managementType === AssetManagementType.BULK) {
       await prisma.stockLevel.create({
         data: {
+          tenantId: template.businessUnit.tenantId,
           businessUnitId,
           templateId: template.id,
           quantityAvailable: 0,
