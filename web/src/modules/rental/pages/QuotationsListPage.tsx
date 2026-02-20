@@ -89,7 +89,7 @@ export function QuotationsListPage() {
         <>
           <ProtectedAction permission="templates:read">
             <button
-              onClick={() => navigate("/rental/quotations/templates")}
+              onClick={() => navigate("/rental/templates")}
               className="btn-secondary mr-2"
             >
               <FileSignature className="w-4 h-4 inline mr-1" />

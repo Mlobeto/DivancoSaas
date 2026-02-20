@@ -96,7 +96,7 @@ export function QuotationTemplatesPage() {
       actions={
         <>
           <button
-            onClick={() => navigate("/rental/quotations/templates/new")}
+            onClick={() => navigate("/rental/templates/new")}
             className="btn-primary"
           >
             + Nueva Plantilla
@@ -190,7 +190,7 @@ export function QuotationTemplatesPage() {
           <div className="col-span-full card p-8 text-center">
             <p className="text-dark-400 mb-4">No hay plantillas creadas aún</p>
             <button
-              onClick={() => navigate("/rental/quotations/templates/new")}
+              onClick={() => navigate("/rental/templates/new")}
               className="btn-primary"
             >
               + Crear primera plantilla
@@ -261,9 +261,7 @@ export function QuotationTemplatesPage() {
               <div className="flex gap-2">
                 <button
                   onClick={() =>
-                    navigate(
-                      `/rental/quotations/templates/${template.id}/preview`,
-                    )
+                    navigate(`/rental/templates/${template.id}/preview`)
                   }
                   className="btn-ghost btn-sm flex-1"
                   title="Vista previa"
@@ -273,7 +271,7 @@ export function QuotationTemplatesPage() {
                 </button>
                 <button
                   onClick={() =>
-                    navigate(`/rental/quotations/templates/${template.id}/edit`)
+                    navigate(`/rental/templates/${template.id}/edit`)
                   }
                   className="btn-secondary btn-sm flex-1"
                 >

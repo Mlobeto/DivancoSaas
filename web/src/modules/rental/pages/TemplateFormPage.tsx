@@ -66,7 +66,7 @@ export function TemplateFormPage() {
         });
       } else {
         queryClient.invalidateQueries({ queryKey: ["templates"] });
-        navigate("/rental/quotations/templates");
+        navigate("/rental/templates");
       }
     },
   });
@@ -82,7 +82,7 @@ export function TemplateFormPage() {
       } else {
         queryClient.invalidateQueries({ queryKey: ["templates"] });
         queryClient.invalidateQueries({ queryKey: ["template", id] });
-        navigate("/rental/quotations/templates");
+        navigate("/rental/templates");
       }
     },
   });
@@ -96,14 +96,14 @@ export function TemplateFormPage() {
       if (id) {
         queryClient.invalidateQueries({ queryKey: ["template", id] });
       }
-      navigate("/rental/quotations/templates");
+      navigate("/rental/templates");
     },
     onError: (error: any) => {
       console.error("Error uploading logo:", error);
       alert(`Error al subir el logo: ${error.message || "Error desconocido"}`);
       // Still navigate on logo error, template was created
       queryClient.invalidateQueries({ queryKey: ["templates"] });
-      navigate("/rental/quotations/templates");
+      navigate("/rental/templates");
     },
   });
 
@@ -152,7 +152,7 @@ export function TemplateFormPage() {
   };
 
   const handleCancel = () => {
-    navigate("/rental/quotations/templates");
+    navigate("/rental/templates");
   };
 
   if (!tenant || !businessUnit) {

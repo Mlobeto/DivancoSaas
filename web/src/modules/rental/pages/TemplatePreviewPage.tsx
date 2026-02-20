@@ -161,7 +161,7 @@ export function TemplatePreviewPage() {
         <div className="card">
           <p className="text-red-400">No se encontró la plantilla</p>
           <button
-            onClick={() => navigate("/rental/quotations/templates")}
+            onClick={() => navigate("/rental/templates")}
             className="btn-ghost mt-4"
           >
             ← Volver a plantillas
@@ -189,13 +189,13 @@ export function TemplatePreviewPage() {
       actions={
         <>
           <button
-            onClick={() => navigate(`/rental/quotations/templates/${id}/edit`)}
+            onClick={() => navigate(`/rental/templates/${id}/edit`)}
             className="btn-ghost"
           >
             ✏️ Editar
           </button>
           <button
-            onClick={() => navigate("/rental/quotations/templates")}
+            onClick={() => navigate("/rental/templates")}
             className="btn-ghost"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
