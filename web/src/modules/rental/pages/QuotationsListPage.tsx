@@ -89,7 +89,7 @@ export function QuotationsListPage() {
         <>
           <ProtectedAction permission="templates:read">
             <button
-              onClick={() => navigate("/quotations/templates")}
+              onClick={() => navigate("/rental/quotations/templates")}
               className="btn-secondary mr-2"
             >
               <FileSignature className="w-4 h-4 inline mr-1" />
@@ -98,7 +98,7 @@ export function QuotationsListPage() {
           </ProtectedAction>
           <ProtectedAction permission="quotations:create">
             <button
-              onClick={() => navigate("/quotations/new")}
+              onClick={() => navigate("/rental/quotations/new")}
               className="btn-primary"
             >
               + Nueva Cotización
@@ -288,7 +288,7 @@ export function QuotationsListPage() {
                       <td className="p-4 text-right">
                         <button
                           onClick={() =>
-                            navigate(`/quotations/${quotation.id}`)
+                            navigate(`/rental/quotations/${quotation.id}`)
                           }
                           className="btn-ghost btn-sm"
                         >

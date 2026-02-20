@@ -16,6 +16,9 @@ import { authenticate, authorize } from "@core/middlewares/auth.middleware";
 
 const router = Router();
 
+// Aplicar autenticación a todas las rutas del módulo rental
+router.use(authenticate);
+
 // Configure multer for logo upload
 const upload = multer({
   storage: multer.memoryStorage(),

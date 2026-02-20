@@ -137,7 +137,10 @@ export function QuotationFormPage() {
       title="Nueva Cotización"
       subtitle={`Crear cotización v4.0 - ${businessUnit?.name || "Sistema"}`}
       actions={
-        <button onClick={() => navigate("/quotations")} className="btn-ghost">
+        <button
+          onClick={() => navigate("/rental/quotations")}
+          className="btn-ghost"
+        >
           ← Volver
         </button>
       }
@@ -332,7 +335,7 @@ export function QuotationFormPage() {
             <div className="flex justify-end gap-3 pb-8">
               <button
                 type="button"
-                onClick={() => navigate("/quotations")}
+                onClick={() => navigate("/rental/quotations")}
                 className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
                 disabled={mutation.isPending}
               >

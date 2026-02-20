@@ -56,7 +56,7 @@ export function TemplateSelector({
             <p className="text-sm text-yellow-800">
               No hay plantillas activas. Puedes crear una desde{" "}
               <a
-                href="/quotations/templates"
+                href="/rental/quotations/templates"
                 className="text-blue-600 underline hover:text-blue-700"
               >
                 Gestión de Plantillas

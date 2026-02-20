@@ -40,7 +40,13 @@ export async function authenticate(
   try {
     const token = extractToken(req);
 
+    console.log(
+      "[Auth] Token extraction:",
+      token ? `${token.substring(0, 20)}...` : "NO TOKEN",
+    );
+
     if (!token) {
+      console.log("[Auth] REJECTED: No token provided");
       res.status(401).json({
         success: false,
         error: {
@@ -53,6 +59,7 @@ export async function authenticate(
 
     // Verificar token
     const payload = jwt.verify(token, config.jwt.secret) as JwtPayload;
+    console.log("[Auth] Token verified successfully. UserId:", payload.userId);
 
     // Leer headers de contexto (tienen prioridad sobre el JWT payload)
     const tenantIdHeader = req.headers["x-tenant-id"] as string | undefined;
@@ -62,6 +69,8 @@ export async function authenticate(
 
     const tenantId = tenantIdHeader || payload.tenantId;
     const businessUnitId = businessUnitIdHeader || payload.businessUnitId;
+
+    console.log("[Auth] Context:", { tenantId, businessUnitId });
 
     // Cargar usuario y permisos
     const user = await prisma.user.findUnique({
@@ -88,6 +97,10 @@ export async function authenticate(
     });
 
     if (!user) {
+      console.log(
+        "[Auth] REJECTED: User not found for userId:",
+        payload.userId,
+      );
       res.status(401).json({
         success: false,
         error: {
@@ -98,8 +111,20 @@ export async function authenticate(
       return;
     }
 
+    console.log("[Auth] User found:", {
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+      userTenantId: user.tenantId,
+      requestTenantId: tenantId,
+    });
+
     // SUPER_ADMIN can access any tenant (tenantId is null for platform owner)
     if (user.role !== "SUPER_ADMIN" && user.tenantId !== tenantId) {
+      console.log("[Auth] REJECTED: Tenant mismatch", {
+        userTenantId: user.tenantId,
+        requestTenantId: tenantId,
+      });
       res.status(401).json({
         success: false,
         error: {
@@ -111,6 +136,7 @@ export async function authenticate(
     }
 
     if (user.status !== "ACTIVE") {
+      console.log("[Auth] REJECTED: User not active. Status:", user.status);
       res.status(403).json({
         success: false,
         error: {
@@ -187,9 +213,19 @@ export async function authenticate(
       role: user.role, // Global role (SUPER_ADMIN, USER, etc.)
     };
 
+    console.log("[Auth] SUCCESS: Authentication completed", {
+      userId: user.id,
+      role: req.context.role,
+      permissions: req.context.permissions.length,
+    });
+
     next();
   } catch (error) {
     if (error instanceof jwt.JsonWebTokenError) {
+      console.log("[Auth] REJECTED: JWT verification failed", {
+        name: error.name,
+        message: error.message,
+      });
       res.status(401).json({
         success: false,
         error: {
@@ -207,10 +243,12 @@ export async function authenticate(
 /**
  * Middleware de autorización
  * Verifica que el usuario tenga el permiso requerido
+ *
+ * IMPORTANTE: OWNER y SUPER_ADMIN tienen acceso completo sin verificar permisos específicos
  */
 export function authorize(...requiredPermissions: string[]) {
   return (req: Request, res: Response, next: NextFunction): void => {
-    const { context } = req;
+    const { context, user } = req;
 
     if (!context) {
       res.status(401).json({
@@ -223,7 +261,19 @@ export function authorize(...requiredPermissions: string[]) {
       return;
     }
 
-    // Verificar permisos
+    // SUPER_ADMIN (rol global) tiene acceso completo
+    if (user?.role === "SUPER_ADMIN") {
+      next();
+      return;
+    }
+
+    // OWNER (rol en business unit) tiene acceso completo
+    if (context.role === "OWNER") {
+      next();
+      return;
+    }
+
+    // Verificar permisos para otros roles
     const hasPermission = requiredPermissions.some((permission) =>
       context.permissions.includes(permission),
     );
@@ -237,6 +287,7 @@ export function authorize(...requiredPermissions: string[]) {
           details: {
             required: requiredPermissions,
             current: context.permissions,
+            role: context.role,
           },
         },
       });

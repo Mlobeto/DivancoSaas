@@ -17,6 +17,11 @@ const api = axios.create({
 // Interceptor para agregar token y contexto multitenancy
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
+  console.log(
+    "[API] Token from localStorage:",
+    token ? `${token.substring(0, 20)}...` : "NO TOKEN",
+  );
+
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -27,6 +32,12 @@ api.interceptors.request.use((config) => {
     try {
       const parsed = JSON.parse(authData);
       const state = parsed.state;
+
+      console.log("[API] Auth context:", {
+        tenantId: state?.tenant?.id,
+        businessUnitId: state?.businessUnit?.id,
+        hasToken: !!token,
+      });
 
       if (state?.tenant?.id) {
         config.headers["X-Tenant-Id"] = state.tenant.id;
