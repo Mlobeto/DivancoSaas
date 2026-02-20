@@ -33,8 +33,6 @@ jobs:
           npm run build
           echo "Build completed. dist/ generated:"
           ls -la dist/
-          # Remove node_modules - Azure Oryx will reinstall them
-          rm -rf node_modules
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
