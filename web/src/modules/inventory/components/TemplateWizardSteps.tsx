@@ -472,6 +472,372 @@ export function TechnicalSpecsStep({
 }
 
 // ============================================
+// STEP 3.5: RENTAL PRICING (Solo para activos alquilables)
+// ============================================
+
+export function RentalPricingStep({
+  formData,
+  setFormData,
+}: {
+  formData: CreateTemplateInput;
+  setFormData: React.Dispatch<React.SetStateAction<CreateTemplateInput>>;
+}) {
+  const pricing = formData.rentalPricing || {};
+  const isMachinery = formData.category === AssetCategory.MACHINERY;
+  const isRentable = [
+    AssetCategory.MACHINERY,
+    AssetCategory.IMPLEMENT,
+    AssetCategory.VEHICLE,
+    AssetCategory.TOOL,
+  ].includes(formData.category);
+
+  if (!isRentable) {
+    return (
+      <div className="card">
+        <div className="text-center py-8 text-dark-400">
+          <p>Los insumos no tienen precios de alquiler</p>
+          <p className="text-sm mt-2">Se manejan por cantidad consumida</p>
+        </div>
+      </div>
+    );
+  }
+
+  const updatePricing = (field: string, value: any) => {
+    setFormData({
+      ...formData,
+      rentalPricing: {
+        ...pricing,
+        [field]: value,
+      },
+    });
+  };
+
+  return (
+    <div className="card space-y-6">
+      <h2 className="text-xl font-semibold text-white border-b border-dark-700 pb-3">
+        Precios de Alquiler
+      </h2>
+
+      <p className="text-dark-400 text-sm">
+        Configura los precios de alquiler y el peso para cálculo de transporte
+      </p>
+
+      {/* PESO - Importante para transporte */}
+      <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+        <div className="flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-1" />
+          <div className="flex-1">
+            <h3 className="font-semibold text-yellow-300 mb-2">
+              Peso del Equipo (Importante)
+            </h3>
+            <p className="text-sm text-dark-400 mb-3">
+              El peso se usa para calcular el costo de transporte
+              proporcionalmente. A medida que se entregan items, el transporte
+              se descuenta según el peso.
+            </p>
+            <div className="flex gap-3 items-center">
+              <input
+                type="number"
+                min="0"
+                step="0.1"
+                className="input w-40"
+                placeholder="0"
+                value={pricing.weight || ""}
+                onChange={(e) =>
+                  updatePricing(
+                    "weight",
+                    parseFloat(e.target.value) || undefined,
+                  )
+                }
+              />
+              <span className="text-dark-400">kg</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* PRECIOS SEGÚN TIPO DE ACTIVO */}
+      <div className="space-y-4">
+        <h3 className="font-medium text-white">Tarifas de Alquiler</h3>
+
+        {/* Para MAQUINARIA: Por hora + standby */}
+        {isMachinery && (
+          <div className="space-y-4 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+            <div className="flex items-center gap-2 text-blue-400 font-medium">
+              <span>⚙️</span>
+              <span>Configuración para Maquinaria</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-dark-400 mb-2">
+                  Precio por Hora
+                </label>
+                <div className="flex items-center gap-2">
+                  <span className="text-dark-400">$</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    className="input flex-1"
+                    placeholder="625"
+                    value={pricing.pricePerHour || ""}
+                    onChange={(e) =>
+                      updatePricing(
+                        "pricePerHour",
+                        parseFloat(e.target.value) || undefined,
+                      )
+                    }
+                  />
+                  <span className="text-dark-400 text-sm">/hora</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-dark-400 mb-2">
+                  Horas Standby Mínimas (por día)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="24"
+                  step="0.5"
+                  className="input"
+                  placeholder="8"
+                  value={pricing.minDailyHours || ""}
+                  onChange={(e) =>
+                    updatePricing(
+                      "minDailyHours",
+                      parseFloat(e.target.value) || undefined,
+                    )
+                  }
+                />
+                <p className="text-xs text-dark-500 mt-1">
+                  Horas mínimas garantizadas/día
+                </p>
+              </div>
+            </div>
+
+            {pricing.pricePerHour && pricing.minDailyHours && (
+              <div className="p-3 bg-dark-800 rounded text-sm">
+                <div className="text-dark-400">Costo mínimo por día:</div>
+                <div className="text-lg font-semibold text-green-400">
+                  $
+                  {(
+                    pricing.pricePerHour * pricing.minDailyHours
+                  ).toLocaleString()}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Para TODOS: Precio por día/semana/mes */}
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-dark-400 mb-2">
+              Precio por Día
+            </label>
+            <div className="flex items-center gap-2">
+              <span className="text-dark-400">$</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                className="input flex-1"
+                placeholder="200"
+                value={pricing.pricePerDay || ""}
+                onChange={(e) =>
+                  updatePricing(
+                    "pricePerDay",
+                    parseFloat(e.target.value) || undefined,
+                  )
+                }
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-dark-400 mb-2">
+              Precio por Semana{" "}
+              <span className="text-dark-500">(opcional)</span>
+            </label>
+            <div className="flex items-center gap-2">
+              <span className="text-dark-400">$</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                className="input flex-1"
+                placeholder="1200"
+                value={pricing.pricePerWeek || ""}
+                onChange={(e) =>
+                  updatePricing(
+                    "pricePerWeek",
+                    parseFloat(e.target.value) || undefined,
+                  )
+                }
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-dark-400 mb-2">
+              Precio por Mes <span className="text-dark-500">(opcional)</span>
+            </label>
+            <div className="flex items-center gap-2">
+              <span className="text-dark-400">$</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                className="input flex-1"
+                placeholder="4500"
+                value={pricing.pricePerMonth || ""}
+                onChange={(e) =>
+                  updatePricing(
+                    "pricePerMonth",
+                    parseFloat(e.target.value) || undefined,
+                  )
+                }
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* OPERARIO */}
+      <div className="p-4 bg-dark-800 rounded-lg space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <User className="w-5 h-5 text-primary-400" />
+            <h3 className="font-medium text-white">Costo de Operario</h3>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-dark-400 mb-2">
+              Tipo de Costo
+            </label>
+            <select
+              className="input w-full"
+              value={pricing.operatorCostType || ""}
+              onChange={(e) =>
+                updatePricing("operatorCostType", e.target.value || undefined)
+              }
+            >
+              <option value="">Sin operario</option>
+              <option value="PER_DAY">Por Día</option>
+              <option value="PER_HOUR">Por Hora</option>
+            </select>
+          </div>
+
+          {pricing.operatorCostType && (
+            <div>
+              <label className="block text-sm font-medium text-dark-400 mb-2">
+                Tarifa del Operario
+              </label>
+              <div className="flex items-center gap-2">
+                <span className="text-dark-400">$</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className="input flex-1"
+                  placeholder={
+                    pricing.operatorCostType === "PER_DAY" ? "3000" : "375"
+                  }
+                  value={pricing.operatorCostRate || ""}
+                  onChange={(e) =>
+                    updatePricing(
+                      "operatorCostRate",
+                      parseFloat(e.target.value) || undefined,
+                    )
+                  }
+                />
+                <span className="text-dark-400 text-sm">
+                  /{pricing.operatorCostType === "PER_DAY" ? "día" : "hora"}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* TRANSPORTE */}
+      <div className="p-4 bg-dark-800 rounded-lg">
+        <div className="flex items-center gap-2 mb-3">
+          <Truck className="w-5 h-5 text-primary-400" />
+          <h3 className="font-medium text-white">Costo de Transporte</h3>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-dark-400 mb-2">
+            Precio por Kilómetro{" "}
+            <span className="text-dark-500">(opcional)</span>
+          </label>
+          <div className="flex items-center gap-2">
+            <span className="text-dark-400">$</span>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              className="input w-40"
+              placeholder="5"
+              value={pricing.pricePerKm || ""}
+              onChange={(e) =>
+                updatePricing(
+                  "pricePerKm",
+                  parseFloat(e.target.value) || undefined,
+                )
+              }
+            />
+            <span className="text-dark-400 text-sm">/km</span>
+          </div>
+          <p className="text-xs text-dark-500 mt-1">
+            Se calculará en el momento de la entrega según km reales
+          </p>
+        </div>
+      </div>
+
+      {/* Resumen de configuración */}
+      {(pricing.weight || pricing.pricePerDay || pricing.pricePerHour) && (
+        <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
+          <h4 className="font-medium text-green-400 mb-2">
+            ✅ Configuración Lista
+          </h4>
+          <div className="text-sm text-dark-400 space-y-1">
+            {pricing.weight && <p>• Peso: {pricing.weight} kg</p>}
+            {pricing.pricePerHour && isMachinery && (
+              <p>
+                • Precio por hora: ${pricing.pricePerHour}/hr (mín{" "}
+                {pricing.minDailyHours || 0} hrs/día)
+              </p>
+            )}
+            {pricing.pricePerDay && (
+              <p>• Precio por día: ${pricing.pricePerDay}</p>
+            )}
+            {pricing.pricePerWeek && (
+              <p>• Precio por semana: ${pricing.pricePerWeek}</p>
+            )}
+            {pricing.pricePerMonth && (
+              <p>• Precio por mes: ${pricing.pricePerMonth}</p>
+            )}
+            {pricing.operatorCostType && (
+              <p>
+                • Operario: ${pricing.operatorCostRate} por{" "}
+                {pricing.operatorCostType === "PER_DAY" ? "día" : "hora"}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================
 // STEP 4: BUSINESS RULES
 // ============================================
 
@@ -570,7 +936,6 @@ export function BusinessRulesStep({
 
 export function AttachmentsStep({
   formData,
-  
 }: {
   formData: CreateTemplateInput;
   setFormData: React.Dispatch<React.SetStateAction<CreateTemplateInput>>;

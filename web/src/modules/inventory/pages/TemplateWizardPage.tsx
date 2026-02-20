@@ -20,19 +20,42 @@ import {
   CategorySelectionStep,
   BasicInfoStep,
   TechnicalSpecsStep,
+  RentalPricingStep,
   BusinessRulesStep,
   AttachmentsStep,
   PreviewStep,
 } from "@/modules/inventory/components/TemplateWizardSteps";
 import { EXAMPLE_TEMPLATES } from "@/modules/inventory/data/example-templates";
 
-const STEPS = [
+// Helper para saber si una categoría es alquilable
+const isRentableCategory = (category: AssetCategory) => {
+  return [
+    AssetCategory.MACHINERY,
+    AssetCategory.IMPLEMENT,
+    AssetCategory.VEHICLE,
+    AssetCategory.TOOL,
+  ].includes(category);
+};
+
+// Pasos base (siempre visibles)
+const BASE_STEPS = [
   { id: 1, name: "Categoría", component: CategorySelectionStep },
   { id: 2, name: "Información Básica", component: BasicInfoStep },
   { id: 3, name: "Especificaciones", component: TechnicalSpecsStep },
-  { id: 4, name: "Reglas de Negocio", component: BusinessRulesStep },
-  { id: 5, name: "Archivos", component: AttachmentsStep },
-  { id: 6, name: "Vista Previa", component: PreviewStep },
+];
+
+// Paso de pricing (solo para alquilables)
+const PRICING_STEP = {
+  id: 4,
+  name: "Precios de Alquiler",
+  component: RentalPricingStep,
+};
+
+// Pasos finales
+const FINAL_STEPS = [
+  { id: 5, name: "Reglas de Negocio", component: BusinessRulesStep },
+  { id: 6, name: "Archivos", component: AttachmentsStep },
+  { id: 7, name: "Vista Previa", component: PreviewStep },
 ];
 
 export function TemplateWizardPage() {
@@ -77,6 +100,7 @@ export function TemplateWizardPage() {
         technicalSpecs: existingTemplate.technicalSpecs,
         compatibleWith: existingTemplate.compatibleWith,
         businessRules: existingTemplate.businessRules,
+        rentalPricing: existingTemplate.rentalPricing,
         hasExpiryDate: existingTemplate.hasExpiryDate,
         requiresLotTracking: existingTemplate.requiresLotTracking,
         isDangerous: existingTemplate.isDangerous,
@@ -84,6 +108,11 @@ export function TemplateWizardPage() {
       });
     }
   }, [existingTemplate]);
+
+  // Construir pasos dinámicamente según la categoría
+  const STEPS = isRentableCategory(formData.category)
+    ? [...BASE_STEPS, PRICING_STEP, ...FINAL_STEPS]
+    : [...BASE_STEPS, ...FINAL_STEPS];
 
   // Create/Update mutation
   const saveMutation = useMutation({
@@ -125,12 +154,13 @@ export function TemplateWizardPage() {
       title={id ? "Editar Plantilla" : "Nueva Plantilla"}
       subtitle="Define la estructura para crear activos de este tipo"
       actions={
-        <div className="flex gap-3">
+        <div className="flex gap-2 md:gap-3">
           <button
             onClick={() => navigate("/inventory/templates")}
             className="btn-ghost flex items-center gap-2"
           >
-            <X className="w-4 h-4" /> Cancelar
+            <X className="w-4 h-4" />
+            <span className="hidden sm:inline">Cancelar</span>
           </button>
 
           {!id && currentStep === 2 && (
@@ -139,7 +169,7 @@ export function TemplateWizardPage() {
               className="btn-secondary flex items-center gap-2"
             >
               <Sparkles className="w-4 h-4" />
-              Cargar Ejemplo
+              <span className="hidden md:inline">Cargar Ejemplo</span>
             </button>
           )}
 
@@ -150,11 +180,16 @@ export function TemplateWizardPage() {
               disabled={saveMutation.isPending || !canSave}
             >
               {saveMutation.isPending ? (
-                "Guardando..."
+                "..."
               ) : (
                 <>
                   <Save className="w-4 h-4" />
-                  {id ? "Actualizar" : "Crear Plantilla"}
+                  <span className="hidden sm:inline">
+                    {id ? "Actualizar" : "Crear Plantilla"}
+                  </span>
+                  <span className="sm:hidden">
+                    {id ? "Actualizar" : "Crear"}
+                  </span>
                 </>
               )}
             </button>
@@ -162,41 +197,67 @@ export function TemplateWizardPage() {
         </div>
       }
     >
-      <div className="p-8 max-w-5xl mx-auto">
-        {/* Progress Steps */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            {STEPS.map((step, idx) => (
-              <div key={step.id} className="flex items-center flex-1">
-                <div className="flex flex-col items-center flex-1">
-                  <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition ${
-                      currentStep === step.id
-                        ? "bg-primary-500 text-white"
-                        : currentStep > step.id
-                          ? "bg-green-500 text-white"
-                          : "bg-dark-700 text-dark-400"
-                    }`}
-                  >
-                    {step.id}
-                  </div>
-                  <div
-                    className={`mt-2 text-sm font-medium ${
-                      currentStep === step.id ? "text-white" : "text-dark-400"
-                    }`}
-                  >
-                    {step.name}
-                  </div>
-                </div>
-                {idx < STEPS.length - 1 && (
-                  <div
-                    className={`h-1 flex-1 mx-2 ${
-                      currentStep > step.id ? "bg-green-500" : "bg-dark-700"
-                    }`}
-                  />
-                )}
+      <div className="p-4 md:p-8 max-w-5xl mx-auto">
+        {/* Progress Steps - Responsive */}
+        <div className="mb-6 md:mb-8">
+          {/* Mobile: Compact Step Indicator */}
+          <div className="md:hidden">
+            <div className="flex items-center justify-between mb-4">
+              <div className="text-sm font-medium text-dark-400">
+                Paso {currentStep} de {STEPS.length}
               </div>
-            ))}
+              <div className="text-sm text-dark-400">
+                {Math.round((currentStep / STEPS.length) * 100)}%
+              </div>
+            </div>
+            <div className="h-2 bg-dark-700 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-primary-500 transition-all duration-300"
+                style={{ width: `${(currentStep / STEPS.length) * 100}%` }}
+              />
+            </div>
+            <div className="mt-3 text-center">
+              <div className="text-lg font-semibold text-white">
+                {STEPS[currentStep - 1].name}
+              </div>
+            </div>
+          </div>
+
+          {/* Desktop: Full Stepper */}
+          <div className="hidden md:block">
+            <div className="flex items-center justify-between">
+              {STEPS.map((step, idx) => (
+                <div key={step.id} className="flex items-center flex-1">
+                  <div className="flex flex-col items-center flex-1">
+                    <div
+                      className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition ${
+                        currentStep === step.id
+                          ? "bg-primary-500 text-white"
+                          : currentStep > step.id
+                            ? "bg-green-500 text-white"
+                            : "bg-dark-700 text-dark-400"
+                      }`}
+                    >
+                      {step.id}
+                    </div>
+                    <div
+                      className={`mt-2 text-xs lg:text-sm font-medium text-center ${
+                        currentStep === step.id ? "text-white" : "text-dark-400"
+                      }`}
+                    >
+                      {step.name}
+                    </div>
+                  </div>
+                  {idx < STEPS.length - 1 && (
+                    <div
+                      className={`h-1 flex-1 mx-2 ${
+                        currentStep > step.id ? "bg-green-500" : "bg-dark-700"
+                      }`}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -206,14 +267,14 @@ export function TemplateWizardPage() {
         </div>
 
         {/* Navigation Buttons */}
-        <div className="flex justify-between mt-8 pt-6 border-t border-dark-700">
+        <div className="flex justify-between gap-3 mt-6 md:mt-8 pt-4 md:pt-6 border-t border-dark-700">
           <button
             onClick={() => setCurrentStep((prev) => Math.max(1, prev - 1))}
             disabled={currentStep === 1}
             className="btn-ghost flex items-center gap-2"
           >
             <ChevronLeft className="w-4 h-4" />
-            Anterior
+            <span className="hidden sm:inline">Anterior</span>
           </button>
 
           {currentStep < STEPS.length && (
@@ -222,7 +283,7 @@ export function TemplateWizardPage() {
               disabled={!canGoNext()}
               className="btn-primary flex items-center gap-2"
             >
-              Siguiente
+              <span className="hidden sm:inline">Siguiente</span>
               <ChevronRight className="w-4 h-4" />
             </button>
           )}

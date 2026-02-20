@@ -5,6 +5,7 @@
 
 import { Request, Response } from "express";
 import { quotationService } from "../services/quotation.service";
+import { quotationEmailService } from "../services/quotation-email.service";
 
 export class QuotationController {
   /**
@@ -144,6 +145,33 @@ export class QuotationController {
       res.json({
         success: true,
         data: { pdfUrl },
+      });
+    } catch (error: any) {
+      res.status(400).json({
+        success: false,
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Enviar cotización por email
+   * POST /api/v1/rental/quotations/:id/send-email
+   */
+  async sendEmail(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const quotationId = Array.isArray(id) ? id[0] : id;
+      const { customMessage, cc } = req.body;
+
+      await quotationEmailService.sendQuotationEmail(quotationId, {
+        customMessage,
+        cc,
+      });
+
+      res.json({
+        success: true,
+        message: "Quotation sent successfully via email",
       });
     } catch (error: any) {
       res.status(400).json({

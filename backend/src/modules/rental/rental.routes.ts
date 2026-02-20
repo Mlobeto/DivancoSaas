@@ -295,6 +295,13 @@ router.post(
   quotationController.generatePDF.bind(quotationController),
 );
 
+// Enviar cotización por email
+router.post(
+  "/quotations/:id/send-email",
+  authorize("quotations:read"),
+  quotationController.sendEmail.bind(quotationController),
+);
+
 // Solicitar firma digital
 router.post(
   "/quotations/:id/request-signature",

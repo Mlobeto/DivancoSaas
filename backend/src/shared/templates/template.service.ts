@@ -442,10 +442,30 @@ export class TemplateService {
       return value.toLocaleString();
     });
 
-    // Helper condicional
+    // Helper condicional (block helper)
     this.handlebars.registerHelper("ifEquals", function (arg1, arg2, options) {
       // @ts-ignore
       return arg1 === arg2 ? options.fn(this) : options.inverse(this);
+    });
+
+    // Helper para comparación simple (retorna boolean)
+    this.handlebars.registerHelper("eq", (a: any, b: any) => {
+      return a === b;
+    });
+
+    // Helper para comparación NOT EQUAL
+    this.handlebars.registerHelper("ne", (a: any, b: any) => {
+      return a !== b;
+    });
+
+    // Helper para mayor que
+    this.handlebars.registerHelper("gt", (a: number, b: number) => {
+      return a > b;
+    });
+
+    // Helper para menor que
+    this.handlebars.registerHelper("lt", (a: number, b: number) => {
+      return a < b;
     });
 
     // Helper para sumas

@@ -415,12 +415,21 @@ export class QuotationService {
 
   /**
    * Generar PDF de cotización
+   * Soporta dos tipos: time_based (rental) y service_based (servicios/proyectos)
    */
   async generateQuotationPDF(quotationId: string): Promise<string> {
     const quotation = await prisma.quotation.findUnique({
       where: { id: quotationId },
       include: {
-        items: true,
+        items: {
+          include: {
+            asset: {
+              include: {
+                template: true, // Para obtener categoría y nombre del template
+              },
+            },
+          },
+        },
         client: true,
         businessUnit: true,
       },
@@ -442,28 +451,100 @@ export class QuotationService {
       );
     }
 
-    // Preparar datos para renderizado
-    const templateData = {
-      quotationCode: quotation.code,
-      quotationDate: quotation.quotationDate,
-      validUntil: quotation.validUntil,
-      clientName: quotation.client.name,
-      clientEmail: quotation.client.email,
-      clientPhone: quotation.client.phone,
-      items: quotation.items.map((item) => ({
+    // Detectar tipo de cotización
+    const quotationType = quotation.quotationType || "time_based";
+    const isTimeBased = quotationType === "time_based";
+    const isServiceBased = quotationType === "service_based";
+
+    // Preparar items con información detallada según tipo
+    const itemsData = quotation.items.map((item) => {
+      const baseItem = {
         description: item.description,
         quantity: item.quantity,
         unitPrice: Number(item.unitPrice),
         total: Number(item.total),
-      })),
+        assetName: item.asset?.name || null,
+        assetCategory: item.asset?.template?.category || null,
+        priceOverridden: item.priceOverridden,
+        discount: item.discount ? Number(item.discount) : null,
+        discountReason: item.discountReason,
+      };
+
+      // Para cotizaciones TIME_BASED: incluir detalles de rental
+      if (isTimeBased) {
+        return {
+          ...baseItem,
+          rentalDays: item.rentalDays,
+          rentalStartDate: item.rentalStartDate,
+          rentalEndDate: item.rentalEndDate,
+          rentalPeriodType: item.rentalPeriodType, // "hourly" | "daily" | "weekly" | "monthly"
+          standbyHours: item.standbyHours ? Number(item.standbyHours) : null,
+          operatorIncluded: item.operatorIncluded,
+          operatorCostType: item.operatorCostType, // "PER_DAY" | "PER_HOUR"
+          operatorCost: item.operatorCost ? Number(item.operatorCost) : null,
+          basePrice: item.basePrice ? Number(item.basePrice) : null,
+          operatorCostAmount: item.operatorCostAmount
+            ? Number(item.operatorCostAmount)
+            : null,
+          maintenanceCost: item.maintenanceCost
+            ? Number(item.maintenanceCost)
+            : null,
+          calculatedUnitPrice: item.calculatedUnitPrice
+            ? Number(item.calculatedUnitPrice)
+            : null,
+          calculatedOperatorCost: item.calculatedOperatorCost
+            ? Number(item.calculatedOperatorCost)
+            : null,
+        };
+      }
+
+      // Para cotizaciones SERVICE_BASED: estructura simple
+      return baseItem;
+    });
+
+    // Preparar datos para renderizado según tipo
+    const templateData = {
+      // Información básica
+      quotationCode: quotation.code,
+      quotationDate: quotation.quotationDate,
+      validUntil: quotation.validUntil,
+      quotationType: quotationType,
+      isTimeBased: isTimeBased,
+      isServiceBased: isServiceBased,
+
+      // Cliente
+      clientName: quotation.client.name,
+      clientEmail: quotation.client.email,
+      clientPhone: quotation.client.phone,
+
+      // Campos específicos TIME_BASED
+      estimatedStartDate: quotation.estimatedStartDate,
+      estimatedEndDate: quotation.estimatedEndDate,
+      estimatedDays: quotation.estimatedDays,
+
+      // Campos específicos SERVICE_BASED
+      serviceDescription: quotation.serviceDescription,
+
+      // Items con detalles
+      items: itemsData,
+      itemCount: itemsData.length,
+
+      // Totales
       subtotal: Number(quotation.subtotal),
       taxRate: Number(quotation.taxRate),
       taxAmount: Number(quotation.taxAmount),
       totalAmount: Number(quotation.totalAmount),
       currency: quotation.currency,
+
+      // Notas y términos
       notes: quotation.notes,
       termsAndConditions: quotation.termsAndConditions,
+
+      // Logo del template
       logoUrl: template.logoUrl,
+
+      // Información del BusinessUnit
+      businessUnitName: quotation.businessUnit.name,
     };
 
     // Generar PDF

@@ -735,6 +735,13 @@ model AssetTemplate {
   businessRules Json? // { requiresTransport: true, requiresOperator: true, requiresInsurance: true, autoSuggestSupplies: ["uuid1"] }
 
   // ═══════════════════════════════════════
+  // RENTAL VERTICAL: Precios de alquiler y peso
+  // ═══════════════════════════════════════
+  // Solo para activos alquilables (MACHINERY, IMPLEMENT, VEHICLE, TOOL)
+  // NO aplica para insumos (SUPPLY_*)
+  rentalPricing Json? // { weight: 500, pricePerHour: 625, minDailyHours: 8, pricePerDay: 200, pricePerWeek: 1200, pricePerMonth: 4500, operatorCostType: "PER_DAY", operatorCostRate: 3000, pricePerKm: 5 }
+
+  // ═══════════════════════════════════════
   // RENTAL VERTICAL: Control de insumos
   // ═══════════════════════════════════════
   hasExpiryDate       Boolean @default(false) // Si el producto tiene fecha de vencimiento

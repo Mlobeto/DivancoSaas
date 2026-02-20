@@ -90,6 +90,7 @@ export interface AssetTemplate {
   technicalSpecs?: Record<string, any>;
   compatibleWith?: CompatibilityConfig;
   businessRules?: BusinessRules;
+  rentalPricing?: RentalPricing; // Precios de alquiler y peso
   hasExpiryDate: boolean;
   requiresLotTracking: boolean;
   isDangerous: boolean;
@@ -145,6 +146,25 @@ export interface BusinessRules {
   autoSuggestSupplies?: string[];
 }
 
+export interface RentalPricing {
+  // Peso (para cálculo de transporte)
+  weight?: number; // kg
+
+  // Precios de alquiler (solo para MACHINERY, IMPLEMENT, VEHICLE, TOOL)
+  pricePerHour?: number; // Para MACHINERY principalmente
+  minDailyHours?: number; // STANDBY: horas mínimas garantizadas/día
+  pricePerDay?: number; // Para todos los alquilables
+  pricePerWeek?: number; // Opcional
+  pricePerMonth?: number; // Opcional
+
+  // Costo de operario
+  operatorCostType?: "PER_DAY" | "PER_HOUR"; // null = sin operario
+  operatorCostRate?: number; // Tarifa del operario
+
+  // Transporte
+  pricePerKm?: number; // Costo por km de transporte (opcional)
+}
+
 export interface CreateTemplateInput {
   name: string;
   category: AssetCategory;
@@ -159,6 +179,7 @@ export interface CreateTemplateInput {
   technicalSpecs?: Record<string, any>;
   compatibleWith?: CompatibilityConfig;
   businessRules?: BusinessRules;
+  rentalPricing?: RentalPricing; // Precios de alquiler y peso
   hasExpiryDate?: boolean;
   requiresLotTracking?: boolean;
   isDangerous?: boolean;
@@ -180,6 +201,7 @@ export interface UpdateTemplateInput {
   technicalSpecs?: Record<string, any>;
   compatibleWith?: CompatibilityConfig;
   businessRules?: BusinessRules;
+  rentalPricing?: RentalPricing; // Precios de alquiler y peso
   hasExpiryDate?: boolean;
   requiresLotTracking?: boolean;
   isDangerous?: boolean;
