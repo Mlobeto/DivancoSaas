@@ -66,18 +66,17 @@ export const rentalRoutes: VerticalRouteConfig = {
   verticalId: "rental",
   basePath: "/rental",
 
-  // Vertical-level guard
-  verticalGuard: (context) => {
-    // Only allow if user has rental permissions
-    return context.permissions.includes("rental:read");
-  },
+  // Vertical-level guard removed - individual routes handle permissions
+  // verticalGuard: (context) => {
+  //   return context.permissions.includes("rental:read");
+  // },
 
   routes: [
     //------------------------------------------------------------
     // QUOTATIONS
     //------------------------------------------------------------
     {
-      path: "/quotations",
+      path: "quotations",
       element: QuotationsListPage,
       protection: RouteProtection.AUTHENTICATED,
       layout: RouteLayout.APP,
@@ -89,7 +88,7 @@ export const rentalRoutes: VerticalRouteConfig = {
       chunkName: "quotations-list",
     },
     {
-      path: "/quotations/new",
+      path: "quotations/new",
       element: QuotationFormPage,
       permissions: ["rental:quotation:create", "OWNER", "ADMIN", "MANAGER"],
       meta: {
@@ -99,7 +98,7 @@ export const rentalRoutes: VerticalRouteConfig = {
       chunkName: "quotations-create",
     },
     {
-      path: "/quotations/:id/edit",
+      path: "quotations/:id/edit",
       element: QuotationFormPage,
       permissions: ["rental:quotation:update", "OWNER", "ADMIN", "MANAGER"],
       meta: {
@@ -113,7 +112,7 @@ export const rentalRoutes: VerticalRouteConfig = {
     // CONTRACTS
     //------------------------------------------------------------
     {
-      path: "/contracts",
+      path: "contracts",
       element: ContractsListPage,
       meta: {
         title: "Contracts",
@@ -123,7 +122,7 @@ export const rentalRoutes: VerticalRouteConfig = {
       chunkName: "contracts-list",
     },
     {
-      path: "/contracts/:id",
+      path: "contracts/:id",
       element: ContractsListPage,
       meta: {
         title: "Contract Details",
@@ -136,7 +135,7 @@ export const rentalRoutes: VerticalRouteConfig = {
     // TEMPLATES
     //------------------------------------------------------------
     {
-      path: "/templates",
+      path: "templates",
       element: QuotationTemplatesPage,
       meta: {
         title: "Quotation Templates",
@@ -146,7 +145,7 @@ export const rentalRoutes: VerticalRouteConfig = {
       chunkName: "templates-list",
     },
     {
-      path: "/templates/new",
+      path: "templates/new",
       element: TemplateFormPage,
       protection: RouteProtection.OWNER,
       permissions: ["rental:template:create", "OWNER"],
@@ -157,7 +156,7 @@ export const rentalRoutes: VerticalRouteConfig = {
       chunkName: "templates-create",
     },
     {
-      path: "/templates/:id/edit",
+      path: "templates/:id/edit",
       element: TemplateFormPage,
       protection: RouteProtection.OWNER,
       permissions: ["rental:template:update", "OWNER"],
@@ -168,7 +167,7 @@ export const rentalRoutes: VerticalRouteConfig = {
       chunkName: "templates-edit",
     },
     {
-      path: "/templates/:id/preview",
+      path: "templates/:id/preview",
       element: TemplatePreviewPage,
       meta: {
         title: "Template Preview",
@@ -181,7 +180,7 @@ export const rentalRoutes: VerticalRouteConfig = {
     // ACCOUNTS (BILLING)
     //------------------------------------------------------------
     {
-      path: "/accounts",
+      path: "accounts",
       element: AccountsListPage,
       permissions: ["rental:billing:read", "OWNER", "ADMIN"],
       meta: {
