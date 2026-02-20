@@ -37,8 +37,8 @@ const router = Router();
  */
 router.get(
   "/config/:businessUnitId",
-  authenticate,
-  async (req: AuthenticatedRequest, res: Response): Promise<any> => {
+  authenticate as any,
+  (async (req: AuthenticatedRequest, res: Response): Promise<any> => {
     try {
       const { businessUnitId } = req.params;
 
@@ -54,7 +54,7 @@ router.get(
       console.error("[ChannelRoutes] Error getting configs:", error);
       res.status(500).json({ error: error.message });
     }
-  },
+  }) as any,
 );
 
 /**
@@ -83,8 +83,8 @@ router.get(
  */
 router.get(
   "/config/:businessUnitId/:channel",
-  authenticate,
-  async (req: AuthenticatedRequest, res: Response): Promise<any> => {
+  authenticate as any,
+  (async (req: AuthenticatedRequest, res: Response): Promise<any> => {
     try {
       const { businessUnitId, channel } = req.params;
 
@@ -113,7 +113,7 @@ router.get(
       console.error("[ChannelRoutes] Error getting config:", error);
       res.status(500).json({ error: error.message });
     }
-  },
+  }) as any,
 );
 
 /**
@@ -158,8 +158,8 @@ router.get(
  */
 router.put(
   "/config/:businessUnitId/:channel",
-  authenticate,
-  async (req: AuthenticatedRequest, res: Response): Promise<any> => {
+  authenticate as any,
+  (async (req: AuthenticatedRequest, res: Response): Promise<any> => {
     try {
       const { businessUnitId, channel } = req.params;
       const { enabled, allowedIntents, config } = req.body;
@@ -190,7 +190,7 @@ router.put(
       console.error("[ChannelRoutes] Error updating config:", error);
       res.status(500).json({ error: error.message });
     }
-  },
+  }) as any,
 );
 
 /**
@@ -230,8 +230,8 @@ router.put(
  */
 router.patch(
   "/config/:businessUnitId/:channel/toggle",
-  authenticate,
-  async (req: AuthenticatedRequest, res: Response): Promise<any> => {
+  authenticate as any,
+  (async (req: AuthenticatedRequest, res: Response): Promise<any> => {
     try {
       const { businessUnitId, channel } = req.params;
       const { enabled } = req.body;
@@ -262,7 +262,7 @@ router.patch(
       console.error("[ChannelRoutes] Error toggling channel:", error);
       res.status(500).json({ error: error.message });
     }
-  },
+  }) as any,
 );
 
 /**
@@ -302,8 +302,8 @@ router.patch(
  */
 router.post(
   "/config/:businessUnitId/:channel/intents",
-  authenticate,
-  async (req: AuthenticatedRequest, res: Response): Promise<any> => {
+  authenticate as any,
+  (async (req: AuthenticatedRequest, res: Response): Promise<any> => {
     try {
       const { businessUnitId, channel } = req.params;
       const { intent } = req.body;
@@ -331,7 +331,7 @@ router.post(
       console.error("[ChannelRoutes] Error adding intent:", error);
       res.status(500).json({ error: error.message });
     }
-  },
+  }) as any,
 );
 
 /**
@@ -364,8 +364,8 @@ router.post(
  */
 router.delete(
   "/config/:businessUnitId/:channel/intents/:intent",
-  authenticate,
-  async (req: AuthenticatedRequest, res: Response): Promise<any> => {
+  authenticate as any,
+  (async (req: AuthenticatedRequest, res: Response): Promise<any> => {
     try {
       const { businessUnitId, channel, intent } = req.params;
 
@@ -393,7 +393,7 @@ router.delete(
       console.error("[ChannelRoutes] Error removing intent:", error);
       res.status(500).json({ error: error.message });
     }
-  },
+  }) as any,
 );
 
 export { router as channelRouter };

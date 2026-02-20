@@ -58,8 +58,8 @@ const router = Router();
  */
 router.post(
   "/process",
-  authenticate,
-  async (req: AuthenticatedRequest, res: Response): Promise<any> => {
+  authenticate as any,
+  (async (req: AuthenticatedRequest, res: Response): Promise<any> => {
     try {
       const { businessUnitId, intent, payload, channel = "web" } = req.body;
 
@@ -100,7 +100,7 @@ router.post(
       console.error("[IntentRoutes] Error processing intent:", error);
       res.status(500).json({ error: error.message });
     }
-  },
+  }) as any,
 );
 
 /**
@@ -142,8 +142,8 @@ router.post(
  */
 router.get(
   "/stats",
-  authenticate,
-  async (req: AuthenticatedRequest, res: Response): Promise<any> => {
+  authenticate as any,
+  (async (req: AuthenticatedRequest, res: Response): Promise<any> => {
     try {
       const { businessUnitId, from, to, channel, intent } = req.query;
 
@@ -168,7 +168,7 @@ router.get(
       console.error("[IntentRoutes] Error getting stats:", error);
       res.status(500).json({ error: error.message });
     }
-  },
+  }) as any,
 );
 
 export { router as intentRouter };
