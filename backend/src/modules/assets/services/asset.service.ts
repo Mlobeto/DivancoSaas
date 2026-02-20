@@ -685,7 +685,7 @@ export class AssetService {
         status: "in_use",
         currentRental: {
           contractId: activeRental.contractId,
-          estimatedReturnDate: activeRental.estimatedReturnDate,
+          estimatedReturnDate: activeRental.contract.endDate || null,
           clientName: activeRental.contract.client.name,
         },
       };
