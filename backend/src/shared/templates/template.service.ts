@@ -204,13 +204,6 @@ export class TemplateService {
         ...(params.content && { content: params.content }),
         ...(params.styles !== undefined && { styles: params.styles }),
         ...(params.variables && { variables: params.variables as any }),
-        ...(params.logoUrl !== undefined && { logoUrl: params.logoUrl }),
-        ...(params.headerHtml !== undefined && {
-          headerHtml: params.headerHtml,
-        }),
-        ...(params.footerHtml !== undefined && {
-          footerHtml: params.footerHtml,
-        }),
         ...(params.isActive !== undefined && { isActive: params.isActive }),
         updatedAt: new Date(),
       },
