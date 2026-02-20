@@ -137,7 +137,8 @@ export function createApp(): Application {
   app.use(contextInjector);
 
   // swagger
-  app.use("/api-docs", ...swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+  app.use("/api-docs", swaggerUi.serve);
+  app.use("/api-docs", swaggerUi.setup(swaggerSpec));
 
   // Health check
   app.get("/health", (req, res) => {
