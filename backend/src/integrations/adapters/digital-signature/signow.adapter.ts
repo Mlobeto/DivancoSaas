@@ -238,7 +238,7 @@ export class SignNowAdapter implements DigitalSignatureProvider {
     filename: string,
   ): Promise<{ id: string }> {
     const formData = new FormData();
-    const blob = new Blob([documentBuffer], { type: "application/pdf" });
+    const blob = new Blob([documentBuffer as any], { type: "application/pdf" });
     formData.append("file", blob, filename);
 
     const response = await this.axiosInstance.post("/document", formData, {
