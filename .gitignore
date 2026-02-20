@@ -52,3 +52,4 @@ temp/
 
 # Prisma
 prisma/migrations/**/migration.sql
+backend/publish-profile.xml
