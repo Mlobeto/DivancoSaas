@@ -8,6 +8,7 @@ import { authenticate } from "@core/middlewares/auth.middleware";
 import {
   AssetTemplateService,
   AssetCategory,
+  AssetManagementType,
   FieldType,
 } from "@modules/assets/services/asset-template.service";
 import { z } from "zod";
@@ -46,6 +47,7 @@ const customFieldSchema = z.object({
 const createTemplateSchema = z.object({
   name: z.string().min(2).max(100),
   category: z.nativeEnum(AssetCategory),
+  managementType: z.nativeEnum(AssetManagementType),
   description: z.string().max(500).optional(),
   icon: z.string().max(50).optional(),
   requiresPreventiveMaintenance: z.boolean(),
@@ -54,6 +56,7 @@ const createTemplateSchema = z.object({
 
 const updateTemplateSchema = z.object({
   name: z.string().min(2).max(100).optional(),
+  managementType: z.nativeEnum(AssetManagementType).optional(),
   description: z.string().max(500).optional(),
   icon: z.string().max(50).optional(),
   requiresPreventiveMaintenance: z.boolean().optional(),
