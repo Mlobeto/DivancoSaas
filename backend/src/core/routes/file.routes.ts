@@ -79,7 +79,7 @@ const upload = multer({
  */
 router.post(
   "/upload",
-  authenticate,
+  authenticate as any,
   upload.single("file"),
   async (req: AuthenticatedRequest, res: Response): Promise<any> => {
     try {
@@ -192,7 +192,7 @@ router.post(
  */
 router.get(
   "/download",
-  authenticate,
+  authenticate as any,
   async (req: AuthenticatedRequest, res: Response): Promise<any> => {
     try {
       const { blobName, container, businessUnitId } = req.query;
@@ -263,7 +263,7 @@ router.get(
  */
 router.delete(
   "/delete",
-  authenticate,
+  authenticate as any,
   async (req: AuthenticatedRequest, res: Response): Promise<any> => {
     try {
       const { blobName, container, businessUnitId } = req.query;
@@ -346,7 +346,7 @@ router.delete(
  */
 router.post(
   "/sas-token",
-  authenticate,
+  authenticate as any,
   async (req: AuthenticatedRequest, res: Response): Promise<any> => {
     try {
       const {
@@ -424,7 +424,7 @@ router.post(
  */
 router.get(
   "/list",
-  authenticate,
+  authenticate as any,
   async (req: AuthenticatedRequest, res: Response): Promise<any> => {
     try {
       const { container, businessUnitId, prefix, maxResults } = req.query;
@@ -493,7 +493,7 @@ router.get(
  */
 router.get(
   "/exists",
-  authenticate,
+  authenticate as any,
   async (req: AuthenticatedRequest, res: Response): Promise<any> => {
     try {
       const { blobName, container, businessUnitId } = req.query;
@@ -557,7 +557,7 @@ router.get(
  */
 router.get(
   "/metadata",
-  authenticate,
+  authenticate as any,
   async (req: AuthenticatedRequest, res: Response): Promise<any> => {
     try {
       const { blobName, container, businessUnitId } = req.query;
