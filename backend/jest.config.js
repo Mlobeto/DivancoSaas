@@ -12,6 +12,7 @@ module.exports = {
     },
   },
   moduleNameMapper: {
+    "^@/(.*)$": "<rootDir>/src/$1",
     "^@core/(.*)$": "<rootDir>/src/core/$1",
     "^@modules/(.*)$": "<rootDir>/src/modules/$1",
     "^@integrations/(.*)$": "<rootDir>/src/integrations/$1",
