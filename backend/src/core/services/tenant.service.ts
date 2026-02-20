@@ -110,7 +110,7 @@ export class TenantService {
    */
   async createTenant(data: CreateTenantInput): Promise<TenantWithConfig> {
     // Check if owner email already exists
-    const existingUser = await prisma.user.findUnique({
+    const existingUser = await prisma.user.findFirst({
       where: { email: data.ownerEmail },
     });
 
