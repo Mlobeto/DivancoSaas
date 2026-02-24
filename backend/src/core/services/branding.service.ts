@@ -7,6 +7,7 @@ import { PrismaClient } from "@prisma/client";
 import type {
   CreateBrandingDTO,
   UpdateBrandingDTO,
+  ContactInfo,
   HeaderConfig,
   FooterConfig,
 } from "../types/branding.types";
@@ -36,10 +37,17 @@ class BrandingService {
       return null;
     }
 
+    // Ensure footerConfig has textAlign (for backward compatibility)
+    const footerConfig = branding.footerConfig as unknown as FooterConfig;
+    if (!footerConfig.textAlign) {
+      footerConfig.textAlign = "center";
+    }
+
     return {
       ...branding,
+      contactInfo: branding.contactInfo as unknown as ContactInfo,
       headerConfig: branding.headerConfig as unknown as HeaderConfig,
-      footerConfig: branding.footerConfig as unknown as FooterConfig,
+      footerConfig,
     };
   }
 
@@ -73,6 +81,7 @@ class BrandingService {
     const defaultFooterConfig: FooterConfig = {
       showContactInfo: true,
       showDisclaimer: false,
+      textAlign: "center",
       height: 60,
     };
 
@@ -94,6 +103,7 @@ class BrandingService {
         primaryColor: data.primaryColor || "#1E40AF",
         secondaryColor: data.secondaryColor || "#64748B",
         fontFamily: data.fontFamily || "Inter",
+        contactInfo: (data.contactInfo || {}) as any,
         headerConfig: headerConfig as any,
         footerConfig: footerConfig as any,
       },
@@ -111,6 +121,7 @@ class BrandingService {
 
     return {
       ...branding,
+      contactInfo: branding.contactInfo as unknown as ContactInfo,
       headerConfig: branding.headerConfig as unknown as HeaderConfig,
       footerConfig: branding.footerConfig as unknown as FooterConfig,
     };
@@ -136,6 +147,10 @@ class BrandingService {
       ? { ...current.footerConfig, ...data.footerConfig }
       : current.footerConfig;
 
+    const contactInfo = data.contactInfo
+      ? data.contactInfo
+      : current.contactInfo;
+
     const updated = await prisma.businessUnitBranding.update({
       where: { businessUnitId },
       data: {
@@ -150,6 +165,7 @@ class BrandingService {
             : current.secondaryColor,
         fontFamily:
           data.fontFamily !== undefined ? data.fontFamily : current.fontFamily,
+        contactInfo: contactInfo as any,
         headerConfig: headerConfig as any,
         footerConfig: footerConfig as any,
       },
@@ -167,6 +183,7 @@ class BrandingService {
 
     return {
       ...updated,
+      contactInfo: updated.contactInfo as unknown as ContactInfo,
       headerConfig: updated.headerConfig as unknown as HeaderConfig,
       footerConfig: updated.footerConfig as unknown as FooterConfig,
     };

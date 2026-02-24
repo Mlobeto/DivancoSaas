@@ -10,17 +10,20 @@ import {
   Palette,
   Type,
   Layout as LayoutIcon,
+  Phone,
 } from "lucide-react";
 import { CollapsibleSection } from "./CollapsibleSection";
 import { LogoSection } from "./LogoSection";
 import { ColorSection } from "./ColorSection";
 import { FontSection } from "./FontSection";
+import { ContactSection } from "./ContactSection";
 import { HeaderSection } from "./HeaderSection";
 import { FooterSection } from "./FooterSection";
 import type {
   UpdateBrandingDTO,
   HeaderConfig,
   FooterConfig,
+  ContactInfo,
 } from "@/core/types/branding.types";
 
 interface BrandingFormProps {
@@ -31,6 +34,7 @@ interface BrandingFormProps {
   onFormChange: (updates: Partial<UpdateBrandingDTO>) => void;
   onHeaderChange: (updates: Partial<HeaderConfig>) => void;
   onFooterChange: (updates: Partial<FooterConfig>) => void;
+  onContactChange: (contactInfo: ContactInfo) => void;
   onLogoUpload: (file: File) => Promise<void>;
 }
 
@@ -41,6 +45,7 @@ export function BrandingForm({
   onSave,
   onFormChange,
   onHeaderChange,
+  onContactChange,
   onFooterChange,
   onLogoUpload,
 }: BrandingFormProps) {
@@ -54,6 +59,7 @@ export function BrandingForm({
       <CollapsibleSection
         title="Logo"
         icon={<Upload className="w-5 h-5 text-primary-400" />}
+        defaultOpen={false}
       >
         <LogoSection
           formData={formData}
@@ -66,6 +72,7 @@ export function BrandingForm({
       <CollapsibleSection
         title="Colores"
         icon={<Palette className="w-5 h-5 text-primary-400" />}
+        defaultOpen={false}
       >
         <ColorSection formData={formData} onChange={onFormChange} />
       </CollapsibleSection>
@@ -74,8 +81,21 @@ export function BrandingForm({
       <CollapsibleSection
         title="Fuente"
         icon={<Type className="w-5 h-5 text-primary-400" />}
+        defaultOpen={false}
       >
         <FontSection formData={formData} onChange={onFormChange} />
+      </CollapsibleSection>
+
+      {/* Contact Information Section */}
+      <CollapsibleSection
+        title="Datos de Contacto"
+        icon={<Phone className="w-5 h-5 text-primary-400" />}
+        defaultOpen={false}
+      >
+        <ContactSection
+          value={formData.contactInfo || {}}
+          onChange={onContactChange}
+        />
       </CollapsibleSection>
 
       {/* Header Section */}

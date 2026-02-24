@@ -33,6 +33,17 @@ export interface CreateAssetData {
   requiresOperator?: boolean;
   requiresTracking?: boolean;
   requiresClinic?: boolean;
+
+  // Rental Configuration
+  trackingType?: "MACHINERY" | "TOOL" | null;
+  pricePerHour?: number;
+  minDailyHours?: number;
+  pricePerKm?: number;
+  pricePerDay?: number;
+  pricePerWeek?: number;
+  pricePerMonth?: number;
+  operatorCostType?: "PER_HOUR" | "PER_DAY" | null;
+  operatorCostRate?: number;
 }
 
 export type UpdateAssetData = Partial<CreateAssetData>;

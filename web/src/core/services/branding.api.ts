@@ -67,8 +67,19 @@ export const brandingApi = {
       options,
       {
         responseType: "blob",
+        headers: {
+          Accept: "application/pdf",
+        },
       },
     );
+
+    console.log("[brandingApi] Response headers:", response.headers);
+    console.log("[brandingApi] Response data type:", typeof response.data);
+    console.log(
+      "[brandingApi] Response data size:",
+      response.data?.size || response.data?.length,
+    );
+
     return response.data;
   },
 

@@ -11,11 +11,18 @@ interface FontSectionProps {
 }
 
 const FONT_OPTIONS = [
-  { value: "Inter", label: "Inter (Modern)" },
-  { value: "Roboto", label: "Roboto (Clean)" },
-  { value: "Open Sans", label: "Open Sans (Friendly)" },
-  { value: "Arial", label: "Arial (Classic)" },
-  { value: "Georgia", label: "Georgia (Elegant)" },
+  { value: "Inter", label: "Inter (Moderna y limpia)" },
+  { value: "Roboto", label: "Roboto (Versátil)" },
+  { value: "Open Sans", label: "Open Sans (Amigable)" },
+  { value: "Lato", label: "Lato (Profesional)" },
+  { value: "Montserrat", label: "Montserrat (Elegante)" },
+  { value: "Poppins", label: "Poppins (Contemporánea)" },
+  { value: "Raleway", label: "Raleway (Sofisticada)" },
+  { value: "Source Sans Pro", label: "Source Sans Pro (Legible)" },
+  { value: "Nunito", label: "Nunito (Redondeada)" },
+  { value: "PT Sans", label: "PT Sans (Técnica)" },
+  { value: "Arial", label: "Arial (Clásica)" },
+  { value: "Georgia", label: "Georgia (Serif elegante)" },
   { value: "Times New Roman", label: "Times New Roman (Formal)" },
 ];
 

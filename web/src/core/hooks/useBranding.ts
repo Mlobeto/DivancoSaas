@@ -12,6 +12,7 @@ import type {
   DocumentFormat,
   HeaderConfig,
   FooterConfig,
+  ContactInfo,
 } from "@/core/types/branding.types";
 
 export interface UseBrandingReturn {
@@ -44,6 +45,7 @@ const DEFAULT_FORM_DATA: UpdateBrandingDTO = {
   primaryColor: "#1E40AF",
   secondaryColor: "#64748B",
   fontFamily: "Inter",
+  contactInfo: {},
   headerConfig: {
     showLogo: true,
     logoAlign: "left",
@@ -55,6 +57,7 @@ const DEFAULT_FORM_DATA: UpdateBrandingDTO = {
     showContactInfo: true,
     showDisclaimer: false,
     disclaimerText: "",
+    textAlign: "center",
     height: 60,
   },
 };
@@ -79,6 +82,7 @@ export function useBranding(
       primaryColor: branding?.primaryColor,
       secondaryColor: branding?.secondaryColor,
       fontFamily: branding?.fontFamily,
+      contactInfo: branding?.contactInfo,
       headerConfig: branding?.headerConfig,
       footerConfig: branding?.footerConfig,
     });
@@ -110,6 +114,7 @@ export function useBranding(
           primaryColor: data.primaryColor,
           secondaryColor: data.secondaryColor,
           fontFamily: data.fontFamily,
+          contactInfo: data.contactInfo,
           headerConfig: data.headerConfig,
           footerConfig: data.footerConfig,
         });
@@ -135,11 +140,27 @@ export function useBranding(
       setError(null);
       setSuccess(null);
 
+      console.log("[useBranding] Saving branding:", formData);
+
       const updated = await brandingApi.update(businessUnitId, formData);
+
+      console.log("[useBranding] Branding saved successfully:", updated);
+
+      // Update both branding state and form data to sync them
       setBranding(updated);
+      setFormData({
+        logoUrl: updated.logoUrl,
+        primaryColor: updated.primaryColor,
+        secondaryColor: updated.secondaryColor,
+        fontFamily: updated.fontFamily,
+        contactInfo: updated.contactInfo,
+        headerConfig: updated.headerConfig,
+        footerConfig: updated.footerConfig,
+      });
+
       setSuccess("Configuración guardada exitosamente");
     } catch (err: any) {
-      console.error("Error saving branding:", err);
+      console.error("[useBranding] Error saving branding:", err);
       setError(
         err.response?.data?.message || "Error al guardar la configuración",
       );
@@ -207,21 +228,68 @@ export function useBranding(
       setGenerating(true);
       setError(null);
 
+      console.log("[useBranding] Generating preview:", {
+        docType,
+        format,
+        businessUnitId,
+      });
+
       const blob = await brandingApi.preview(businessUnitId, {
         documentType: docType,
         format,
       });
 
-      // Open PDF in new tab
-      const url = URL.createObjectURL(blob);
-      window.open(url, "_blank");
+      console.log("[useBranding] Blob received:", {
+        size: blob.size,
+        type: blob.type,
+      });
 
-      // Clean up
-      setTimeout(() => URL.revokeObjectURL(url), 100);
+      // Validate blob
+      if (!blob || blob.size === 0) {
+        throw new Error("El PDF generado está vacío");
+      }
+
+      // Check if it's actually a PDF (not an error response)
+      if (blob.type && !blob.type.includes("pdf")) {
+        console.warn("[useBranding] Blob type is not PDF:", blob.type);
+
+        // Try to read as text to see if it's an error message
+        const text = await blob.text();
+        console.error("[useBranding] Response text:", text);
+
+        throw new Error(`Respuesta inválida: ${text.substring(0, 200)}`);
+      }
+
+      // Create blob URL directly from the received blob
+      const url = URL.createObjectURL(blob);
+
+      console.log("[useBranding] Opening PDF in new tab:", url);
+
+      // Open PDF in new tab
+      const newTab = window.open(url, "_blank");
+
+      if (!newTab) {
+        console.warn("[useBranding] Failed to open new tab (popup blocker?)");
+        // Fallback: download the file
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `preview-${docType}.pdf`;
+        link.click();
+      }
+
+      // Clean up after 5 seconds (give time for browser to load the PDF)
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+        console.log("[useBranding] Blob URL revoked");
+      }, 5000);
+
+      setSuccess("Vista previa generada correctamente");
     } catch (err: any) {
-      console.error("Error generating preview:", err);
+      console.error("[useBranding] Error generating preview:", err);
       setError(
-        err.response?.data?.message || "Error al generar la vista previa",
+        err.message ||
+          err.response?.data?.message ||
+          "Error al generar la vista previa",
       );
     } finally {
       setGenerating(false);
@@ -244,6 +312,14 @@ export function useBranding(
     }));
   };
 
+  // Update contact info
+  const updateContactInfo = (contactInfo: ContactInfo) => {
+    setFormData((prev) => ({
+      ...prev,
+      contactInfo,
+    }));
+  };
+
   const clearError = () => setError(null);
   const clearSuccess = () => setSuccess(null);
 
@@ -251,6 +327,7 @@ export function useBranding(
     branding,
     formData,
     loading,
+    updateContactInfo,
     saving,
     generating,
     error,

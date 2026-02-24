@@ -25,6 +25,7 @@ class PDFGeneratorService {
    */
   private async getBrowser() {
     if (!this.browserInstance) {
+      console.log("[PDFGenerator] Launching Puppeteer browser...");
       this.browserInstance = await puppeteer.launch({
         headless: true,
         args: [
@@ -34,6 +35,7 @@ class PDFGeneratorService {
           "--disable-gpu",
         ],
       });
+      console.log("[PDFGenerator] Browser launched successfully");
     }
     return this.browserInstance;
   }
@@ -42,14 +44,23 @@ class PDFGeneratorService {
    * Generate PDF from HTML string
    */
   async generatePDF(html: string, options: PDFOptions = {}): Promise<Buffer> {
+    console.log(
+      "[PDFGenerator] Starting PDF generation, HTML length:",
+      html.length,
+    );
+
     const browser = await this.getBrowser();
     const page = await browser.newPage();
 
     try {
+      console.log("[PDFGenerator] Setting page content...");
+
       // Set content
       await page.setContent(html, {
         waitUntil: "networkidle0",
       });
+
+      console.log("[PDFGenerator] Content set, generating PDF...");
 
       // Determine format
       const format = options.format || "A4";
@@ -57,6 +68,7 @@ class PDFGeneratorService {
       let pdfBuffer: Buffer;
 
       if (format === "ticket") {
+        console.log("[PDFGenerator] Using ticket format");
         // Ticket/Receipt format (80mm width, common for thermal printers)
         pdfBuffer = await page.pdf({
           width: "80mm",
@@ -70,6 +82,7 @@ class PDFGeneratorService {
           },
         });
       } else {
+        console.log("[PDFGenerator] Using A4 format");
         // A4 format (standard document)
         pdfBuffer = await page.pdf({
           format: "A4",
@@ -84,9 +97,16 @@ class PDFGeneratorService {
         });
       }
 
+      console.log(
+        "[PDFGenerator] PDF generated successfully, size:",
+        pdfBuffer.length,
+        "bytes",
+      );
+
       await page.close();
       return pdfBuffer;
     } catch (error) {
+      console.error("[PDFGenerator] Error generating PDF:", error);
       await page.close();
       throw error;
     }

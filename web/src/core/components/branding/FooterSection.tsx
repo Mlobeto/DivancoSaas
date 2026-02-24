@@ -20,7 +20,7 @@ export function FooterSection({ config, onChange }: FooterSectionProps) {
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <label className="flex items-center gap-2">
         <input
           type="checkbox"
@@ -55,6 +55,47 @@ export function FooterSection({ config, onChange }: FooterSectionProps) {
           />
         </div>
       )}
+
+      <div>
+        <label className="block text-sm font-medium mb-2">
+          Alineación del Texto
+        </label>
+        <div className="grid grid-cols-3 gap-2">
+          <button
+            type="button"
+            onClick={() => onChange({ textAlign: "left" })}
+            className={`px-3 py-2 rounded border text-sm ${
+              (config.textAlign ?? "center") === "left"
+                ? "border-primary-500 bg-primary-500/20 text-primary-400"
+                : "border-dark-700 hover:border-dark-600"
+            }`}
+          >
+            ← Izquierda
+          </button>
+          <button
+            type="button"
+            onClick={() => onChange({ textAlign: "center" })}
+            className={`px-3 py-2 rounded border text-sm ${
+              (config.textAlign ?? "center") === "center"
+                ? "border-primary-500 bg-primary-500/20 text-primary-400"
+                : "border-dark-700 hover:border-dark-600"
+            }`}
+          >
+            ↔ Centro
+          </button>
+          <button
+            type="button"
+            onClick={() => onChange({ textAlign: "right" })}
+            className={`px-3 py-2 rounded border text-sm ${
+              (config.textAlign ?? "center") === "right"
+                ? "border-primary-500 bg-primary-500/20 text-primary-400"
+                : "border-dark-700 hover:border-dark-600"
+            }`}
+          >
+            Derecha →
+          </button>
+        </div>
+      </div>
 
       <div>
         <label className="block text-sm font-medium mb-1">Altura (px)</label>

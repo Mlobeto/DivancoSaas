@@ -785,6 +785,7 @@ export class AssetService {
           pricePerKm: true,
           pricePerDay: true,
           pricePerWeek: true,
+          pricePerMonth: true,
           operatorCostType: true,
           operatorCostRate: true,
           requiresOperator: true,
@@ -811,7 +812,9 @@ export class AssetService {
           pricePerKm: asset.pricePerKm ? Number(asset.pricePerKm) : null,
           pricePerDay: asset.pricePerDay ? Number(asset.pricePerDay) : null,
           pricePerWeek: asset.pricePerWeek ? Number(asset.pricePerWeek) : null,
-          pricePerMonth: null, // TODO: Agregar cuando esté en schema
+          pricePerMonth: asset.pricePerMonth
+            ? Number(asset.pricePerMonth)
+            : null,
           operatorCostRate: asset.operatorCostRate
             ? Number(asset.operatorCostRate)
             : null,

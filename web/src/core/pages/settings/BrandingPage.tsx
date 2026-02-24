@@ -1,22 +1,23 @@
 /**
  * Branding Configuration Page
- * Multi-tab system for complete branding management:
- * - General: Logo, colors, fonts, header/footer
- * - PDF Layout: Document templates
- * - Email Layout: Email templates
- * - Templates: Pre-made template gallery
+ *
+ * Configuración única del branding para la Business Unit.
+ * Este branding se aplicará automáticamente a TODAS las plantillas:
+ * - Cotizaciones
+ * - Contratos
+ * - Notas
+ * - Reportes
+ * - Recibos
+ * - Documentación
+ *
+ * El usuario configura UNA SOLA VEZ el look & feel (logo, colores, fuentes, header, footer)
+ * y todas las plantillas lo heredan automáticamente.
  */
 
 import { useAuthStore } from "@/store/auth.store";
 import { Layout } from "@/core/components/Layout";
-import { Tabs } from "@/core/components/common/Tabs";
-import {
-  GeneralBrandingTab,
-  PdfLayoutTab,
-  EmailLayoutTab,
-  TemplatesGalleryTab,
-} from "./tabs";
-import { AlertCircle, Palette, FileText, Mail, Sparkles } from "lucide-react";
+import { GeneralBrandingTab } from "./tabs";
+import { AlertCircle } from "lucide-react";
 import { useBranding } from "@/core/hooks/useBranding";
 
 export function BrandingPage() {
@@ -40,35 +41,13 @@ export function BrandingPage() {
     );
   }
 
-  const tabs = [
-    {
-      id: "general",
-      label: "General",
-      icon: <Palette className="w-5 h-5" />,
-    },
-    {
-      id: "pdf",
-      label: "PDF Layout",
-      icon: <FileText className="w-5 h-5" />,
-      badge: "Próximamente",
-    },
-    {
-      id: "email",
-      label: "Email Layout",
-      icon: <Mail className="w-5 h-5" />,
-      badge: "Próximamente",
-    },
-    {
-      id: "templates",
-      label: "Plantillas",
-      icon: <Sparkles className="w-5 h-5" />,
-      badge: "Próximamente",
-    },
-  ];
+  // Simple: solo configuración general de branding
+  // Este branding se aplicará automáticamente a todas las plantillas
+  // (cotizaciones, contratos, notas, reportes, etc.)
 
   return (
     <Layout
-      title="Configuración de Branding"
+      title="Configuración de Marca"
       subtitle={`Personaliza la identidad visual de ${businessUnit.name}`}
     >
       <div className="p-8">
@@ -91,28 +70,11 @@ export function BrandingPage() {
           </div>
         )}
 
-        {/* Tabs System */}
-        <Tabs tabs={tabs} defaultTab="general">
-          {(activeTab) => {
-            switch (activeTab) {
-              case "general":
-                return (
-                  <GeneralBrandingTab
-                    businessUnitId={businessUnit.id}
-                    businessUnitName={businessUnit.name}
-                  />
-                );
-              case "pdf":
-                return <PdfLayoutTab businessUnitId={businessUnit.id} />;
-              case "email":
-                return <EmailLayoutTab businessUnitId={businessUnit.id} />;
-              case "templates":
-                return <TemplatesGalleryTab businessUnitId={businessUnit.id} />;
-              default:
-                return null;
-            }
-          }}
-        </Tabs>
+        {/* Direct rendering - no tabs needed */}
+        <GeneralBrandingTab
+          businessUnitId={businessUnit.id}
+          businessUnitName={businessUnit.name}
+        />
       </div>
     </Layout>
   );

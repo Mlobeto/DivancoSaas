@@ -3,9 +3,10 @@ import { useNavigate, useParams, Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/core/components/Layout";
 import { useAuthStore } from "@/store/auth.store";
+import { useBranding } from "@/core/hooks/useBranding";
 import { templateService } from "../services/template.service";
 import { CreateTemplateDTO, TemplateType } from "../types/quotation.types";
-import { RichTemplateEditor } from "../components/RichTemplateEditor";
+import { SimpleTemplateEditor } from "../components/SimpleTemplateEditor";
 import { Save, X, Info } from "lucide-react";
 
 export function TemplateFormPage() {
@@ -14,6 +15,9 @@ export function TemplateFormPage() {
   const queryClient = useQueryClient();
   const { tenant, businessUnit } = useAuthStore();
   const isEditing = !!id;
+
+  // Get branding configuration for font preview
+  const { formData: brandingConfig } = useBranding(businessUnit?.id);
 
   // Form state
   const [name, setName] = useState("");
@@ -34,15 +38,12 @@ export function TemplateFormPage() {
       setName(template.name);
       setType(template.type);
       setContent(template.content);
-    } else if (tenant) {
-      // Set default content with tenant name for new templates
-      const defaultContent = `<div style="text-align: center; margin-bottom: 30px;">
-  <h1 style="color: #1e40af; margin: 0;">${tenant.name}</h1>
-  <p style="color: #6b7280; margin: 5px 0;">{{companyAddress}}</p>
-  <p style="color: #6b7280;">{{companyPhone}} | {{companyEmail}}</p>
-</div>
-
-<p>Escribe aquí el contenido de tu plantilla...</p>`;
+    } else {
+      // Set default content for new templates (se verá renderizado en el preview)
+      const defaultContent = `<div style="text-align: center; padding: 40px; background: #f3f4f6; border-radius: 8px; margin: 20px 0;">
+  <h2 style="color: #1e40af; margin: 0 0 12px 0;">👈 Empieza insertando bloques</h2>
+  <p style="color: #6b7280; margin: 0;">Haz click en los bloques del panel izquierdo para construir tu plantilla de cotización</p>
+</div>`;
       setContent(defaultContent);
     }
   }, [template, tenant]);
@@ -186,43 +187,40 @@ export function TemplateFormPage() {
                 <Info className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
                 <div className="flex-1">
                   <h3 className="text-sm font-semibold text-blue-300 mb-2">
-                    Logo, Colores y Estilos por Business Unit
+                    ✨ Branding Automático
                   </h3>
-                  <p className="text-sm text-gray-300 mb-3">
-                    Las plantillas utilizan automáticamente la configuración de{" "}
-                    <strong>Branding</strong> de tu Business Unit, que incluye:
-                    logo, colores, fuentes, header y footer personalizados.
+                  <p className="text-sm text-gray-300 mb-2">
+                    Esta plantilla usará automáticamente tu configuración de
+                    branding:
+                    <strong>
+                      {" "}
+                      logo, colores, fuente, header y footer con datos de
+                      contacto
+                    </strong>
+                    .
                   </p>
                   <p className="text-sm text-gray-300 mb-3">
-                    Todos los PDFs generados (cotizaciones, contratos, reportes)
-                    tendrán un aspecto consistente y profesional basado en tu
-                    configuración de marca.
+                    Solo necesitas definir el <strong>contenido central</strong>
+                    : datos del cliente, items cotizados, totales, cláusulas y
+                    forma de pago.
                   </p>
                   <Link
                     to="/settings/branding"
                     className="inline-flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 font-medium"
                   >
-                    → Configurar Branding de {businessUnit.name}
+                    → Ver/Editar Branding de {businessUnit.name}
                   </Link>
                 </div>
               </div>
             </div>
 
-            {/* Rich Text Editor */}
-            <div className="card">
-              <h2 className="text-lg font-semibold mb-4 text-primary-400">
-                📝 Editor de Contenido
-              </h2>
-              <p className="text-sm text-gray-400 mb-4">
-                Usa el editor para crear tu plantilla. Inserta variables
-                dinámicas y bloques predefinidos según el tipo de documento.
-              </p>
-              <RichTemplateEditor
-                content={content}
-                onChange={setContent}
-                templateType={type}
-              />
-            </div>
+            {/* Simple Editor */}
+            <SimpleTemplateEditor
+              content={content}
+              onChange={setContent}
+              templateType={type}
+              fontFamily={brandingConfig.fontFamily}
+            />
 
             {/* Submit Button */}
             <div className="flex gap-4">

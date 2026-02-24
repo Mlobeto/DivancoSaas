@@ -14,6 +14,7 @@ import type {
 interface BrandingPreviewProps {
   formData: UpdateBrandingDTO;
   businessUnitName: string;
+  businessUnitId: string;
   generating: boolean;
   isDirty: boolean;
   onGeneratePreview: (
@@ -33,6 +34,7 @@ const DOCUMENT_TYPES: { value: DocumentType; label: string }[] = [
 export function BrandingPreview({
   formData,
   businessUnitName,
+  businessUnitId,
   generating,
   isDirty,
   onGeneratePreview,
@@ -40,9 +42,33 @@ export function BrandingPreview({
   const [previewDocType, setPreviewDocType] =
     useState<DocumentType>("quotation");
   const [previewFormat, setPreviewFormat] = useState<DocumentFormat>("A4");
+  const [testingHTML, setTestingHTML] = useState(false);
 
   const handleGeneratePreview = () => {
     onGeneratePreview(previewDocType, previewFormat);
+  };
+
+  const handleTestHTML = async () => {
+    try {
+      setTestingHTML(true);
+      const { brandingApi } = await import("@/core/services/branding.api");
+
+      const html = await brandingApi.getTestHTML(businessUnitId, {
+        documentType: previewDocType,
+      });
+
+      // Open HTML in new window
+      const newWindow = window.open("", "_blank");
+      if (newWindow) {
+        newWindow.document.write(html);
+        newWindow.document.close();
+      }
+    } catch (error) {
+      console.error("[BrandingPreview] Error getting test HTML:", error);
+      alert("Error al obtener el HTML de prueba");
+    } finally {
+      setTestingHTML(false);
+    }
   };
 
   return (
@@ -138,6 +164,7 @@ export function BrandingPreview({
             style={{
               borderColor: formData.secondaryColor,
               minHeight: `${formData.footerConfig?.height}px`,
+              textAlign: formData.footerConfig?.textAlign ?? "center",
             }}
           >
             {formData.footerConfig?.showContactInfo && (
@@ -211,6 +238,29 @@ export function BrandingPreview({
             </>
           )}
         </button>
+
+        {/* Debug: Test HTML button */}
+        {import.meta.env.DEV && (
+          <button
+            onClick={handleTestHTML}
+            disabled={testingHTML || isDirty}
+            className="btn-secondary w-full flex items-center justify-center gap-2 text-sm disabled:opacity-50"
+            title="Ver HTML generado (debug)"
+          >
+            {testingHTML ? (
+              <>
+                <Loader2 className="w-3 h-3 animate-spin" />
+                Cargando HTML...
+              </>
+            ) : (
+              <>
+                <Eye className="w-3 h-3" />
+                Ver HTML (Debug)
+              </>
+            )}
+          </button>
+        )}
+
         {isDirty && (
           <p className="text-xs text-amber-400 text-center">
             Guarda los cambios antes de generar el PDF

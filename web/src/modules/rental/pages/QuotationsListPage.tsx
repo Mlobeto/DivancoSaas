@@ -233,7 +233,7 @@ export function QuotationsListPage() {
           <div className="p-8 text-center text-red-400">
             Error al cargar cotizaciones
           </div>
-        ) : data?.data.length === 0 ? (
+        ) : !data?.data || data.data.length === 0 ? (
           <div className="p-8 text-center">
             <p className="text-dark-400 mb-4">
               No hay cotizaciones registradas aún

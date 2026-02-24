@@ -55,8 +55,39 @@ api.interceptors.request.use((config) => {
 
 // Interceptor para manejar errores globales
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Log response details for blob responses (debugging)
+    if (response.config.responseType === "blob") {
+      console.log("[API] Blob response received:", {
+        url: response.config.url,
+        status: response.status,
+        dataType: typeof response.data,
+        dataSize: response.data?.size || response.data?.length,
+        contentType: response.headers["content-type"],
+      });
+    }
+    return response;
+  },
   (error) => {
+    // Handle blob errors specially
+    if (
+      error.config?.responseType === "blob" &&
+      error.response?.data instanceof Blob
+    ) {
+      return error.response.data.text().then((text) => {
+        try {
+          const errorData = JSON.parse(text);
+          console.error("[API] Blob request failed:", errorData);
+          return Promise.reject(
+            new Error(errorData.message || "Error en la solicitud"),
+          );
+        } catch {
+          console.error("[API] Blob request failed:", text);
+          return Promise.reject(new Error(text || "Error desconocido"));
+        }
+      });
+    }
+
     if (error.response?.status === 401) {
       // Token expirado o inválido
       localStorage.removeItem("token");

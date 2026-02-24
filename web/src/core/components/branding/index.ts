@@ -8,5 +8,6 @@ export { CollapsibleSection } from "./CollapsibleSection";
 export { LogoSection } from "./LogoSection";
 export { ColorSection } from "./ColorSection";
 export { FontSection } from "./FontSection";
+export { ContactSection } from "./ContactSection";
 export { HeaderSection } from "./HeaderSection";
 export { FooterSection } from "./FooterSection";

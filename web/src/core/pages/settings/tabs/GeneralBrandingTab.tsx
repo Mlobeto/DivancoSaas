@@ -25,6 +25,7 @@ export function GeneralBrandingTab({
     setFormData,
     updateHeaderConfig,
     updateFooterConfig,
+    updateContactInfo,
     save,
     uploadLogo,
     generatePreview,
@@ -51,6 +52,7 @@ export function GeneralBrandingTab({
         <BrandingPreview
           formData={formData}
           businessUnitName={businessUnitName}
+          businessUnitId={businessUnitId}
           generating={generating}
           isDirty={isDirty}
           onGeneratePreview={generatePreview}
@@ -67,6 +69,7 @@ export function GeneralBrandingTab({
           onFormChange={handleFormChange}
           onHeaderChange={updateHeaderConfig}
           onFooterChange={updateFooterConfig}
+          onContactChange={updateContactInfo}
           onLogoUpload={uploadLogo}
         />
       </div>

@@ -2,6 +2,13 @@
  * Business Unit Branding Types
  */
 
+export interface ContactInfo {
+  email?: string;
+  phone?: string;
+  address?: string;
+  website?: string;
+}
+
 export interface HeaderConfig {
   showLogo: boolean;
   logoAlign: "left" | "center" | "right";
@@ -14,6 +21,7 @@ export interface FooterConfig {
   showContactInfo: boolean;
   showDisclaimer: boolean;
   disclaimerText?: string;
+  textAlign: "left" | "center" | "right";
   height: number;
 }
 
@@ -24,6 +32,7 @@ export interface BusinessUnitBranding {
   primaryColor: string;
   secondaryColor: string;
   fontFamily: string;
+  contactInfo?: ContactInfo;
   headerConfig: HeaderConfig;
   footerConfig: FooterConfig;
   createdAt: string;
@@ -42,6 +51,7 @@ export interface CreateBrandingDTO {
   primaryColor?: string;
   secondaryColor?: string;
   fontFamily?: string;
+  contactInfo?: ContactInfo;
   headerConfig?: Partial<HeaderConfig>;
   footerConfig?: Partial<FooterConfig>;
 }
@@ -51,6 +61,7 @@ export interface UpdateBrandingDTO {
   primaryColor?: string;
   secondaryColor?: string;
   fontFamily?: string;
+  contactInfo?: ContactInfo;
   headerConfig?: Partial<HeaderConfig>;
   footerConfig?: Partial<FooterConfig>;
 }

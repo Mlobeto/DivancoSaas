@@ -4,6 +4,7 @@
  */
 
 import type {
+  ContactInfo,
   HeaderConfig,
   FooterConfig,
   DocumentType,
@@ -14,6 +15,7 @@ export interface BrandingConfig {
   primaryColor: string;
   secondaryColor: string;
   fontFamily: string;
+  contactInfo?: ContactInfo;
   headerConfig: HeaderConfig;
   footerConfig: FooterConfig;
 }
@@ -110,6 +112,7 @@ export function buildFooter(
   businessUnit: BusinessUnitInfo,
 ): string {
   const { footerConfig } = branding;
+  const textAlign = footerConfig.textAlign || "center";
 
   return `
     <div class="document-footer" style="
@@ -120,6 +123,7 @@ export function buildFooter(
       font-family: ${branding.fontFamily}, sans-serif;
       font-size: 12px;
       color: ${branding.secondaryColor};
+      text-align: ${textAlign};
     ">
       ${
         footerConfig.showContactInfo
@@ -152,7 +156,6 @@ export function buildFooter(
       
       <div class="footer-meta" style="
         margin-top: 12px;
-        text-align: center;
         opacity: 0.7;
         font-size: 10px;
       ">

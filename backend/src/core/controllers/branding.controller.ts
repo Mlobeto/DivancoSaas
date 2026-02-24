@@ -131,8 +131,19 @@ class BrandingController {
         sampleData?: any;
       };
 
+      console.log("[BrandingController] Generating preview:", {
+        businessUnitId,
+        documentType,
+        format,
+      });
+
       // Get branding
       const branding = await brandingService.getOrCreateDefault(businessUnitId);
+      console.log("[BrandingController] Branding loaded:", {
+        id: branding.id,
+        hasLogo: !!branding.logoUrl,
+        businessUnit: branding.businessUnit.name,
+      });
 
       // Build branding config
       const brandingConfig: BrandingConfig = {
@@ -140,19 +151,39 @@ class BrandingController {
         primaryColor: branding.primaryColor,
         secondaryColor: branding.secondaryColor,
         fontFamily: branding.fontFamily,
+        contactInfo: branding.contactInfo,
         headerConfig: branding.headerConfig,
         footerConfig: branding.footerConfig,
       };
 
-      // Build business unit info
+      console.log("[BrandingController] Footer config:", {
+        showContactInfo: brandingConfig.footerConfig.showContactInfo,
+        showDisclaimer: brandingConfig.footerConfig.showDisclaimer,
+        textAlign: brandingConfig.footerConfig.textAlign,
+        disclaimerText: brandingConfig.footerConfig.disclaimerText?.substring(
+          0,
+          50,
+        ),
+        height: brandingConfig.footerConfig.height,
+      });
+
+      // Build business unit info from branding contactInfo
+      const contactInfo = branding.contactInfo || {};
       const businessUnitInfo: BusinessUnitInfo = {
         name: branding.businessUnit.name,
         taxId: (branding.businessUnit.settings as any)?.taxId,
-        email: (branding.businessUnit.settings as any)?.email,
-        phone: (branding.businessUnit.settings as any)?.phone,
-        address: (branding.businessUnit.settings as any)?.address,
-        website: (branding.businessUnit.settings as any)?.website,
+        email: contactInfo.email,
+        phone: contactInfo.phone,
+        address: contactInfo.address,
+        website: contactInfo.website,
       };
+
+      console.log("[BrandingController] Contact info:", {
+        email: contactInfo.email,
+        phone: contactInfo.phone,
+        address: contactInfo.address,
+        website: contactInfo.website,
+      });
 
       // Generate content based on document type
       let content: string;
@@ -181,21 +212,44 @@ class BrandingController {
         `Preview - ${documentType}`,
       );
 
-      // Generate PDF
-      const pdfBuffer = await pdfGeneratorService.generateTestPDF(html, format);
+      console.log("[BrandingController] HTML generated, length:", html.length);
 
-      // Return PDF
+      // Generate PDF
+      console.log("[BrandingController] Starting PDF generation...");
+      const pdfBuffer = await pdfGeneratorService.generateTestPDF(html, format);
+      console.log(
+        "[BrandingController] PDF generated, size:",
+        pdfBuffer.length,
+        "bytes",
+      );
+
+      // Validate PDF
+      if (!pdfBuffer || pdfBuffer.length === 0) {
+        throw new Error("Generated PDF is empty");
+      }
+
+      // Return PDF as binary data
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader(
         "Content-Disposition",
         `inline; filename="preview-${documentType}.pdf"`,
       );
-      return res.send(pdfBuffer);
+      res.setHeader("Content-Length", pdfBuffer.length.toString());
+      res.setHeader("Cache-Control", "no-cache");
+
+      console.log(
+        "[BrandingController] Sending PDF response, buffer length:",
+        pdfBuffer.length,
+      );
+
+      // Use res.end() instead of res.send() for binary data
+      res.end(pdfBuffer, "binary");
     } catch (error: any) {
       console.error("[BrandingController] Error generating preview:", error);
       return res.status(500).json({
         success: false,
         message: error.message || "Error generating preview",
+        error: error.stack,
       });
     }
   }
@@ -218,18 +272,20 @@ class BrandingController {
         primaryColor: branding.primaryColor,
         secondaryColor: branding.secondaryColor,
         fontFamily: branding.fontFamily,
+        contactInfo: branding.contactInfo,
         headerConfig: branding.headerConfig,
         footerConfig: branding.footerConfig,
       };
 
-      // Build business unit info
+      // Build business unit info from branding contactInfo
+      const contactInfo = branding.contactInfo || {};
       const businessUnitInfo: BusinessUnitInfo = {
         name: branding.businessUnit.name,
         taxId: (branding.businessUnit.settings as any)?.taxId,
-        email: (branding.businessUnit.settings as any)?.email,
-        phone: (branding.businessUnit.settings as any)?.phone,
-        address: (branding.businessUnit.settings as any)?.address,
-        website: (branding.businessUnit.settings as any)?.website,
+        email: contactInfo.email,
+        phone: contactInfo.phone,
+        address: contactInfo.address,
+        website: contactInfo.website,
       };
 
       // Generate content
@@ -259,8 +315,15 @@ class BrandingController {
         `Test - ${documentType}`,
       );
 
-      res.setHeader("Content-Type", "text/html");
-      return res.send(html);
+      console.log(
+        "[BrandingController] Test HTML generated, length:",
+        html.length,
+      );
+
+      return res.json({
+        success: true,
+        html,
+      });
     } catch (error: any) {
       console.error("[BrandingController] Error getting test HTML:", error);
       return res.status(500).json({
