@@ -8,7 +8,7 @@
  */
 
 import Handlebars from "handlebars";
-import puppeteer, { PDFOptions } from "puppeteer";
+import { chromium } from "playwright";
 import prisma from "@config/database";
 import { azureBlobStorageService } from "@shared/storage/azure-blob-storage.service";
 import { brandingService } from "@core/services/branding.service";
@@ -279,7 +279,7 @@ export class TemplateService {
     html: string,
     options?: PDFGenerationOptions,
   ): Promise<Buffer> {
-    const browser = await puppeteer.launch({
+    const browser = await chromium.launch({
       headless: true,
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
@@ -289,12 +289,12 @@ export class TemplateService {
 
       // Establecer contenido
       await page.setContent(html, {
-        waitUntil: "networkidle0",
+        waitUntil: "networkidle",
       });
 
       // Opciones de PDF
-      const pdfOptions: PDFOptions = {
-        format: options?.format || "A4",
+      const pdfOptions = {
+        format: (options?.format || "A4") as "A4" | "Letter",
         landscape: options?.orientation === "landscape",
         margin: options?.margin || {
           top: "20mm",
