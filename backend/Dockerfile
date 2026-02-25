@@ -1,14 +1,13 @@
 # ==============================================
 # DivancoSaaS Backend - Production Dockerfile
-# Includes Chromium for Puppeteer PDF generation
+# Uses Playwright for PDF generation
 # ==============================================
 
 FROM node:20-slim
 
-# Install Chromium and dependencies
+# Install dependencies for Playwright browsers
 RUN apt-get update && apt-get install -y \
-    chromium \
-    chromium-sandbox \
+    ca-certificates \
     fonts-liberation \
     fonts-noto-color-emoji \
     libasound2 \
@@ -21,10 +20,11 @@ RUN apt-get update && apt-get install -y \
     libgtk-3-0 \
     libnspr4 \
     libnss3 \
+    libx11-6 \
     libxcomposite1 \
     libxdamage1 \
+    libxext6 \
     libxfixes3 \
-    libxkbcommon0 \
     libxrandr2 \
     xdg-utils \
     --no-install-recommends && \
@@ -36,8 +36,11 @@ WORKDIR /app
 COPY package*.json ./
 COPY prisma ./prisma/
 
-# Install ALL dependencies first (including dev for Prisma generation)
+# Install ALL dependencies first (including dev for Prisma generation and build)
 RUN npm install && npm cache clean --force
+
+# Install Playwright Chromium browser
+RUN npx playwright install --with-deps chromium
 
 # Generate Prisma Client
 RUN npx prisma generate
@@ -51,28 +54,8 @@ RUN npm run build
 # Remove dev dependencies for smaller image
 RUN npm prune --production
 
-# Puppeteer configuration to use installed Chromium
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
-
-# Create temp directory for Chrome with proper permissions
-RUN mkdir -p /tmp/.chrome && chmod 777 /tmp/.chrome
-
-# Environment variables for Chrome in Docker
-ENV CHROME_DEVEL_SANDBOX=/usr/lib/chromium/chrome-sandbox
-ENV TMPDIR=/tmp/.chrome
-ENV TEMP=/tmp/.chrome
-ENV TMP=/tmp/.chrome
-
 # Non-root user for security
 RUN groupadd -r nodejs && useradd -r -g nodejs -m nodejs
-
-# Create fake crash reports directory to satisfy crashpad_handler
-RUN mkdir -p /home/nodejs/.config/chromium/Crash\ Reports && \
-    touch /home/nodejs/.config/chromium/Crash\ Reports/uploads.log && \
-    chown -R nodejs:nodejs /home/nodejs/.config
-
-# Change ownership of app directory
 RUN chown -R nodejs:nodejs /app
 USER nodejs
 

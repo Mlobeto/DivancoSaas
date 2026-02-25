@@ -1,9 +1,9 @@
 /**
- * PDF Generation Service using Puppeteer
+ * PDF Generation Service using Playwright
  * Supports A4 and ticket (receipt) formats
  */
 
-import puppeteer from "puppeteer";
+import { chromium, Browser } from "playwright";
 import type { DocumentFormat } from "../types/branding.types";
 
 export interface PDFOptions {
@@ -18,58 +18,24 @@ export interface TicketDimensions {
 }
 
 class PDFGeneratorService {
-  private browserInstance: any = null;
+  private browserInstance: Browser | null = null;
 
   /**
    * Get or create browser instance (reuse for performance)
    */
-  private async getBrowser() {
+  private async getBrowser(): Promise<Browser> {
     if (!this.browserInstance) {
-      console.log("[PDFGenerator] Launching Puppeteer browser...");
+      console.log("[PDFGenerator] Launching Playwright Chromium...");
 
-      const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
-
-      if (executablePath) {
-        console.log("[PDFGenerator] Using Chromium from:", executablePath);
-      } else {
-        console.log("[PDFGenerator] Using Puppeteer bundled Chromium");
-      }
-
-      this.browserInstance = await puppeteer.launch({
+      this.browserInstance = await chromium.launch({
         headless: true,
-        executablePath,
         args: [
           "--no-sandbox",
           "--disable-setuid-sandbox",
           "--disable-dev-shm-usage",
-          "--disable-gpu",
-          "--disable-crash-reporter",
-          "--disable-breakpad",
-          "--disable-crash-reporting",
-          "--crash-dumps-dir=/dev/null", // Redirect crash dumps to /dev/null
-          "--disable-component-update",
-          "--disable-client-side-phishing-detection",
-          "--disable-sync",
-          "--metrics-recording-only",
-          "--no-crash-upload",
-          "--disable-extensions",
-          "--disable-background-timer-throttling",
-          "--disable-backgrounding-occluded-windows",
-          "--disable-renderer-backgrounding",
-          "--disable-ipc-flooding-protection",
-          "--no-first-run",
-          "--no-zygote",
-          "--single-process",
-          "--mute-audio",
-          "--hide-scrollbars",
-          "--disable-features=VizDisplayCompositor",
         ],
-        dumpio: false,
-        env: {
-          ...process.env,
-          TMPDIR: "/tmp/.chrome",
-        },
       });
+
       console.log("[PDFGenerator] Browser launched successfully");
     }
     return this.browserInstance;
@@ -90,9 +56,9 @@ class PDFGeneratorService {
     try {
       console.log("[PDFGenerator] Setting page content...");
 
-      // Set content
+      // Set content (Playwright uses 'networkidle' instead of 'networkidle0')
       await page.setContent(html, {
-        waitUntil: "networkidle0",
+        waitUntil: "networkidle",
       });
 
       console.log("[PDFGenerator] Content set, generating PDF...");
@@ -107,7 +73,6 @@ class PDFGeneratorService {
         // Ticket/Receipt format (80mm width, common for thermal printers)
         pdfBuffer = await page.pdf({
           width: "80mm",
-          height: "auto", // Dynamic height based on content
           printBackground: true,
           margin: {
             top: "5mm",
