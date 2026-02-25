@@ -43,6 +43,18 @@ class PDFGeneratorService {
           "--disable-setuid-sandbox",
           "--disable-dev-shm-usage",
           "--disable-gpu",
+          "--disable-crash-reporter", // Fix crash handler errors in Docker
+          "--disable-breakpad",
+          "--disable-extensions",
+          "--disable-background-timer-throttling",
+          "--disable-backgrounding-occluded-windows",
+          "--disable-renderer-backgrounding",
+          "--disable-ipc-flooding-protection",
+          "--no-first-run",
+          "--no-zygote",
+          "--single-process", // Critical for Docker environments
+          "--mute-audio",
+          "--hide-scrollbars",
         ],
       });
       console.log("[PDFGenerator] Browser launched successfully");
