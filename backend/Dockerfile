@@ -36,14 +36,17 @@ WORKDIR /app
 COPY package*.json ./
 COPY prisma ./prisma/
 
-# Install production dependencies
-RUN npm ci --only=production && npm cache clean --force
+# Install ALL dependencies first (including dev for Prisma generation)
+RUN npm install && npm cache clean --force
 
 # Generate Prisma Client
 RUN npx prisma generate
 
 # Copy source code
 COPY . .
+
+# Remove dev dependencies for smaller image
+RUN npm prune --production
 
 # Puppeteer configuration to use installed Chromium
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
