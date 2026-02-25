@@ -16,7 +16,7 @@ const RATE_LIMIT_WINDOW_MS = parseInt(
  */
 const keyGenerator = (req: any) => {
   let ip = req.ip || req.connection.remoteAddress || "unknown";
-  
+
   // Azure puede enviar "IP:PORT", extraer solo la IP
   // Buscamos el último ":" y verificamos si lo que sigue es un número (puerto)
   const lastColonIndex = ip.lastIndexOf(":");
@@ -27,7 +27,7 @@ const keyGenerator = (req: any) => {
       ip = ip.substring(0, lastColonIndex);
     }
   }
-  
+
   return ip;
 };
 
