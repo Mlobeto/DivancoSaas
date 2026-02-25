@@ -10,11 +10,33 @@ const RATE_LIMIT_WINDOW_MS = parseInt(
   process.env.RATE_LIMIT_WINDOW_MS || "900000",
 ); // 15 min default
 
+/**
+ * Custom key generator that handles IP:PORT format from Azure
+ * Azure App Service can send IPs with port like "181.0.214.91:6788"
+ */
+const keyGenerator = (req: any) => {
+  let ip = req.ip || req.connection.remoteAddress || "unknown";
+  
+  // Azure puede enviar "IP:PORT", extraer solo la IP
+  // Buscamos el último ":" y verificamos si lo que sigue es un número (puerto)
+  const lastColonIndex = ip.lastIndexOf(":");
+  if (lastColonIndex !== -1) {
+    const afterColon = ip.substring(lastColonIndex + 1);
+    // Si después del último ":" hay solo números, es un puerto
+    if (/^\d+$/.test(afterColon)) {
+      ip = ip.substring(0, lastColonIndex);
+    }
+  }
+  
+  return ip;
+};
+
 export const apiLimiter = rateLimit({
   windowMs: RATE_LIMIT_WINDOW_MS,
   max: RATE_LIMIT_MAX,
   standardHeaders: true, // Return rate limit info in headers
   legacyHeaders: false,
+  keyGenerator,
   message: {
     success: false,
     error: {
@@ -34,6 +56,7 @@ export const authLimiter = rateLimit({
   max: 10, // 10 attempts per window
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator,
   message: {
     success: false,
     error: {
@@ -52,6 +75,7 @@ export const passwordResetLimiter = rateLimit({
   max: 3, // 3 attempts per hour
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator,
   message: {
     success: false,
     error: {
