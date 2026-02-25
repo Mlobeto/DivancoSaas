@@ -39,8 +39,10 @@ COPY prisma ./prisma/
 # Install ALL dependencies first (including dev for Prisma generation and build)
 RUN npm install && npm cache clean --force
 
-# Install Playwright Chromium browser
-RUN npx playwright install --with-deps chromium
+# Install Playwright Chromium browser in a global location
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+RUN npx playwright install --with-deps chromium && \
+    chmod -R 755 /ms-playwright
 
 # Generate Prisma Client
 RUN npx prisma generate
@@ -57,6 +59,10 @@ RUN npm prune --production
 # Non-root user for security
 RUN groupadd -r nodejs && useradd -r -g nodejs -m nodejs
 RUN chown -R nodejs:nodejs /app
+
+# Set Playwright browsers path for runtime
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+
 USER nodejs
 
 # Expose port
