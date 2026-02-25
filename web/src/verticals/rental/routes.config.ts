@@ -58,6 +58,24 @@ const AccountsListPage = lazy(() =>
   })),
 );
 
+const OperatorsListPage = lazy(() =>
+  import("@/modules/rental/pages/OperatorsListPage").then((m) => ({
+    default: m.OperatorsListPage,
+  })),
+);
+
+const OperatorFormPage = lazy(() =>
+  import("@/modules/rental/pages/OperatorFormPage").then((m) => ({
+    default: m.OperatorFormPage,
+  })),
+);
+
+const OperatorDetailPage = lazy(() =>
+  import("@/modules/rental/pages/OperatorDetailPage").then((m) => ({
+    default: m.OperatorDetailPage,
+  })),
+);
+
 //================================================================
 // RENTAL VERTICAL ROUTE CONFIGURATION
 //================================================================
@@ -189,6 +207,53 @@ export const rentalRoutes: VerticalRouteConfig = {
         icon: "wallet",
       },
       chunkName: "accounts-list",
+    },
+
+    //------------------------------------------------------------
+    // OPERATORS
+    //------------------------------------------------------------
+    {
+      path: "operators",
+      element: OperatorsListPage,
+      protection: RouteProtection.AUTHENTICATED,
+      layout: RouteLayout.APP,
+      meta: {
+        title: "Operators",
+        breadcrumb: "Operators",
+        icon: "user-cog",
+      },
+      chunkName: "operators-list",
+    },
+    {
+      path: "operators/:id",
+      element: OperatorDetailPage,
+      protection: RouteProtection.AUTHENTICATED,
+      permissions: ["operators:read", "OWNER", "ADMIN", "MANAGER"],
+      meta: {
+        title: "Operator Details",
+        breadcrumb: "Details",
+      },
+      chunkName: "operators-detail",
+    },
+    {
+      path: "operators/new",
+      element: OperatorFormPage,
+      permissions: ["operators:create", "OWNER", "ADMIN", "MANAGER"],
+      meta: {
+        title: "New Operator",
+        breadcrumb: "New",
+      },
+      chunkName: "operators-create",
+    },
+    {
+      path: "operators/:id/edit",
+      element: OperatorFormPage,
+      permissions: ["operators:update", "OWNER", "ADMIN", "MANAGER"],
+      meta: {
+        title: "Edit Operator",
+        breadcrumb: "Edit",
+      },
+      chunkName: "operators-edit",
     },
   ],
 };
