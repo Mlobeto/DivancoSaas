@@ -233,36 +233,16 @@ export function TemplatePreviewPage() {
             </div>
           </div>
 
-          {template.logoUrl && (
-            <div className="card">
-              <h3 className="text-sm font-semibold text-dark-300 mb-3">
-                🖼️ Logo Cargado
-              </h3>
-              <img
-                src={template.logoUrl}
-                alt="Logo"
-                className="w-full h-auto rounded border border-dark-600 mb-2"
-                onError={() => {
-                  console.error("Error loading logo:", template.logoUrl);
-                }}
-              />
-              <p className="text-xs text-dark-400 mt-2">
-                El logo se mostrará en la parte superior del documento generado.
-              </p>
-            </div>
-          )}
-
-          {!template.logoUrl && (
-            <div className="card bg-yellow-900/20 border-yellow-800">
-              <h3 className="text-sm font-semibold text-yellow-400 mb-2">
-                ⚠️ Sin Logo
-              </h3>
-              <p className="text-xs text-yellow-400/80">
-                No se ha cargado un logo para esta plantilla. Puedes agregarlo
-                desde el editor.
-              </p>
-            </div>
-          )}
+          <div className="card bg-blue-900/10 border-blue-800">
+            <h3 className="text-sm font-semibold text-blue-300 mb-2">
+              ✨ Branding Automático
+            </h3>
+            <p className="text-xs text-blue-300/80">
+              Esta plantilla usará automáticamente el{" "}
+              <strong>logo, colores, fuente y footer</strong> configurados en el
+              branding de tu Business Unit al generar el PDF.
+            </p>
+          </div>
 
           <div className="card">
             <h3 className="text-sm font-semibold text-dark-300 mb-3">

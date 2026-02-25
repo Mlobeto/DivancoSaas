@@ -26,8 +26,18 @@ class PDFGeneratorService {
   private async getBrowser() {
     if (!this.browserInstance) {
       console.log("[PDFGenerator] Launching Puppeteer browser...");
+
+      const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+
+      if (executablePath) {
+        console.log("[PDFGenerator] Using Chromium from:", executablePath);
+      } else {
+        console.log("[PDFGenerator] Using Puppeteer bundled Chromium");
+      }
+
       this.browserInstance = await puppeteer.launch({
         headless: true,
+        executablePath,
         args: [
           "--no-sandbox",
           "--disable-setuid-sandbox",

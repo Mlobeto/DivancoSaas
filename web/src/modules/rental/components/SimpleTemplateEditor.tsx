@@ -195,6 +195,7 @@ export function SimpleTemplateEditor({
           <div className="space-y-2">
             {blocks.map((block) => (
               <button
+                type="button"
                 key={block.name}
                 onClick={() => handleInsertBlock(block.html)}
                 className="w-full text-left px-4 py-3 rounded-lg border border-dark-700 hover:border-primary-500 hover:bg-dark-800/50 bg-dark-800 transition-all group"

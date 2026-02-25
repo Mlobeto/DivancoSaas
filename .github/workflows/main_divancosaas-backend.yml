@@ -9,6 +9,11 @@ on:
       - main
   workflow_dispatch:
 
+env:
+  REGISTRY_NAME: divancosaas2026
+  IMAGE_NAME: divancosaas-backend
+  APP_NAME: divancosaas-backend
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -19,20 +24,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Deploy only source code - Azure Oryx will run:
-      #   1. npm install  (creates fresh node_modules.tar.gz)
-      #   2. POST_BUILD_COMMAND="npm run build"  (creates dist/)
-      # This avoids the stale node_modules.tar.gz problem.
-      - name: Create deployment zip (source only)
-        working-directory: ./backend
-        run: |
-          zip -r ../deploy.zip . \
-            --exclude "node_modules/*" \
-            --exclude "dist/*" \
-            --exclude "*.git*"
-          echo "Zip size:"
-          ls -lh ../deploy.zip
-
       - name: Login to Azure
         uses: azure/login@v2
         with:
@@ -40,9 +31,24 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_EFEBEF97B0BB48BE80D258C4AF5D8ECF }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_A5ADA5AEC81C4C9E986AD8A1111FBD2F }}
 
+      - name: Login to Azure Container Registry
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ env.REGISTRY_NAME }}.azurecr.io
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Build and push Docker image
+        working-directory: ./backend
+        run: |
+          docker build . -t ${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          docker build . -t ${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest
+          docker push ${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          docker push ${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest
+
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
-          app-name: "divancosaas-backend"
+          app-name: ${{ env.APP_NAME }}
           slot-name: "Production"
-          package: ./deploy.zip
+          images: ${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}

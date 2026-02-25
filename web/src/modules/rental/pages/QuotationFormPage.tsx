@@ -79,10 +79,14 @@ export function QuotationFormPage() {
     mutation,
   } = useQuotationForm();
 
-  const { data: clientsData } = useQuery({
+  const { data: clientsData, isLoading: loadingClients } = useQuery({
     queryKey: ["clients", "dropdown"],
     queryFn: () => clientService.list({ limit: 100 }),
   });
+
+  // Debug log
+  console.log("Clients data:", clientsData);
+  console.log("Loading clients:", loadingClients);
 
   const totals = calculateTotals();
 
@@ -178,14 +182,27 @@ export function QuotationFormPage() {
                   value={selectedClientId}
                   onChange={(e) => setSelectedClientId(e.target.value)}
                   required
+                  disabled={loadingClients}
                 >
-                  <option value="">-- Seleccione un cliente --</option>
+                  <option value="">
+                    {loadingClients
+                      ? "Cargando clientes..."
+                      : "-- Seleccione un cliente --"}
+                  </option>
                   {clientsData?.data?.map((client: any) => (
                     <option key={client.id} value={client.id}>
                       {client.name} - {client.email || client.phone}
                     </option>
                   ))}
                 </select>
+                {clientsData?.data && clientsData.data.length === 0 && (
+                  <p className="mt-2 text-sm text-yellow-600">
+                    No hay clientes registrados.{" "}
+                    <a href="/clients/new" className="underline">
+                      Crear cliente
+                    </a>
+                  </p>
+                )}
               </div>
             </div>
 
