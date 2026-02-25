@@ -45,6 +45,9 @@ RUN npx prisma generate
 # Copy source code
 COPY . .
 
+# Build TypeScript code (requires dev dependencies)
+RUN npm run build
+
 # Remove dev dependencies for smaller image
 RUN npm prune --production
 
