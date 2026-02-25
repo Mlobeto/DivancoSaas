@@ -45,7 +45,8 @@ class PDFGeneratorService {
           "--disable-gpu",
           "--disable-crash-reporter",
           "--disable-breakpad",
-          "--disable-crash-reporting", // Additional crash reporting flag
+          "--disable-crash-reporting",
+          "--crash-dumps-dir=/dev/null", // Redirect crash dumps to /dev/null
           "--disable-component-update",
           "--disable-client-side-phishing-detection",
           "--disable-sync",
@@ -58,15 +59,15 @@ class PDFGeneratorService {
           "--disable-ipc-flooding-protection",
           "--no-first-run",
           "--no-zygote",
-          "--single-process", // Critical for Docker environments
+          "--single-process",
           "--mute-audio",
           "--hide-scrollbars",
           "--disable-features=VizDisplayCompositor",
         ],
-        dumpio: false, // Don't dump browser process stderr
+        dumpio: false,
         env: {
           ...process.env,
-          TMPDIR: "/tmp/.chrome", // Use our writable temp directory
+          TMPDIR: "/tmp/.chrome",
         },
       });
       console.log("[PDFGenerator] Browser launched successfully");

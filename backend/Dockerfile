@@ -65,7 +65,14 @@ ENV TEMP=/tmp/.chrome
 ENV TMP=/tmp/.chrome
 
 # Non-root user for security
-RUN groupadd -r nodejs && useradd -r -g nodejs nodejs
+RUN groupadd -r nodejs && useradd -r -g nodejs -m nodejs
+
+# Create fake crash reports directory to satisfy crashpad_handler
+RUN mkdir -p /home/nodejs/.config/chromium/Crash\ Reports && \
+    touch /home/nodejs/.config/chromium/Crash\ Reports/uploads.log && \
+    chown -R nodejs:nodejs /home/nodejs/.config
+
+# Change ownership of app directory
 RUN chown -R nodejs:nodejs /app
 USER nodejs
 
