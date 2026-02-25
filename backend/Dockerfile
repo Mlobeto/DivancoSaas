@@ -57,7 +57,12 @@ ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 # Create temp directory for Chrome with proper permissions
 RUN mkdir -p /tmp/.chrome && chmod 777 /tmp/.chrome
+
+# Environment variables for Chrome in Docker
 ENV CHROME_DEVEL_SANDBOX=/usr/lib/chromium/chrome-sandbox
+ENV TMPDIR=/tmp/.chrome
+ENV TEMP=/tmp/.chrome
+ENV TMP=/tmp/.chrome
 
 # Non-root user for security
 RUN groupadd -r nodejs && useradd -r -g nodejs nodejs

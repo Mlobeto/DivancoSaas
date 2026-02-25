@@ -43,8 +43,14 @@ class PDFGeneratorService {
           "--disable-setuid-sandbox",
           "--disable-dev-shm-usage",
           "--disable-gpu",
-          "--disable-crash-reporter", // Fix crash handler errors in Docker
+          "--disable-crash-reporter",
           "--disable-breakpad",
+          "--disable-crash-reporting", // Additional crash reporting flag
+          "--disable-component-update",
+          "--disable-client-side-phishing-detection",
+          "--disable-sync",
+          "--metrics-recording-only",
+          "--no-crash-upload",
           "--disable-extensions",
           "--disable-background-timer-throttling",
           "--disable-backgrounding-occluded-windows",
@@ -55,7 +61,13 @@ class PDFGeneratorService {
           "--single-process", // Critical for Docker environments
           "--mute-audio",
           "--hide-scrollbars",
+          "--disable-features=VizDisplayCompositor",
         ],
+        dumpio: false, // Don't dump browser process stderr
+        env: {
+          ...process.env,
+          TMPDIR: "/tmp/.chrome", // Use our writable temp directory
+        },
       });
       console.log("[PDFGenerator] Browser launched successfully");
     }
