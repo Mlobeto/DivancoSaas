@@ -2,7 +2,19 @@
 
 ## 🎯 Objetivo
 
-Implementar el rol de OPERARIO como usuario especializado de la vertical rental que opera maquinaria pesada en obra y reporta evidencia desde la app móvil.
+Implementar el perfil de OPERARIO como extensión de User para empleados que operan activos (maquinaria pesada, vehículos, equipos) y reportan evidencia desde la app móvil.
+
+## 🏗️ Arquitectura: User + OperatorProfile (Perfil Opcional)
+
+**Decisión de diseño:** En lugar de crear un modelo independiente "Operator", extendemos el modelo User existente con un perfil opcional OperatorProfile (relación 1:1).
+
+**Ventajas:**
+
+- ✅ Aprovecha auth, permisos RBAC y auditoría existente
+- ✅ Un empleado puede ser bodeguero Y operario de vehículo
+- ✅ Single login para web + mobile
+- ✅ Escalable: mañana agregamos TechnicianProfile, DriverProfile, etc.
+- ✅ No duplica sistema de usuarios
 
 ## 📋 Casos de Uso
 

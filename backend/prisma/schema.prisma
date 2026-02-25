@@ -57,6 +57,7 @@ model Tenant {
   bulkRentalItems   BulkRentalItem[]
   documentTemplates DocumentTemplate[]
   emailTemplates    EmailTemplate[]
+  operatorProfiles  OperatorProfile[]
 
   @@index([slug])
   @@index([country])
@@ -114,6 +115,7 @@ model BusinessUnit {
   branding               BusinessUnitBranding?
   documentTemplates      DocumentTemplate[]
   emailTemplates         EmailTemplate[]
+  operatorProfiles       OperatorProfile[]
 
   @@unique([tenantId, slug])
   @@index([tenantId])
@@ -163,6 +165,9 @@ model User {
   // Stock management relations
   createdStockMovements  StockMovement[]  @relation("StockMovementCreator")
   createdBulkRentalItems BulkRentalItem[] @relation("BulkRentalItemCreator")
+
+  // Operator profile (optional 1:1 extension)
+  operatorProfile OperatorProfile?
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -851,27 +856,29 @@ model Asset {
   updatedAt DateTime @updatedAt
 
   // Relations
-  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  businessUnit       BusinessUnit        @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
-  template           AssetTemplate?      @relation(fields: [templateId], references: [id], onDelete: SetNull)
-  purchaseOrder      PurchaseOrder?      @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
-  supplier           Supplier?           @relation(fields: [supplierId], references: [id], onDelete: SetNull)
-  state              AssetState?
-  maintenanceRecords MaintenanceRecord[]
-  usages             AssetUsage[]
-  events             AssetEvent[]
-  attachments        AssetAttachment[]
-  supplyUsages       SupplyUsage[]
-  contractAssets     ContractAsset[]
-  usageReports       UsageReport[]
-  incidents          Incident[]
-  preventiveConfigs  PreventiveConfig[]
-  maintenanceEvents  MaintenanceEvent[]
-  stockTransactions  StockTransaction[]
-  quotationItems     QuotationItem[]
-  generatedFromItems PurchaseOrderItem[] @relation("GeneratedAsset")
-  purchaseOrderItems PurchaseOrderItem[]
-  assetRentals       AssetRental[] // Assets en alquiler activo
+  tenant               Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  businessUnit         BusinessUnit          @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
+  template             AssetTemplate?        @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  purchaseOrder        PurchaseOrder?        @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
+  supplier             Supplier?             @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  state                AssetState?
+  maintenanceRecords   MaintenanceRecord[]
+  usages               AssetUsage[]
+  events               AssetEvent[]
+  attachments          AssetAttachment[]
+  supplyUsages         SupplyUsage[]
+  contractAssets       ContractAsset[]
+  usageReports         UsageReport[]
+  incidents            Incident[]
+  preventiveConfigs    PreventiveConfig[]
+  maintenanceEvents    MaintenanceEvent[]
+  stockTransactions    StockTransaction[]
+  quotationItems       QuotationItem[]
+  generatedFromItems   PurchaseOrderItem[]   @relation("GeneratedAsset")
+  purchaseOrderItems   PurchaseOrderItem[]
+  assetRentals         AssetRental[] // Assets en alquiler activo
+  operatorAssignments  OperatorAssignment[]
+  operatorDailyReports OperatorDailyReport[]
 
   @@unique([businessUnitId, code])
   @@index([tenantId, businessUnitId])
@@ -1979,9 +1986,10 @@ model RentalContract {
   bulkItems     BulkRentalItem[] // BULK inventory items in this contract
 
   // Legacy relations (mantener compatibilidad)
-  contractAssets ContractAsset[]
-  usageReports   UsageReport[]
-  incidents      Incident[]
+  contractAssets      ContractAsset[]
+  usageReports        UsageReport[]
+  incidents           Incident[]
+  operatorAssignments OperatorAssignment[]
 
   @@unique([tenantId, code])
   @@index([tenantId, businessUnitId])
@@ -2520,4 +2528,305 @@ model EmailTemplate {
   @@index([tenantId, businessUnitId])
   @@index([emailType, isActive])
   @@map("email_templates")
+}
+
+// ============================================
+// RENTAL VERTICAL - OPERATOR PROFILES
+// ============================================
+
+// Perfil de operario (1:1 extension of User, OPTIONAL)
+// Allows a User to operate assets (machinery, vehicles, equipment)
+model OperatorProfile {
+  id             String @id @default(uuid())
+  userId         String @unique
+  tenantId       String
+  businessUnitId String
+
+  // Labor information
+  document     String // DNI/RUT/CC - National ID
+  phone        String
+  employeeCode String?
+  status       OperatorStatus @default(ACTIVE)
+  hireDate     DateTime
+  endDate      DateTime?
+
+  // Operation type authorization
+  operatorType OperatorType @default(GENERAL)
+
+  // Default rates
+  defaultRateType String? // "PER_DAY" | "PER_HOUR"
+  defaultRate     Decimal? @db.Decimal(10, 2)
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  businessUnit BusinessUnit @relation(fields: [businessUnitId], references: [id])
+
+  documents    OperatorDocument[]
+  assignments  OperatorAssignment[]
+  dailyReports OperatorDailyReport[]
+  expenses     OperatorExpense[]
+
+  @@unique([tenantId, businessUnitId, document])
+  @@index([tenantId, businessUnitId])
+  @@index([userId])
+  @@index([status])
+  @@map("operator_profiles")
+}
+
+enum OperatorStatus {
+  ACTIVE
+  INACTIVE
+  ON_LEAVE // Vacation or leave
+  SUSPENDED
+}
+
+enum OperatorType {
+  HEAVY_MACHINERY // Heavy machinery (excavators, cranes, bulldozers)
+  VEHICLE // Light vehicles (trucks, vans, cars)
+  EQUIPMENT // Specialized equipment/tools
+  GENERAL // Multiple types
+}
+
+// Operator documentation (licenses, certificates, insurance)
+model OperatorDocument {
+  id        String @id @default(uuid())
+  profileId String
+
+  type           OperatorDocumentType
+  name           String // "License A2", "Excavator Course", etc.
+  documentNumber String?
+  issueDate      DateTime?
+  expiryDate     DateTime?
+  fileUrl        String? // Azure Blob Storage
+  status         DocumentStatus       @default(PENDING)
+
+  // Metadata
+  uploadedAt DateTime  @default(now())
+  verifiedAt DateTime?
+  verifiedBy String? // userId of verifier
+  notes      String?
+
+  profile OperatorProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+  @@index([expiryDate]) // For expiration alerts
+  @@map("operator_documents")
+}
+
+enum OperatorDocumentType {
+  DRIVERS_LICENSE // Driver's license
+  MACHINERY_LICENSE // Machinery-specific license
+  TRAINING_CERTIFICATE // Training certificate
+  HEALTH_CERTIFICATE // Medical certificate
+  INSURANCE // Insurance/ARL
+  CONTRACT // Employment contract
+  OTHER
+}
+
+enum DocumentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+// Assignment of operator to a rental contract
+model OperatorAssignment {
+  id               String @id @default(uuid())
+  tenantId         String
+  profileId        String
+  rentalContractId String
+  assetId          String // Which asset they operate
+
+  startDate DateTime
+  endDate   DateTime?
+  status    AssignmentStatus @default(ACTIVE)
+
+  // Specific rates for this assignment (override defaults)
+  rateType String? // "PER_DAY" | "PER_HOUR"
+  rate     Decimal? @db.Decimal(10, 2)
+
+  // Expense authorization
+  allowExpenses     Boolean  @default(true)
+  dailyExpenseLimit Decimal? @db.Decimal(10, 2)
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String
+
+  // Relations
+  profile        OperatorProfile       @relation(fields: [profileId], references: [id])
+  rentalContract RentalContract        @relation(fields: [rentalContractId], references: [id])
+  asset          Asset                 @relation(fields: [assetId], references: [id])
+  dailyReports   OperatorDailyReport[]
+  expenses       OperatorExpense[]
+
+  @@index([profileId])
+  @@index([rentalContractId])
+  @@index([assetId])
+  @@index([status])
+  @@map("operator_assignments")
+}
+
+enum AssignmentStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+// Daily report from operator (mobile app)
+model OperatorDailyReport {
+  id           String @id @default(uuid())
+  tenantId     String
+  profileId    String
+  assignmentId String
+  assetId      String
+
+  date DateTime @db.Date
+
+  // Work shift
+  startTime DateTime?
+  endTime   DateTime?
+  workHours Decimal?  @db.Decimal(5, 2) // 8.5 hours
+
+  // Meter readings
+  hourMeter Decimal? @db.Decimal(10, 2)
+  odometer  Decimal? @db.Decimal(10, 2)
+  fuelLevel String? // "FULL", "3/4", "1/2", "1/4", "EMPTY"
+
+  // Location
+  locationLat  Decimal? @db.Decimal(10, 7)
+  locationLon  Decimal? @db.Decimal(10, 7)
+  locationName String? // "Villa del Mar Site, Sector A"
+
+  // Status and observations
+  assetCondition      AssetCondition @default(GOOD)
+  notes               String?
+  incidentReported    Boolean        @default(false)
+  maintenanceRequired Boolean        @default(false)
+
+  // Photo evidence
+  photos OperatorPhoto[]
+
+  // Sync (for offline-first)
+  syncStatus  SyncStatus @default(PENDING)
+  submittedAt DateTime   @default(now())
+  syncedAt    DateTime?
+
+  // Relations
+  profile    OperatorProfile    @relation(fields: [profileId], references: [id])
+  assignment OperatorAssignment @relation(fields: [assignmentId], references: [id])
+  asset      Asset              @relation(fields: [assetId], references: [id])
+
+  @@unique([assignmentId, date]) // One report per day per assignment
+  @@index([profileId])
+  @@index([date])
+  @@index([syncStatus])
+  @@map("operator_daily_reports")
+}
+
+enum AssetCondition {
+  EXCELLENT
+  GOOD
+  FAIR
+  POOR
+  NEEDS_REPAIR
+}
+
+enum SyncStatus {
+  PENDING // Queued for sync
+  SYNCED // Successfully synced
+  FAILED // Failed to sync
+}
+
+// Photo evidence from operator
+model OperatorPhoto {
+  id       String @id @default(uuid())
+  reportId String
+
+  type        PhotoType
+  description String?
+  fileUrl     String // Azure Blob Storage
+  fileName    String
+  mimeType    String
+  fileSize    Int
+
+  // Photo metadata
+  latitude   Decimal? @db.Decimal(10, 7)
+  longitude  Decimal? @db.Decimal(10, 7)
+  takenAt    DateTime
+  uploadedAt DateTime @default(now())
+
+  report OperatorDailyReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+  @@map("operator_photos")
+}
+
+enum PhotoType {
+  ASSET_START // Photo at shift start
+  ASSET_END // Photo at shift end
+  HOUROMETER // Hourometer/odometer photo
+  INCIDENT // Incident or damage photo
+  WORK_PROGRESS // Work progress photo
+  OTHER
+}
+
+// Operator expenses (per diem, fuel, tolls, etc.)
+model OperatorExpense {
+  id           String @id @default(uuid())
+  tenantId     String
+  profileId    String
+  assignmentId String
+
+  date        DateTime    @db.Date
+  type        ExpenseType
+  description String
+  amount      Decimal     @db.Decimal(10, 2)
+
+  // Evidence
+  receiptUrl String? // Photo of receipt
+
+  // Approval
+  status          ExpenseStatus @default(PENDING)
+  approvedAt      DateTime?
+  approvedBy      String?
+  rejectionReason String?
+
+  // Metadata
+  submittedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  profile    OperatorProfile    @relation(fields: [profileId], references: [id])
+  assignment OperatorAssignment @relation(fields: [assignmentId], references: [id])
+
+  @@index([profileId])
+  @@index([assignmentId])
+  @@index([status])
+  @@index([date])
+  @@map("operator_expenses")
+}
+
+enum ExpenseType {
+  FUEL
+  TOLL
+  PARKING
+  FOOD
+  TRANSPORT
+  ACCOMMODATION
+  OTHER
+}
+
+enum ExpenseStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PAID
 }
