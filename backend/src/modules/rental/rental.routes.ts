@@ -12,6 +12,7 @@ import { accountController } from "./controllers/account.controller";
 import { usageReportController } from "./controllers/usage-report.controller";
 import { rentalController } from "./controllers/rental.controller";
 import { jobsController } from "./controllers/jobs.controller";
+import { operatorController } from "./controllers/operator.controller";
 import { authenticate, authorize } from "@core/middlewares/auth.middleware";
 
 const router = Router();
@@ -375,6 +376,134 @@ router.post(
   authorize("templates:update"),
   upload.single("logo"),
   templateController.uploadLogo.bind(templateController),
+);
+
+// ============================================
+// OPERATORS (Perfiles de Operarios)
+// ============================================
+
+// --- ADMIN: Operator Profiles ---
+
+// Crear perfil de operario
+router.post(
+  "/operators",
+  authorize("operators:create"),
+  operatorController.create.bind(operatorController),
+);
+
+// Listar operarios
+router.get(
+  "/operators",
+  authorize("operators:read"),
+  operatorController.list.bind(operatorController),
+);
+
+// Obtener perfil por ID
+router.get(
+  "/operators/:id",
+  authorize("operators:read"),
+  operatorController.getById.bind(operatorController),
+);
+
+// Actualizar perfil
+router.patch(
+  "/operators/:id",
+  authorize("operators:update"),
+  operatorController.update.bind(operatorController),
+);
+
+// Eliminar perfil
+router.delete(
+  "/operators/:id",
+  authorize("operators:delete"),
+  operatorController.delete.bind(operatorController),
+);
+
+// --- ADMIN: Documents ---
+
+// Agregar documento al operario
+router.post(
+  "/operators/:id/documents",
+  authorize("operators:update"),
+  operatorController.addDocument.bind(operatorController),
+);
+
+// Actualizar documento (Admin verifica/aprueba)
+router.patch(
+  "/operators/documents/:documentId",
+  authorize("operators:update"),
+  operatorController.updateDocument.bind(operatorController),
+);
+
+// Eliminar documento
+router.delete(
+  "/operators/documents/:documentId",
+  authorize("operators:update"),
+  operatorController.deleteDocument.bind(operatorController),
+);
+
+// --- ADMIN: Assignments ---
+
+// Crear asignación
+router.post(
+  "/operators/:id/assignments",
+  authorize("operators:assign"),
+  operatorController.createAssignment.bind(operatorController),
+);
+
+// Obtener asignaciones de operario
+router.get(
+  "/operators/:id/assignments",
+  authorize("operators:read"),
+  operatorController.getAssignments.bind(operatorController),
+);
+
+// Actualizar asignación
+router.patch(
+  "/operators/assignments/:assignmentId",
+  authorize("operators:assign"),
+  operatorController.updateAssignment.bind(operatorController),
+);
+
+// --- ADMIN: Expense Approval ---
+
+// Aprobar/Rechazar viático
+router.post(
+  "/operators/expenses/:expenseId/approve",
+  authorize("operators:approve_expenses"),
+  operatorController.approveExpense.bind(operatorController),
+);
+
+// --- MOBILE: Operator Self-Service ---
+
+// Obtener mi perfil (Mobile)
+router.get(
+  "/operators/my/profile",
+  operatorController.getMyProfile.bind(operatorController),
+);
+
+// Crear reporte diario (Mobile)
+router.post(
+  "/operators/my/daily-reports",
+  operatorController.createDailyReport.bind(operatorController),
+);
+
+// Obtener mis reportes
+router.get(
+  "/operators/my/daily-reports",
+  operatorController.getMyDailyReports.bind(operatorController),
+);
+
+// Crear viático (Mobile)
+router.post(
+  "/operators/my/expenses",
+  operatorController.createExpense.bind(operatorController),
+);
+
+// Obtener mis viáticos
+router.get(
+  "/operators/my/expenses",
+  operatorController.getMyExpenses.bind(operatorController),
 );
 
 // ============================================
