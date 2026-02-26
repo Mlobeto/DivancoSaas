@@ -133,14 +133,15 @@ export function AddTimeBasedItemModal({
   // Reset form when asset changes
   useEffect(() => {
     if (asset) {
-      const trackingType = asset.rentalProfile?.trackingType || asset.trackingType;
-      const minDailyHours = asset.rentalProfile?.minDailyHours || asset.minDailyHours;
-      const operatorCostType = asset.rentalProfile?.operatorCostType || asset.operatorCostType;
-      
+      const trackingType =
+        asset.rentalProfile?.trackingType || asset.trackingType;
+      const minDailyHours =
+        asset.rentalProfile?.minDailyHours || asset.minDailyHours;
+      const operatorCostType =
+        asset.rentalProfile?.operatorCostType || asset.operatorCostType;
+
       setQuantity(1);
-      setRentalPeriodType(
-        trackingType === "MACHINERY" ? "hourly" : "daily",
-      );
+      setRentalPeriodType(trackingType === "MACHINERY" ? "hourly" : "daily");
       setStandbyHours(minDailyHours || 8);
       setOperatorIncluded(asset.requiresOperator);
       setOperatorCostType(operatorCostType || "PER_DAY");
@@ -154,7 +155,8 @@ export function AddTimeBasedItemModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    const trackingType = asset.rentalProfile?.trackingType || asset.trackingType;
+    const trackingType =
+      asset.rentalProfile?.trackingType || asset.trackingType;
 
     const itemData: TimeBasedItemData = {
       assetId: asset.id,
@@ -166,8 +168,7 @@ export function AddTimeBasedItemModal({
       startDate: estimatedStartDate,
       endDate: estimatedEndDate,
       rentalPeriodType,
-      standbyHours:
-        trackingType === "MACHINERY" ? standbyHours : undefined,
+      standbyHours: trackingType === "MACHINERY" ? standbyHours : undefined,
       operatorIncluded,
       operatorCostType: operatorIncluded ? operatorCostType : undefined,
       customUnitPrice,
@@ -291,31 +292,35 @@ export function AddTimeBasedItemModal({
 
             {/* Standby Hours (solo para MACHINERY) */}
             {(() => {
-              const trackingType = asset.rentalProfile?.trackingType || asset.trackingType;
-              return trackingType === "MACHINERY" && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-4 h-4" />
-                      Horas Standby (mínimo garantizado/día)
-                    </div>
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="24"
-                    value={standbyHours}
-                    onChange={(e) =>
-                      setStandbyHours(parseInt(e.target.value) || 8)
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Horas mínimas garantizadas de uso por día (afecta cálculo de
-                    precio)
-                  </p>
-              </div>
-            )}
+              const trackingType =
+                asset.rentalProfile?.trackingType || asset.trackingType;
+              return (
+                trackingType === "MACHINERY" && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4" />
+                        Horas Standby (mínimo garantizado/día)
+                      </div>
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="24"
+                      value={standbyHours}
+                      onChange={(e) =>
+                        setStandbyHours(parseInt(e.target.value) || 8)
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Horas mínimas garantizadas de uso por día (afecta cálculo
+                      de precio)
+                    </p>
+                  </div>
+                )
+              );
+            })()}
           </div>
 
           {/* Operario */}
@@ -360,8 +365,12 @@ export function AddTimeBasedItemModal({
                   <div className="flex justify-between">
                     <span>Tarifa operario:</span>
                     <span className="font-semibold">
-                      ${(asset.rentalProfile?.operatorCostRate || asset.operatorCostRate)?.toLocaleString() || 0}/
-                      {operatorCostType === "PER_HOUR" ? "hora" : "día"}
+                      $
+                      {(
+                        asset.rentalProfile?.operatorCostRate ||
+                        asset.operatorCostRate
+                      )?.toLocaleString() || 0}
+                      /{operatorCostType === "PER_HOUR" ? "hora" : "día"}
                     </span>
                   </div>
                   <div className="flex justify-between mt-1">
@@ -407,14 +416,18 @@ export function AddTimeBasedItemModal({
                 </span>
               </div>
               {(() => {
-                const trackingType = asset.rentalProfile?.trackingType || asset.trackingType;
-                const pricePerHour = asset.rentalProfile?.pricePerHour || asset.pricePerHour;
-                
-                return trackingType === "MACHINERY" && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    {estimatedDays} días × {standbyHours} hrs/día × $
-                    {pricePerHour}/hr
-                  </p>
+                const trackingType =
+                  asset.rentalProfile?.trackingType || asset.trackingType;
+                const pricePerHour =
+                  asset.rentalProfile?.pricePerHour || asset.pricePerHour;
+
+                return (
+                  trackingType === "MACHINERY" && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      {estimatedDays} días × {standbyHours} hrs/día × $
+                      {pricePerHour}/hr
+                    </p>
+                  )
                 );
               })()}
             </div>
