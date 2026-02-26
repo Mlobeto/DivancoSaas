@@ -14,6 +14,9 @@ const RATE_LIMIT_WINDOW_MS = parseInt(
  * Custom key generator that handles IP:PORT format from Azure
  * Azure App Service can send IPs with port like "181.0.214.91:6788"
  * Extracts clean IP for rate limiting
+ *
+ * Note: We disable IPv6 validation because we handle IP extraction manually
+ * from Azure's custom format. The req.ip is already normalized by Express.
  */
 const keyGenerator = (req: any): string => {
   let ip = req.ip || req.connection?.remoteAddress || "unknown";
@@ -29,12 +32,6 @@ const keyGenerator = (req: any): string => {
     }
   }
 
-  // Normalizar ::ffff: prefix para IPv4-mapped IPv6 addresses
-  // Esto asegura que ::ffff:127.0.0.1 y 127.0.0.1 sean tratados igual
-  if (ip.startsWith("::ffff:")) {
-    ip = ip.substring(7); // Remove "::ffff:" prefix
-  }
-
   return ip;
 };
 
@@ -44,6 +41,7 @@ export const apiLimiter = rateLimit({
   standardHeaders: true, // Return rate limit info in headers
   legacyHeaders: false,
   keyGenerator,
+  validate: { ip: false }, // Disable IPv6 validation - we handle IPs manually
   message: {
     success: false,
     error: {
@@ -64,6 +62,7 @@ export const authLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator,
+  validate: { ip: false }, // Disable IPv6 validation - we handle IPs manually
   message: {
     success: false,
     error: {
@@ -83,6 +82,7 @@ export const passwordResetLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator,
+  validate: { ip: false }, // Disable IPv6 validation - we handle IPs manually
   message: {
     success: false,
     error: {
