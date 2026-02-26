@@ -1,5 +1,6 @@
 import rateLimit from "express-rate-limit";
 import type { Request } from "express";
+import { isIP } from "node:net";
 
 /**
  * Rate limiting middleware
@@ -14,24 +15,29 @@ const RATE_LIMIT_WINDOW_MS = parseInt(
 /**
  * Azure puede enviar IPs con puerto (e.g. "181.0.205.126:18223")
  * o con prefijo IPv6-mapped (e.g. "::ffff:10.0.0.1").
- * Extraemos solo la IP limpia para que express-rate-limit no falle.
+ * Extraemos solo la IP limpia y validamos con isIP() de Node.
  */
 function extractCleanIp(req: Request): string {
   const raw =
     (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
     req.ip ||
     req.socket?.remoteAddress ||
-    "unknown";
+    "";
 
   // Strip IPv6-mapped prefix
   let ip = raw.replace(/^::ffff:/, "");
 
   // Strip port suffix from IPv4 (e.g. "181.0.205.126:18223" → "181.0.205.126")
-  if (ip.includes(".") && ip.includes(":")) {
+  if (ip.match(/^\d+\.\d+\.\d+\.\d+:\d+$/)) {
     ip = ip.split(":")[0];
   }
 
-  return ip || "unknown";
+  // Validación final: acepta IPv4 e IPv6
+  if (!isIP(ip)) {
+    return "0.0.0.0";
+  }
+
+  return ip;
 }
 
 const rateLimitOptions = {
