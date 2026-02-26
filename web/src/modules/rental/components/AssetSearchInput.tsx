@@ -66,7 +66,9 @@ export function AssetSearchInput({
                         {asset.name}
                       </h4>
                       <p className="text-sm text-gray-500">
-                        {asset.code} • {asset.trackingType}
+                        {asset.code} •{" "}
+                        {asset.rentalProfile?.trackingType ||
+                          asset.trackingType}
                       </p>
                     </div>
 
@@ -92,62 +94,90 @@ export function AssetSearchInput({
 
                   {/* Pricing Info */}
                   <div className="mt-2 text-xs text-gray-600 space-y-1">
-                    {asset.trackingType === "MACHINERY" && (
-                      <>
-                        {asset.pricePerHour && (
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">Por Hora:</span>
-                            <span className="font-mono">
-                              ${asset.pricePerHour.toLocaleString()}
-                            </span>
-                          </div>
-                        )}
-                        {asset.minDailyHours && (
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">STANDBY:</span>
-                            <span>{asset.minDailyHours} hrs/día</span>
-                          </div>
-                        )}
-                      </>
-                    )}
+                    {(() => {
+                      // Helper: Obtener precio con fallback desde rentalProfile
+                      const getPrice = (field: string) => {
+                        const profileValue =
+                          asset.rentalProfile?.[
+                            field as keyof typeof asset.rentalProfile
+                          ];
+                        const legacyValue = asset[field as keyof typeof asset];
+                        return profileValue ?? legacyValue;
+                      };
 
-                    {asset.trackingType === "TOOL" && (
-                      <div className="flex items-center gap-3">
-                        {asset.pricePerDay && (
-                          <span>
-                            <span className="font-medium">Día:</span> $
-                            {asset.pricePerDay.toLocaleString()}
-                          </span>
-                        )}
-                        {asset.pricePerWeek && (
-                          <span>
-                            <span className="font-medium">Semana:</span> $
-                            {asset.pricePerWeek.toLocaleString()}
-                          </span>
-                        )}
-                        {asset.pricePerMonth && (
-                          <span>
-                            <span className="font-medium">Mes:</span> $
-                            {asset.pricePerMonth.toLocaleString()}
-                          </span>
-                        )}
-                      </div>
-                    )}
+                      const trackingType =
+                        asset.rentalProfile?.trackingType || asset.trackingType;
+                      const pricePerHour = getPrice("pricePerHour");
+                      const minDailyHours = getPrice("minDailyHours");
+                      const pricePerDay = getPrice("pricePerDay");
+                      const pricePerWeek = getPrice("pricePerWeek");
+                      const pricePerMonth = getPrice("pricePerMonth");
+                      const operatorCostRate = getPrice("operatorCostRate");
+                      const operatorCostType =
+                        asset.rentalProfile?.operatorCostType ||
+                        asset.operatorCostType;
 
-                    {asset.requiresOperator && asset.operatorCostRate && (
-                      <div className="flex items-center gap-2 text-blue-600">
-                        <span className="font-medium">
-                          Operador (
-                          {asset.operatorCostType === "PER_DAY"
-                            ? "por día"
-                            : "por hora"}
-                          ):
-                        </span>
-                        <span className="font-mono">
-                          ${asset.operatorCostRate.toLocaleString()}
-                        </span>
-                      </div>
-                    )}
+                      return (
+                        <>
+                          {trackingType === "MACHINERY" && (
+                            <>
+                              {pricePerHour && (
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium">Por Hora:</span>
+                                  <span className="font-mono">
+                                    ${Number(pricePerHour).toLocaleString()}
+                                  </span>
+                                </div>
+                              )}
+                              {minDailyHours && (
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium">STANDBY:</span>
+                                  <span>{Number(minDailyHours)} hrs/día</span>
+                                </div>
+                              )}
+                            </>
+                          )}
+
+                          {trackingType === "TOOL" && (
+                            <div className="flex items-center gap-3">
+                              {pricePerDay && (
+                                <span>
+                                  <span className="font-medium">Día:</span> $
+                                  {Number(pricePerDay).toLocaleString()}
+                                </span>
+                              )}
+                              {pricePerWeek && (
+                                <span>
+                                  <span className="font-medium">Semana:</span> $
+                                  {Number(pricePerWeek).toLocaleString()}
+                                </span>
+                              )}
+                              {pricePerMonth && (
+                                <span>
+                                  <span className="font-medium">Mes:</span> $
+                                  {Number(pricePerMonth).toLocaleString()}
+                                </span>
+                              )}
+                            </div>
+                          )}
+
+                          {asset.requiresOperator && operatorCostRate && (
+                            <div className="flex items-center gap-2 text-blue-600">
+                              <span className="font-medium">
+                                Operador (
+                                {operatorCostType === "PER_DAY"
+                                  ? "por día"
+                                  : "por hora"}
+                                ):
+                              </span>
+                              <span className="font-mono">
+                                ${Number(operatorCostRate).toLocaleString()}
+                              </span>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
 
                   {/* Unavailability Info */}

@@ -91,12 +91,15 @@ export class QuotationService {
       };
     }
 
-    // Obtener asset con precios
+    // Obtener asset con precios (incluir rentalProfile para multi-vertical)
     const asset = await prisma.asset.findFirst({
       where: {
         id: item.assetId,
         tenantId,
         businessUnitId,
+      },
+      include: {
+        rentalProfile: true, // Extensión opcional para vertical rental
       },
     });
 
@@ -104,13 +107,21 @@ export class QuotationService {
       throw new Error(`Asset ${item.assetId} not found`);
     }
 
+    // Determinar trackingType con fallback
+    const trackingType =
+      asset.rentalProfile?.trackingType || asset.trackingType;
+
     // Calcular precio según trackingType y rentalDays
     let calculatedUnitPrice = 0;
     let calculatedOperatorCost = 0;
 
-    if (asset.trackingType === "MACHINERY") {
+    if (trackingType === "MACHINERY") {
       // MACHINERY: precio por hora con STANDBY
-      if (!asset.pricePerHour) {
+      // Verificar precio por hora con fallback (rentalProfile primero, luego legacy)
+      const pricePerHourValue =
+        asset.rentalProfile?.pricePerHour || asset.pricePerHour;
+
+      if (!pricePerHourValue) {
         throw new Error(
           `Asset ${asset.code} does not have pricePerHour configured`,
         );
@@ -119,24 +130,28 @@ export class QuotationService {
       const rentalDays: number = item.rentalDays || 1;
 
       // v4.0: Usar standbyHours del item o minDailyHours del asset como fallback
+      const minDailyHoursValue =
+        asset.rentalProfile?.minDailyHours || asset.minDailyHours;
       const standbyHours: number =
         item.standbyHours !== undefined
           ? item.standbyHours
-          : asset.minDailyHours
-            ? Number(asset.minDailyHours)
+          : minDailyHoursValue
+            ? Number(minDailyHoursValue)
             : 8;
 
       // Precio = días * standby horas * precio por hora
-      const pricePerHour: number = asset.pricePerHour
-        ? Number(asset.pricePerHour)
-        : 0;
+      const pricePerHour: number = Number(pricePerHourValue);
       calculatedUnitPrice = rentalDays * standbyHours * pricePerHour;
 
       // Calcular costo del operador si se incluye
-      if (item.operatorIncluded && asset.operatorCostRate) {
-        const operatorRate: number = Number(asset.operatorCostRate);
+      const operatorCostRateValue =
+        asset.rentalProfile?.operatorCostRate || asset.operatorCostRate;
+      if (item.operatorIncluded && operatorCostRateValue) {
+        const operatorRate: number = Number(operatorCostRateValue);
         // v4.0: Usar operatorCostType del item o del asset como fallback
-        const costType = item.operatorCostType || asset.operatorCostType;
+        const operatorCostTypeValue =
+          asset.rentalProfile?.operatorCostType || asset.operatorCostType;
+        const costType = item.operatorCostType || operatorCostTypeValue;
 
         if (costType === "PER_HOUR") {
           calculatedOperatorCost = rentalDays * standbyHours * operatorRate;
@@ -144,21 +159,29 @@ export class QuotationService {
           calculatedOperatorCost = rentalDays * operatorRate;
         }
       }
-    } else if (asset.trackingType === "TOOL") {
+    } else if (trackingType === "TOOL") {
       // TOOL: precio por día/semana/mes
       const rentalDays = item.rentalDays || 1;
 
-      if (rentalDays >= 30 && asset.pricePerMonth) {
+      // Fallback pattern para cada tipo de precio
+      const pricePerMonthValue =
+        asset.rentalProfile?.pricePerMonth || asset.pricePerMonth;
+      const pricePerWeekValue =
+        asset.rentalProfile?.pricePerWeek || asset.pricePerWeek;
+      const pricePerDayValue =
+        asset.rentalProfile?.pricePerDay || asset.pricePerDay;
+
+      if (rentalDays >= 30 && pricePerMonthValue) {
         // Usar precio mensual
         const months = Math.ceil(rentalDays / 30);
-        calculatedUnitPrice = months * Number(asset.pricePerMonth);
-      } else if (rentalDays >= 7 && asset.pricePerWeek) {
+        calculatedUnitPrice = months * Number(pricePerMonthValue);
+      } else if (rentalDays >= 7 && pricePerWeekValue) {
         // Usar precio semanal
         const weeks = Math.ceil(rentalDays / 7);
-        calculatedUnitPrice = weeks * Number(asset.pricePerWeek);
-      } else if (asset.pricePerDay) {
+        calculatedUnitPrice = weeks * Number(pricePerWeekValue);
+      } else if (pricePerDayValue) {
         // Usar precio diario
-        calculatedUnitPrice = rentalDays * Number(asset.pricePerDay);
+        calculatedUnitPrice = rentalDays * Number(pricePerDayValue);
       } else {
         throw new Error(`Asset ${asset.code} does not have pricing configured`);
       }

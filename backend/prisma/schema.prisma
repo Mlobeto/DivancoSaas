@@ -32,32 +32,33 @@ model Tenant {
   updatedAt DateTime @updatedAt
 
   // Relations
-  businessUnits     BusinessUnit[]
-  users             User[]
-  subscriptions     PlatformSubscription[]
-  auditLogs         AuditLog[]
-  eventQueue        EventQueue[]
-  assets            Asset[]
-  supplies          Supply[]
-  rentalContracts   RentalContract[]
-  suppliers         Supplier[]
-  supplyQuotes      SupplyQuote[]
-  purchaseOrders    PurchaseOrder[]
-  stockTransactions StockTransaction[]
-  supplyCategories  SupplyCategory[]
-  clients           Client[]
-  clientMovements   ClientAccountMovement[]
-  clientConfigs     ClientRankingConfig[]
-  clientBUs         ClientBusinessUnit[]
-  clientAccounts    ClientAccount[] // Cuentas de alquiler
-  templates         Template[]
-  quotations        Quotation[]
-  stockLevels       StockLevel[]
-  stockMovements    StockMovement[]
-  bulkRentalItems   BulkRentalItem[]
-  documentTemplates DocumentTemplate[]
-  emailTemplates    EmailTemplate[]
-  operatorProfiles  OperatorProfile[]
+  businessUnits       BusinessUnit[]
+  users               User[]
+  subscriptions       PlatformSubscription[]
+  auditLogs           AuditLog[]
+  eventQueue          EventQueue[]
+  assets              Asset[]
+  supplies            Supply[]
+  rentalContracts     RentalContract[]
+  suppliers           Supplier[]
+  supplyQuotes        SupplyQuote[]
+  purchaseOrders      PurchaseOrder[]
+  stockTransactions   StockTransaction[]
+  supplyCategories    SupplyCategory[]
+  clients             Client[]
+  clientMovements     ClientAccountMovement[]
+  clientConfigs       ClientRankingConfig[]
+  clientBUs           ClientBusinessUnit[]
+  clientAccounts      ClientAccount[] // Cuentas de alquiler
+  templates           Template[]
+  quotations          Quotation[]
+  stockLevels         StockLevel[]
+  stockMovements      StockMovement[]
+  bulkRentalItems     BulkRentalItem[]
+  documentTemplates   DocumentTemplate[]
+  emailTemplates      EmailTemplate[]
+  operatorProfiles    OperatorProfile[]
+  assetRentalProfiles AssetRentalProfile[]
 
   @@index([slug])
   @@index([country])
@@ -116,6 +117,7 @@ model BusinessUnit {
   documentTemplates      DocumentTemplate[]
   emailTemplates         EmailTemplate[]
   operatorProfiles       OperatorProfile[]
+  assetRentalProfiles    AssetRentalProfile[]
 
   @@unique([tenantId, slug])
   @@index([tenantId])
@@ -814,6 +816,7 @@ model Asset {
   supplierId      String? // Proveedor del activo
   purchaseDate    DateTime? // Fecha de compra
   purchasePrice   Decimal? // Precio de compra (puede diferir de acquisitionCost por impuestos/envío)
+  salePrice       Decimal?  @db.Decimal(12, 2) // OPCIONAL: Precio de venta (retail/liquidación)
 
   currentLocation String? // Ubicación actual del activo (obra, taller, bodega)
 
@@ -862,6 +865,7 @@ model Asset {
   purchaseOrder        PurchaseOrder?        @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
   supplier             Supplier?             @relation(fields: [supplierId], references: [id], onDelete: SetNull)
   state                AssetState?
+  rentalProfile        AssetRentalProfile? // 1:1 extensión opcional para rental vertical
   maintenanceRecords   MaintenanceRecord[]
   usages               AssetUsage[]
   events               AssetEvent[]
@@ -902,6 +906,58 @@ model AssetState {
 
   @@index([workflowId])
   @@map("asset_states")
+}
+
+// ============================================
+// RENTAL VERTICAL: Extensión de Asset para Alquiler
+// ============================================
+model AssetRentalProfile {
+  id             String @id @default(uuid())
+  assetId        String @unique
+  tenantId       String
+  businessUnitId String
+
+  // ═══════════════════════════════════════
+  // RENTAL: Tipo de tracking
+  // ═══════════════════════════════════════
+  trackingType String? // "MACHINERY" | "TOOL" | null
+
+  // ═══════════════════════════════════════
+  // RENTAL: Precios de alquiler
+  // ═══════════════════════════════════════
+
+  // Para MACHINERY (maquinaria con operario):
+  pricePerHour  Decimal? @db.Decimal(10, 2) // $625/hora
+  minDailyHours Decimal? @db.Decimal(5, 2) // STANDBY: Mínimo horas/día (ej: 3.0)
+  pricePerKm    Decimal? @db.Decimal(10, 2) // $5/km (opcional para vehículos)
+
+  // Para TOOL (herramientas sin operario):
+  pricePerDay   Decimal? @db.Decimal(10, 2) // $200/día
+  pricePerWeek  Decimal? @db.Decimal(10, 2) // $1,200/semana (opcional)
+  pricePerMonth Decimal? @db.Decimal(10, 2) // $4,500/mes (opcional)
+
+  // ═══════════════════════════════════════
+  // RENTAL: Costos de operador
+  // ═══════════════════════════════════════
+  operatorCostType String? // "PER_DAY" | "PER_HOUR" | null (sin operario)
+  operatorCostRate Decimal? @db.Decimal(10, 2) // $3,000/día OR $375/hora
+
+  // ═══════════════════════════════════════
+  // RENTAL: Mantenimiento
+  // ═══════════════════════════════════════
+  maintenanceCostDaily Decimal? @db.Decimal(10, 2) // Costo diario de mantenimiento
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  asset        Asset        @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  businessUnit BusinessUnit @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, businessUnitId])
+  @@index([trackingType])
+  @@map("asset_rental_profiles")
 }
 
 model AssetEvent {

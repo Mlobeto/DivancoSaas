@@ -8,6 +8,7 @@ import type {
   RentalPeriodType,
   OperatorCostType,
 } from "../types/quotation.types.ts";
+import type { AssetRentalProfile } from "@/modules/inventory/services/assets.service";
 
 export interface AssetSearchResult {
   id: string;
@@ -23,6 +24,7 @@ export interface AssetSearchResult {
   operatorCostType: "PER_HOUR" | "PER_DAY" | null;
   operatorCostRate: number | null;
   requiresOperator: boolean;
+  rentalProfile?: AssetRentalProfile; // Multi-vertical extension
   availability: {
     available: boolean;
     status: "available" | "in_use" | "maintenance";
@@ -138,39 +140,57 @@ export function useQuotationForm() {
     (item: QuotationItem, asset?: AssetSearchResult) => {
       if (!asset && !item.assetId) return;
 
+      // Helper: Obtener valor con fallback desde rentalProfile (multi-vertical)
+      const getPrice = (field: keyof AssetRentalProfile) => {
+        if (!asset) return 0;
+        const profileValue = asset.rentalProfile?.[field];
+        const legacyValue = asset[field as keyof AssetSearchResult];
+        return Number(profileValue ?? legacyValue ?? 0);
+      };
+
+      const trackingType =
+        asset?.rentalProfile?.trackingType || asset?.trackingType;
+
       // For MACHINERY
-      if (item.trackingType === "MACHINERY") {
-        const pricePerHour = asset?.pricePerHour || 0;
+      if (trackingType === "MACHINERY") {
+        const pricePerHour = getPrice("pricePerHour");
+        const minDailyHours = getPrice("minDailyHours");
         // v4.0: Usar standbyHours del item
-        const standbyHours = item.standbyHours || asset?.minDailyHours || 8;
+        const standbyHours = item.standbyHours || minDailyHours || 8;
         item.calculatedUnitPrice =
           item.rentalDays * standbyHours * pricePerHour;
       }
       // For TOOL
-      else if (item.trackingType === "TOOL") {
-        if (item.rentalDays >= 30 && asset?.pricePerMonth) {
-          item.calculatedUnitPrice = asset.pricePerMonth;
-        } else if (item.rentalDays >= 7 && asset?.pricePerWeek) {
-          item.calculatedUnitPrice = asset.pricePerWeek;
+      else if (trackingType === "TOOL") {
+        const pricePerMonth = getPrice("pricePerMonth");
+        const pricePerWeek = getPrice("pricePerWeek");
+        const pricePerDay = getPrice("pricePerDay");
+
+        if (item.rentalDays >= 30 && pricePerMonth) {
+          item.calculatedUnitPrice = pricePerMonth;
+        } else if (item.rentalDays >= 7 && pricePerWeek) {
+          item.calculatedUnitPrice = pricePerWeek;
         } else {
-          item.calculatedUnitPrice =
-            (asset?.pricePerDay || 0) * item.rentalDays;
+          item.calculatedUnitPrice = pricePerDay * item.rentalDays;
         }
       }
 
       // Operator cost (v4.0: usar operatorCostType del item)
-      if (item.operatorIncluded && asset?.operatorCostRate) {
-        const costType =
-          item.operatorCostType || asset.operatorCostType || "PER_DAY";
+      const operatorCostRate = getPrice("operatorCostRate");
+      const operatorCostType =
+        asset?.rentalProfile?.operatorCostType || asset?.operatorCostType;
+
+      if (item.operatorIncluded && operatorCostRate) {
+        const costType = item.operatorCostType || operatorCostType || "PER_DAY";
 
         if (costType === "PER_HOUR") {
-          const standbyHours = item.standbyHours || asset.minDailyHours || 8;
+          const minDailyHours = getPrice("minDailyHours");
+          const standbyHours = item.standbyHours || minDailyHours || 8;
           item.calculatedOperatorCost =
-            item.rentalDays * standbyHours * asset.operatorCostRate;
+            item.rentalDays * standbyHours * operatorCostRate;
         } else {
           // PER_DAY
-          item.calculatedOperatorCost =
-            item.rentalDays * asset.operatorCostRate;
+          item.calculatedOperatorCost = item.rentalDays * operatorCostRate;
         }
       } else {
         item.calculatedOperatorCost = 0;
@@ -183,22 +203,30 @@ export function useQuotationForm() {
   const handleAddAsset = useCallback(
     (asset: AssetSearchResult) => {
       const today = new Date().toISOString().split("T")[0];
+
+      // Use rentalProfile with fallback for multi-vertical architecture
+      const trackingType =
+        asset.rentalProfile?.trackingType || asset.trackingType;
+      const minDailyHours =
+        asset.rentalProfile?.minDailyHours || asset.minDailyHours;
+      const operatorCostType =
+        asset.rentalProfile?.operatorCostType || asset.operatorCostType;
+
       const newItem: QuotationItem = {
         assetId: asset.id,
         assetName: asset.name,
         assetCode: asset.code,
-        trackingType: asset.trackingType,
+        trackingType: trackingType,
         quantity: 1,
         rentalDays: 1,
         startDate: today,
         endDate: today,
 
         // v4.0: Nuevos campos pre-llenados desde el asset
-        rentalPeriodType:
-          asset.trackingType === "MACHINERY" ? "hourly" : "daily",
-        standbyHours: asset.minDailyHours || 0,
+        rentalPeriodType: trackingType === "MACHINERY" ? "hourly" : "daily",
+        standbyHours: minDailyHours || 0,
         operatorIncluded: asset.requiresOperator,
-        operatorCostType: asset.operatorCostType || "PER_DAY",
+        operatorCostType: operatorCostType || "PER_DAY",
       };
 
       // Calculate preview prices

@@ -1,6 +1,26 @@
 import api from "@/lib/api";
 import type { ApiResponse } from "@/core/types/api.types";
 
+// Extensión opcional para vertical rental (multi-vertical architecture)
+export interface AssetRentalProfile {
+  id: string;
+  assetId: string;
+  tenantId: string;
+  businessUnitId: string;
+  trackingType?: "MACHINERY" | "TOOL";
+  pricePerHour?: number;
+  minDailyHours?: number;
+  pricePerKm?: number;
+  pricePerDay?: number;
+  pricePerWeek?: number;
+  pricePerMonth?: number;
+  operatorCostType?: "PER_HOUR" | "PER_DAY";
+  operatorCostRate?: number;
+  maintenanceCostDaily?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Asset {
   id: string;
   tenantId: string;
@@ -10,6 +30,8 @@ export interface Asset {
   name: string;
   assetType: string;
   acquisitionCost?: number;
+  purchasePrice?: number; // Legacy: Use acquisitionCost
+  salePrice?: number; // OPCIONAL: Precio de venta (retail/liquidación)
   origin?: string;
   currentLocation?: string;
   imageUrl?: string;
@@ -19,6 +41,20 @@ export interface Asset {
   requiresClinic: boolean;
   createdAt: string;
   updatedAt: string;
+
+  // Multi-vertical extension
+  rentalProfile?: AssetRentalProfile; // Extensión opcional para vertical rental
+
+  // Legacy rental fields (deprecated - use rentalProfile)
+  trackingType?: "MACHINERY" | "TOOL";
+  pricePerHour?: number;
+  minDailyHours?: number;
+  pricePerKm?: number;
+  pricePerDay?: number;
+  pricePerWeek?: number;
+  pricePerMonth?: number;
+  operatorCostType?: "PER_HOUR" | "PER_DAY";
+  operatorCostRate?: number;
 }
 
 export interface CreateAssetData {
@@ -27,6 +63,8 @@ export interface CreateAssetData {
   name: string;
   assetType: string;
   acquisitionCost?: number;
+  purchasePrice?: number; // Legacy
+  salePrice?: number; // OPCIONAL: Precio de venta (retail/liquidación)
   origin?: string;
   currentLocation?: string;
   customData?: any;
@@ -34,7 +72,7 @@ export interface CreateAssetData {
   requiresTracking?: boolean;
   requiresClinic?: boolean;
 
-  // Rental Configuration
+  // Rental Configuration (creates AssetRentalProfile if provided)
   trackingType?: "MACHINERY" | "TOOL" | null;
   pricePerHour?: number;
   minDailyHours?: number;

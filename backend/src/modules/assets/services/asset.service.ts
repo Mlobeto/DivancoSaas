@@ -75,6 +75,10 @@ export class AssetService {
       throw new Error("operatorCostType requires operatorCostRate");
     }
 
+    // Determinar si necesita crear rentalProfile
+    const hasRentalData =
+      data.trackingType || data.pricePerHour || data.pricePerDay;
+
     const asset = await this.prisma.asset.create({
       data: {
         tenantId,
@@ -97,7 +101,8 @@ export class AssetService {
         supplierId: data.supplierId,
         purchaseDate: data.purchaseDate,
         purchasePrice: data.purchasePrice,
-        // RENTAL: Tracking y precios
+        salePrice: data.salePrice,
+        // RENTAL: Mantener campos legacy para compatibilidad temporal
         trackingType: data.trackingType,
         pricePerHour: data.pricePerHour,
         minDailyHours: data.minDailyHours,
@@ -107,9 +112,29 @@ export class AssetService {
         operatorCostType: data.operatorCostType,
         operatorCostRate: data.operatorCostRate,
         maintenanceCostDaily: data.maintenanceCostDaily,
+        // Crear AssetRentalProfile si tiene datos rental
+        ...(hasRentalData && {
+          rentalProfile: {
+            create: {
+              tenantId,
+              businessUnitId,
+              trackingType: data.trackingType,
+              pricePerHour: data.pricePerHour,
+              minDailyHours: data.minDailyHours,
+              pricePerKm: data.pricePerKm,
+              pricePerDay: data.pricePerDay,
+              pricePerWeek: data.pricePerWeek,
+              pricePerMonth: data.pricePerMonth,
+              operatorCostType: data.operatorCostType,
+              operatorCostRate: data.operatorCostRate,
+              maintenanceCostDaily: data.maintenanceCostDaily,
+            },
+          },
+        }),
       },
       include: {
         state: true,
+        rentalProfile: true,
       },
     });
 
@@ -148,6 +173,7 @@ export class AssetService {
       },
       include: {
         state: true,
+        rentalProfile: true, // Incluir perfil rental si existe
         maintenanceRecords: {
           orderBy: { startedAt: "desc" },
           take: 5,
@@ -208,6 +234,7 @@ export class AssetService {
         orderBy: { createdAt: "desc" },
         include: {
           state: true,
+          rentalProfile: true, // Incluir perfil rental si existe
         },
       }),
       this.prisma.asset.count({ where }),
@@ -320,8 +347,70 @@ export class AssetService {
       },
       include: {
         state: true,
+        rentalProfile: true,
       },
     });
+
+    // Actualizar o crear AssetRentalProfile si hay datos rental
+    const hasRentalData =
+      data.trackingType !== undefined ||
+      data.pricePerHour !== undefined ||
+      data.pricePerDay !== undefined ||
+      data.pricePerWeek !== undefined ||
+      data.pricePerMonth !== undefined ||
+      data.operatorCostType !== undefined ||
+      data.operatorCostRate !== undefined;
+
+    if (hasRentalData) {
+      await this.prisma.assetRentalProfile.upsert({
+        where: { assetId: asset.id },
+        create: {
+          assetId: asset.id,
+          tenantId,
+          businessUnitId,
+          trackingType: data.trackingType,
+          pricePerHour: data.pricePerHour,
+          minDailyHours: data.minDailyHours,
+          pricePerKm: data.pricePerKm,
+          pricePerDay: data.pricePerDay,
+          pricePerWeek: data.pricePerWeek,
+          pricePerMonth: data.pricePerMonth,
+          operatorCostType: data.operatorCostType,
+          operatorCostRate: data.operatorCostRate,
+          maintenanceCostDaily: data.maintenanceCostDaily,
+        },
+        update: {
+          ...(data.trackingType !== undefined && {
+            trackingType: data.trackingType,
+          }),
+          ...(data.pricePerHour !== undefined && {
+            pricePerHour: data.pricePerHour,
+          }),
+          ...(data.minDailyHours !== undefined && {
+            minDailyHours: data.minDailyHours,
+          }),
+          ...(data.pricePerKm !== undefined && { pricePerKm: data.pricePerKm }),
+          ...(data.pricePerDay !== undefined && {
+            pricePerDay: data.pricePerDay,
+          }),
+          ...(data.pricePerWeek !== undefined && {
+            pricePerWeek: data.pricePerWeek,
+          }),
+          ...(data.pricePerMonth !== undefined && {
+            pricePerMonth: data.pricePerMonth,
+          }),
+          ...(data.operatorCostType !== undefined && {
+            operatorCostType: data.operatorCostType,
+          }),
+          ...(data.operatorCostRate !== undefined && {
+            operatorCostRate: data.operatorCostRate,
+          }),
+          ...(data.maintenanceCostDaily !== undefined && {
+            maintenanceCostDaily: data.maintenanceCostDaily,
+          }),
+        },
+      });
+    }
 
     // Emit asset updated event
     await this.prisma.assetEvent.create({
@@ -338,7 +427,14 @@ export class AssetService {
       },
     });
 
-    return asset;
+    // Retornar asset con rentalProfile actualizado
+    return this.prisma.asset.findFirst({
+      where: { id: asset.id },
+      include: {
+        state: true,
+        rentalProfile: true,
+      },
+    }) as Promise<Asset>;
   }
 
   /**

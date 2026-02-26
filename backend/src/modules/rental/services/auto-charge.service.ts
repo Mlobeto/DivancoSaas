@@ -351,7 +351,11 @@ export class AutoChargeService {
             actualReturnDate: null,
           },
           include: {
-            asset: true,
+            asset: {
+              include: {
+                rentalProfile: true, // Extensión opcional para vertical rental
+              },
+            },
             usageReports: {
               orderBy: { date: "desc" },
               take: 7, // Últimos 7 días
@@ -381,8 +385,11 @@ export class AutoChargeService {
             ) / rental.usageReports.length;
           estimatedDailyCost += avgDailyCost;
         } else {
-          // Sin reportes: Usar standby + operario
-          const standby = Number(rental.asset.minDailyHours || 0);
+          // Sin reportes: Usar standby + operario con fallback
+          const minDailyHoursValue =
+            rental.asset.rentalProfile?.minDailyHours ||
+            rental.asset.minDailyHours;
+          const standby = Number(minDailyHoursValue || 0);
           const machineryCost = standby * Number(rental.hourlyRate || 0);
           const operatorCost =
             rental.operatorCostType === "PER_DAY"

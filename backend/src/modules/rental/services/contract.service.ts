@@ -127,16 +127,22 @@ export class ContractService {
       throw new Error(`Contract status is ${contract.status}, must be active`);
     }
 
-    // 2. Validar asset
+    // 2. Validar asset (incluir rentalProfile para multi-vertical)
     const asset = await prisma.asset.findUnique({
       where: { id: params.assetId },
+      include: {
+        rentalProfile: true, // Extensión opcional para vertical rental
+      },
     });
 
     if (!asset) {
       throw new Error("Asset not found");
     }
 
-    if (!asset.trackingType) {
+    // Determinar trackingType con fallback
+    const trackingType =
+      asset.rentalProfile?.trackingType || asset.trackingType;
+    if (!trackingType) {
       throw new Error("Asset must have trackingType configured");
     }
 
@@ -148,19 +154,21 @@ export class ContractService {
       );
     }
 
-    // 4. Crear AssetRental
+    // 4. Crear AssetRental con fallback a valores legacy
     const rental = await prisma.assetRental.create({
       data: {
         contractId: params.contractId,
         assetId: params.assetId,
         withdrawalDate: new Date(),
         expectedReturnDate: params.expectedReturnDate,
-        trackingType: asset.trackingType,
+        trackingType: trackingType,
 
-        // Para MACHINERY
-        hourlyRate: asset.pricePerHour,
-        operatorCostType: asset.operatorCostType,
-        operatorCostRate: asset.operatorCostRate,
+        // Para MACHINERY - usar rentalProfile con fallback
+        hourlyRate: asset.rentalProfile?.pricePerHour || asset.pricePerHour,
+        operatorCostType:
+          asset.rentalProfile?.operatorCostType || asset.operatorCostType,
+        operatorCostRate:
+          asset.rentalProfile?.operatorCostRate || asset.operatorCostRate,
         initialHourometer: params.initialHourometer
           ? new Decimal(params.initialHourometer)
           : undefined,
@@ -174,8 +182,8 @@ export class ContractService {
           ? new Decimal(params.initialOdometer)
           : undefined,
 
-        // Para TOOL
-        dailyRate: asset.pricePerDay,
+        // Para TOOL - usar rentalProfile con fallback
+        dailyRate: asset.rentalProfile?.pricePerDay || asset.pricePerDay,
 
         withdrawalEvidence: params.evidenceUrls || [],
         notes: params.notes,

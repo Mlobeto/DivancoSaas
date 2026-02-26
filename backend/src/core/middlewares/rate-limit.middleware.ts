@@ -1,4 +1,4 @@
-import rateLimit, { ipKeyGenerator } from "express-rate-limit";
+import rateLimit from "express-rate-limit";
 
 /**
  * Rate limiting middleware
@@ -13,10 +13,10 @@ const RATE_LIMIT_WINDOW_MS = parseInt(
 /**
  * Custom key generator that handles IP:PORT format from Azure
  * Azure App Service can send IPs with port like "181.0.214.91:6788"
- * Uses ipKeyGenerator helper for proper IPv6 support
+ * Extracts clean IP for rate limiting
  */
-const keyGenerator = (req: any) => {
-  let ip = req.ip || req.connection.remoteAddress || "unknown";
+const keyGenerator = (req: any): string => {
+  let ip = req.ip || req.connection?.remoteAddress || "unknown";
 
   // Azure puede enviar "IP:PORT", extraer solo la IP
   // Buscamos el último ":" y verificamos si lo que sigue es un número (puerto)
@@ -29,10 +29,13 @@ const keyGenerator = (req: any) => {
     }
   }
 
-  // Usar el helper oficial para normalizar IPv6
+  // Normalizar ::ffff: prefix para IPv4-mapped IPv6 addresses
   // Esto asegura que ::ffff:127.0.0.1 y 127.0.0.1 sean tratados igual
-  req.ip = ip; // Actualizar req.ip con la IP limpia
-  return ipKeyGenerator(req);
+  if (ip.startsWith("::ffff:")) {
+    ip = ip.substring(7); // Remove "::ffff:" prefix
+  }
+
+  return ip;
 };
 
 export const apiLimiter = rateLimit({

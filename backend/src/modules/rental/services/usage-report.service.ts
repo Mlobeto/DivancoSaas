@@ -36,11 +36,15 @@ export class UsageReportService {
    * Procesar reporte diario del operario
    */
   async processUsageReport(params: ProcessUsageReportParams) {
-    // 1. Validar rental
+    // 1. Validar rental (incluir asset.rentalProfile para multi-vertical)
     const rental = await prisma.assetRental.findUnique({
       where: { id: params.rentalId },
       include: {
-        asset: true,
+        asset: {
+          include: {
+            rentalProfile: true, // Extensión opcional para vertical rental
+          },
+        },
         contract: {
           include: {
             clientAccount: true,
@@ -75,9 +79,11 @@ export class UsageReportService {
       throw new Error("Invalid hourometer reading: end < start");
     }
 
-    // 4. Aplicar STANDBY (mínimo garantizado)
+    // 4. Aplicar STANDBY (mínimo garantizado) con fallback
     const asset = rental.asset;
-    const minDailyHours = Number(asset.minDailyHours || 0);
+    const minDailyHoursValue =
+      asset.rentalProfile?.minDailyHours || asset.minDailyHours;
+    const minDailyHours = Number(minDailyHoursValue || 0);
     const hoursBilled = Math.max(hoursWorked, minDailyHours);
 
     // 5. Calcular costos
@@ -308,7 +314,11 @@ export class UsageReportService {
     const rental = await prisma.assetRental.findUnique({
       where: { id: params.rentalId },
       include: {
-        asset: true,
+        asset: {
+          include: {
+            rentalProfile: true, // Extensión opcional para vertical rental
+          },
+        },
       },
     });
 
@@ -332,7 +342,10 @@ export class UsageReportService {
       return { valid: false, error: "Invalid hourometer reading" };
     }
 
-    const minDailyHours = Number(rental.asset.minDailyHours || 0);
+    // Usar fallback para minDailyHours
+    const minDailyHoursValue =
+      rental.asset.rentalProfile?.minDailyHours || rental.asset.minDailyHours;
+    const minDailyHours = Number(minDailyHoursValue || 0);
     const hoursBilled = Math.max(hoursWorked, minDailyHours);
 
     return {

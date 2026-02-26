@@ -96,30 +96,63 @@ export function AssetFormPage() {
         requiresTracking: asset.requiresTracking,
         requiresClinic: asset.requiresClinic,
 
-        // Load rental pricing
-        trackingType: (asset as any).trackingType || null,
-        pricePerHour: (asset as any).pricePerHour
-          ? Number((asset as any).pricePerHour)
-          : undefined,
-        minDailyHours: (asset as any).minDailyHours
-          ? Number((asset as any).minDailyHours)
-          : undefined,
-        pricePerKm: (asset as any).pricePerKm
-          ? Number((asset as any).pricePerKm)
-          : undefined,
-        pricePerDay: (asset as any).pricePerDay
-          ? Number((asset as any).pricePerDay)
-          : undefined,
-        pricePerWeek: (asset as any).pricePerWeek
-          ? Number((asset as any).pricePerWeek)
-          : undefined,
-        pricePerMonth: (asset as any).pricePerMonth
-          ? Number((asset as any).pricePerMonth)
-          : undefined,
-        operatorCostType: (asset as any).operatorCostType || null,
-        operatorCostRate: (asset as any).operatorCostRate
-          ? Number((asset as any).operatorCostRate)
-          : undefined,
+        // Load rental pricing (with fallback to legacy fields for backward compatibility)
+        trackingType:
+          asset.rentalProfile?.trackingType ||
+          (asset as any).trackingType ||
+          null,
+        pricePerHour:
+          asset.rentalProfile?.pricePerHour || (asset as any).pricePerHour
+            ? Number(
+                asset.rentalProfile?.pricePerHour ||
+                  (asset as any).pricePerHour,
+              )
+            : undefined,
+        minDailyHours:
+          asset.rentalProfile?.minDailyHours || (asset as any).minDailyHours
+            ? Number(
+                asset.rentalProfile?.minDailyHours ||
+                  (asset as any).minDailyHours,
+              )
+            : undefined,
+        pricePerKm:
+          asset.rentalProfile?.pricePerKm || (asset as any).pricePerKm
+            ? Number(
+                asset.rentalProfile?.pricePerKm || (asset as any).pricePerKm,
+              )
+            : undefined,
+        pricePerDay:
+          asset.rentalProfile?.pricePerDay || (asset as any).pricePerDay
+            ? Number(
+                asset.rentalProfile?.pricePerDay || (asset as any).pricePerDay,
+              )
+            : undefined,
+        pricePerWeek:
+          asset.rentalProfile?.pricePerWeek || (asset as any).pricePerWeek
+            ? Number(
+                asset.rentalProfile?.pricePerWeek ||
+                  (asset as any).pricePerWeek,
+              )
+            : undefined,
+        pricePerMonth:
+          asset.rentalProfile?.pricePerMonth || (asset as any).pricePerMonth
+            ? Number(
+                asset.rentalProfile?.pricePerMonth ||
+                  (asset as any).pricePerMonth,
+              )
+            : undefined,
+        operatorCostType:
+          asset.rentalProfile?.operatorCostType ||
+          (asset as any).operatorCostType ||
+          null,
+        operatorCostRate:
+          asset.rentalProfile?.operatorCostRate ||
+          (asset as any).operatorCostRate
+            ? Number(
+                asset.rentalProfile?.operatorCostRate ||
+                  (asset as any).operatorCostRate,
+              )
+            : undefined,
       });
       setManuallyEditedCode(true); // In edit mode, code is already set
 

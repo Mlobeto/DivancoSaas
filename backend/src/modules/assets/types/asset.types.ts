@@ -23,6 +23,7 @@ export interface CreateAssetDTO {
   supplierId?: string; // Proveedor
   purchaseDate?: Date; // Fecha de compra
   purchasePrice?: number; // Precio de compra
+  salePrice?: number; // OPCIONAL: Precio de venta (retail/liquidación)
 
   // ═══════════════════════════════════════
   // RENTAL: Tipo de tracking y precios
@@ -61,6 +62,7 @@ export interface UpdateAssetDTO {
   supplierId?: string;
   purchaseDate?: Date;
   purchasePrice?: number;
+  salePrice?: number;
 
   // RENTAL: Precios y tracking
   trackingType?: "MACHINERY" | "TOOL" | null;

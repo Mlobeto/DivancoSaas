@@ -4,6 +4,7 @@ import type {
   RentalPeriodType,
   OperatorCostType,
 } from "../types/quotation.types";
+import type { AssetRentalProfile } from "@/modules/inventory/services/assets.service";
 
 interface AssetSearchResult {
   id: string;
@@ -19,6 +20,7 @@ interface AssetSearchResult {
   operatorCostType: "PER_HOUR" | "PER_DAY" | null;
   operatorCostRate: number | null;
   requiresOperator: boolean;
+  rentalProfile?: AssetRentalProfile; // Multi-vertical extension
 }
 
 interface AddTimeBasedItemModalProps {
@@ -78,29 +80,44 @@ export function AddTimeBasedItemModal({
   useEffect(() => {
     if (!asset) return;
 
+    // Helper: Obtener valor con fallback desde rentalProfile (multi-vertical)
+    const getPrice = (field: keyof AssetRentalProfile) => {
+      const profileValue = asset.rentalProfile?.[field];
+      const legacyValue = asset[field as keyof AssetSearchResult];
+      return profileValue ?? legacyValue ?? 0;
+    };
+
     // Calcular precio base según tipo de activo
     let basePrice = 0;
-    if (asset.trackingType === "MACHINERY") {
-      const hourlyRate = asset.pricePerHour || 0;
+    const trackingType =
+      asset.rentalProfile?.trackingType || asset.trackingType;
+
+    if (trackingType === "MACHINERY") {
+      const hourlyRate = Number(getPrice("pricePerHour"));
       basePrice = estimatedDays * standbyHours * hourlyRate;
-    } else if (asset.trackingType === "TOOL") {
-      if (estimatedDays >= 30 && asset.pricePerMonth) {
-        basePrice = asset.pricePerMonth;
-      } else if (estimatedDays >= 7 && asset.pricePerWeek) {
-        basePrice = asset.pricePerWeek;
+    } else if (trackingType === "TOOL") {
+      const pricePerMonth = Number(getPrice("pricePerMonth"));
+      const pricePerWeek = Number(getPrice("pricePerWeek"));
+      const pricePerDay = Number(getPrice("pricePerDay"));
+
+      if (estimatedDays >= 30 && pricePerMonth) {
+        basePrice = pricePerMonth;
+      } else if (estimatedDays >= 7 && pricePerWeek) {
+        basePrice = pricePerWeek;
       } else {
-        basePrice = (asset.pricePerDay || 0) * estimatedDays;
+        basePrice = pricePerDay * estimatedDays;
       }
     }
     setCalculatedPrice(basePrice);
 
     // Calcular costo de operario
     let operCost = 0;
-    if (operatorIncluded && asset.operatorCostRate) {
+    const operatorRate = Number(getPrice("operatorCostRate"));
+    if (operatorIncluded && operatorRate) {
       if (operatorCostType === "PER_HOUR") {
-        operCost = estimatedDays * standbyHours * asset.operatorCostRate;
+        operCost = estimatedDays * standbyHours * operatorRate;
       } else {
-        operCost = estimatedDays * asset.operatorCostRate;
+        operCost = estimatedDays * operatorRate;
       }
     }
     setCalculatedOperatorCost(operCost);
@@ -116,13 +133,17 @@ export function AddTimeBasedItemModal({
   // Reset form when asset changes
   useEffect(() => {
     if (asset) {
+      const trackingType = asset.rentalProfile?.trackingType || asset.trackingType;
+      const minDailyHours = asset.rentalProfile?.minDailyHours || asset.minDailyHours;
+      const operatorCostType = asset.rentalProfile?.operatorCostType || asset.operatorCostType;
+      
       setQuantity(1);
       setRentalPeriodType(
-        asset.trackingType === "MACHINERY" ? "hourly" : "daily",
+        trackingType === "MACHINERY" ? "hourly" : "daily",
       );
-      setStandbyHours(asset.minDailyHours || 8);
+      setStandbyHours(minDailyHours || 8);
       setOperatorIncluded(asset.requiresOperator);
-      setOperatorCostType(asset.operatorCostType || "PER_DAY");
+      setOperatorCostType(operatorCostType || "PER_DAY");
       setCustomUnitPrice(undefined);
       setCustomOperatorCost(undefined);
     }
@@ -133,18 +154,20 @@ export function AddTimeBasedItemModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    const trackingType = asset.rentalProfile?.trackingType || asset.trackingType;
+
     const itemData: TimeBasedItemData = {
       assetId: asset.id,
       assetName: asset.name,
       assetCode: asset.code,
-      trackingType: asset.trackingType,
+      trackingType: trackingType,
       quantity,
       rentalDays: estimatedDays,
       startDate: estimatedStartDate,
       endDate: estimatedEndDate,
       rentalPeriodType,
       standbyHours:
-        asset.trackingType === "MACHINERY" ? standbyHours : undefined,
+        trackingType === "MACHINERY" ? standbyHours : undefined,
       operatorIncluded,
       operatorCostType: operatorIncluded ? operatorCostType : undefined,
       customUnitPrice,
@@ -267,24 +290,26 @@ export function AddTimeBasedItemModal({
             </div>
 
             {/* Standby Hours (solo para MACHINERY) */}
-            {asset.trackingType === "MACHINERY" && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4" />
-                    Horas Standby (mínimo garantizado/día)
-                  </div>
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  max="24"
-                  value={standbyHours}
-                  onChange={(e) =>
-                    setStandbyHours(parseInt(e.target.value) || 8)
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                />
+            {(() => {
+              const trackingType = asset.rentalProfile?.trackingType || asset.trackingType;
+              return trackingType === "MACHINERY" && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4" />
+                      Horas Standby (mínimo garantizado/día)
+                    </div>
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="24"
+                    value={standbyHours}
+                    onChange={(e) =>
+                      setStandbyHours(parseInt(e.target.value) || 8)
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  />
                 <p className="text-xs text-gray-500 mt-1">
                   Horas mínimas garantizadas de uso por día (afecta cálculo de
                   precio)
@@ -335,7 +360,7 @@ export function AddTimeBasedItemModal({
                   <div className="flex justify-between">
                     <span>Tarifa operario:</span>
                     <span className="font-semibold">
-                      ${asset.operatorCostRate?.toLocaleString() || 0}/
+                      ${(asset.rentalProfile?.operatorCostRate || asset.operatorCostRate)?.toLocaleString() || 0}/
                       {operatorCostType === "PER_HOUR" ? "hora" : "día"}
                     </span>
                   </div>
@@ -381,12 +406,17 @@ export function AddTimeBasedItemModal({
                   ${calculatedPrice.toLocaleString()}
                 </span>
               </div>
-              {asset.trackingType === "MACHINERY" && (
-                <p className="text-xs text-gray-500 mt-1">
-                  {estimatedDays} días × {standbyHours} hrs/día × $
-                  {asset.pricePerHour}/hr
-                </p>
-              )}
+              {(() => {
+                const trackingType = asset.rentalProfile?.trackingType || asset.trackingType;
+                const pricePerHour = asset.rentalProfile?.pricePerHour || asset.pricePerHour;
+                
+                return trackingType === "MACHINERY" && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    {estimatedDays} días × {standbyHours} hrs/día × $
+                    {pricePerHour}/hr
+                  </p>
+                );
+              })()}
             </div>
 
             <div>
