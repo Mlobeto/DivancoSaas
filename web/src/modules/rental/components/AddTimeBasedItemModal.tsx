@@ -310,10 +310,10 @@ export function AddTimeBasedItemModal({
                     }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                   />
-                <p className="text-xs text-gray-500 mt-1">
-                  Horas mínimas garantizadas de uso por día (afecta cálculo de
-                  precio)
-                </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Horas mínimas garantizadas de uso por día (afecta cálculo de
+                    precio)
+                  </p>
               </div>
             )}
           </div>
