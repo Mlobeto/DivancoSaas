@@ -74,6 +74,25 @@ import { initializeRentalJobs } from "./modules/rental/rental.jobs";
 export function createApp(): Application {
   const app = express();
 
+  // ============================================
+  // HEALTH CHECK - ANTES de TODO (middleware, módulos, etc.)
+  // Azure mata el proceso si no responde rápido
+  // ============================================
+  app.get("/health", (req, res) => {
+    res.status(200).json({
+      status: "ok",
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+    });
+  });
+
+  // Root route - Azure default health probe
+  app.get("/", (req, res) => {
+    res.status(200).json({ status: "ok" });
+  });
+
+  console.log("[App] Health check routes registered");
+
   // Initialize business modules
   const assetsModule = new AssetsModule();
   assetsModule.initialize();
@@ -144,28 +163,27 @@ export function createApp(): Application {
     swaggerUi.setup(swaggerSpec) as any,
   );
 
-  // Health check - Super simple, sin dependencias
-  app.get("/health", async (req, res) => {
+  // Health check detallado con estado de DB (ya hay uno simple arriba)
+  app.get("/health/details", async (req, res) => {
     try {
-      // Intentar query con timeout de 2 segundos
       await Promise.race([
         prisma.$queryRaw`SELECT 1`,
         new Promise((_, reject) =>
           setTimeout(() => reject(new Error("DB timeout")), 2000),
         ),
       ]);
-
       res.status(200).json({
         status: "ok",
         timestamp: new Date().toISOString(),
         database: "connected",
+        uptime: process.uptime(),
       });
     } catch (error) {
-      // Si falla, aún respondemos 200 para que Azure no mate el proceso
       res.status(200).json({
         status: "starting",
         timestamp: new Date().toISOString(),
         database: "connecting",
+        uptime: process.uptime(),
       });
     }
   });

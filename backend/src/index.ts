@@ -31,12 +31,18 @@ async function runMigrations() {
 
 async function main() {
   try {
+    const startTime = Date.now();
+    console.log(`[Startup] Starting at ${new Date().toISOString()}`);
+    console.log(`[Startup] PORT=${config.port}, NODE_ENV=${config.nodeEnv}`);
+
     // Crear app PRIMERO para que health check responda inmediatamente
+    console.log(`[Startup] Creating Express app...`);
     const app = createApp();
+    console.log(`[Startup] App created in ${Date.now() - startTime}ms`);
 
     // Iniciar servidor ANTES de cualquier operación lenta
     const server = app.listen(config.port, () => {
-      console.log(`🚀 Server running on port ${config.port}`);
+      console.log(`🚀 Server running on port ${config.port} (took ${Date.now() - startTime}ms)`);
       console.log(`📊 Environment: ${config.nodeEnv}`);
       console.log(`🔗 Health check: http://localhost:${config.port}/health`);
       serverState.isReady = true; // Servidor listo INMEDIATAMENTE
@@ -56,13 +62,13 @@ async function connectDatabase() {
   try {
     console.log("🔄 Connecting to database...");
 
-    // Timeout de 10 segundos para conexión DB
+    // Timeout de 15 segundos para conexión DB
     await Promise.race([
       prisma.$connect(),
       new Promise((_, reject) =>
         setTimeout(
-          () => reject(new Error("DB connection timeout (10s)")),
-          10000,
+          () => reject(new Error("DB connection timeout (15s)")),
+          15000,
         ),
       ),
     ]);
@@ -70,14 +76,13 @@ async function connectDatabase() {
     console.log("✅ Database connected");
     serverState.dbConnected = true;
 
-    // Migraciones (si están habilitadas)
+    // Ejecutar migraciones en producción
     if (
-      config.nodeEnv === "production" &&
-      process.env.AUTO_MIGRATE === "true"
+      config.nodeEnv === "production"
     ) {
       await runMigrations();
     } else {
-      console.log("⏭️  Auto-migrations disabled, skipping...");
+      console.log("⏭️  Skipping migrations (not production)");
       serverState.migrationsComplete = true;
     }
   } catch (error) {

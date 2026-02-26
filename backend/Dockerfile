@@ -68,9 +68,9 @@ USER nodejs
 # Expose port
 EXPOSE 3000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+# Health check - increased start-period and retries for Azure
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=5 \
+    CMD node -e "const p=process.env.PORT||3000;require('http').get('http://localhost:'+p+'/health',(r)=>{process.exit(r.statusCode===200?0:1)}).on('error',()=>process.exit(1))"
 
-# Start command: migrate database and start server
-CMD ["sh", "-c", "npx prisma migrate deploy && npm run start"]
+# Start command: server handles DB connection and migrations internally
+CMD ["npm", "run", "start"]
