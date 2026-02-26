@@ -147,7 +147,20 @@ export function createApp(): Application {
   // Health check (simple - sin dependencias circulares)
   app.get("/health", async (req, res) => {
     try {
-      // Solo verificar conexión a DB
+      // Usar serverState para evitar queries durante startup
+      const { serverState } = await import("./index");
+      
+      if (!serverState.dbConnected) {
+        // Durante startup, antes de que la DB se conecte
+        return res.status(200).json({
+          status: "starting",
+          timestamp: new Date().toISOString(),
+          database: "connecting",
+          version: "1.0.0",
+        });
+      }
+      
+      // DB conectada, verificar con query
       await prisma.$queryRaw`SELECT 1`;
       
       res.status(200).json({
