@@ -7,6 +7,7 @@ import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "@config/swagger";
 
 import { config } from "@config/index";
+import prisma from "@config/database";
 import {
   errorHandler,
   notFoundHandler,
@@ -143,29 +144,23 @@ export function createApp(): Application {
     swaggerUi.setup(swaggerSpec) as any,
   );
 
-  // Health check (responde inmediatamente, incluso durante migraciones)
+  // Health check (simple - sin dependencias circulares)
   app.get("/health", async (req, res) => {
     try {
-      // Importar el estado de forma dinámica para evitar circular dependencies
-      const { serverState } = await import("./index");
-
-      const health = {
-        status: serverState.isReady ? "ok" : "initializing",
+      // Solo verificar conexión a DB
+      await prisma.$queryRaw`SELECT 1`;
+      
+      res.status(200).json({
+        status: "ok",
         timestamp: new Date().toISOString(),
-        database: serverState.dbConnected ? "connected" : "connecting",
-        migrations: serverState.migrationsComplete ? "complete" : "running",
-        ready: serverState.isReady,
-        error: serverState.error,
-      };
-
-      // Responder 200 OK incluso si está inicializando (para Azure health check)
-      // Si hay error, responder 503
-      const statusCode = serverState.error ? 503 : 200;
-      res.status(statusCode).json(health);
+        database: "connected",
+        version: "1.0.0",
+      });
     } catch (error) {
       res.status(503).json({
         status: "error",
         timestamp: new Date().toISOString(),
+        database: "disconnected",
         error: "Health check failed",
       });
     }

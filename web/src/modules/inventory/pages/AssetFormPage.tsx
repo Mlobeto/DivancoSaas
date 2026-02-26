@@ -23,12 +23,6 @@ export function AssetFormPage() {
   const { tenant, businessUnit } = useAuthStore();
   const isEditMode = !!id;
 
-  // Check if Rental vertical is enabled
-  const hasRentalEnabled =
-    tenant?.enabledModules?.includes("rental") ||
-    businessUnit?.enabledModules?.includes("rental") ||
-    false;
-
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
   const [showDocModal, setShowDocModal] = useState(false);
@@ -606,260 +600,257 @@ export function AssetFormPage() {
             </div>
           </div>
 
-          {/* Rental Configuration Card - Only show if Rental vertical is enabled */}
-          {hasRentalEnabled && (
-            <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-              <h2 className="text-lg font-semibold text-white mb-4">
-                ⚙️ Configuración de Alquiler (Rental)
-              </h2>
-              <p className="text-sm text-gray-400 mb-4">
-                Configura los precios y opciones de alquiler para este activo
+          {/* Rental Configuration Card - Siempre visible para arquitectura multi-vertical */}
+          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-white mb-4">
+              ⚙️ Configuración de Alquiler (Rental)
+            </h2>
+            <p className="text-sm text-gray-400 mb-4">
+              Configura los precios y opciones de alquiler para este activo
+            </p>
+
+            {/* Tracking Type */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Tipo de Seguimiento
+              </label>
+              <select
+                value={formData.trackingType || ""}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    trackingType: e.target.value
+                      ? (e.target.value as "MACHINERY" | "TOOL")
+                      : null,
+                  })
+                }
+                className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Sin configuración de alquiler</option>
+                <option value="MACHINERY">
+                  MAQUINARIA (Cobro por hora + km)
+                </option>
+                <option value="TOOL">
+                  HERRAMIENTA (Cobro por día/semana/mes)
+                </option>
+              </select>
+              <p className="text-xs text-gray-500 mt-1">
+                Selecciona cómo se realizará el seguimiento y cobro del alquiler
               </p>
-
-              {/* Tracking Type */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Tipo de Seguimiento
-                </label>
-                <select
-                  value={formData.trackingType || ""}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      trackingType: e.target.value
-                        ? (e.target.value as "MACHINERY" | "TOOL")
-                        : null,
-                    })
-                  }
-                  className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Sin configuración de alquiler</option>
-                  <option value="MACHINERY">
-                    MAQUINARIA (Cobro por hora + km)
-                  </option>
-                  <option value="TOOL">
-                    HERRAMIENTA (Cobro por día/semana/mes)
-                  </option>
-                </select>
-                <p className="text-xs text-gray-500 mt-1">
-                  Selecciona cómo se realizará el seguimiento y cobro del
-                  alquiler
-                </p>
-              </div>
-
-              {/* Pricing fields según trackingType */}
-              {formData.trackingType === "MACHINERY" && (
-                <div className="space-y-4 p-4 bg-blue-900/10 border border-blue-800 rounded-lg">
-                  <h3 className="text-sm font-semibold text-blue-300">
-                    Precios para MAQUINARIA
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-1">
-                        Precio por Hora ($)
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={formData.pricePerHour || ""}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            pricePerHour: e.target.value
-                              ? parseFloat(e.target.value)
-                              : undefined,
-                          })
-                        }
-                        placeholder="625.00"
-                        className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-1">
-                        Horas Mínimas por Día
-                      </label>
-                      <input
-                        type="number"
-                        step="0.5"
-                        min="0"
-                        value={formData.minDailyHours || ""}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            minDailyHours: e.target.value
-                              ? parseFloat(e.target.value)
-                              : undefined,
-                          })
-                        }
-                        placeholder="8"
-                        className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-1">
-                        Precio por Km ($)
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={formData.pricePerKm || ""}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            pricePerKm: e.target.value
-                              ? parseFloat(e.target.value)
-                              : undefined,
-                          })
-                        }
-                        placeholder="5.00"
-                        className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {formData.trackingType === "TOOL" && (
-                <div className="space-y-4 p-4 bg-green-900/10 border border-green-800 rounded-lg">
-                  <h3 className="text-sm font-semibold text-green-300">
-                    Precios para HERRAMIENTA
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-1">
-                        Precio por Día ($)
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={formData.pricePerDay || ""}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            pricePerDay: e.target.value
-                              ? parseFloat(e.target.value)
-                              : undefined,
-                          })
-                        }
-                        placeholder="200.00"
-                        className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-1">
-                        Precio por Semana ($)
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={formData.pricePerWeek || ""}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            pricePerWeek: e.target.value
-                              ? parseFloat(e.target.value)
-                              : undefined,
-                          })
-                        }
-                        placeholder="1200.00"
-                        className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-1">
-                        Precio por Mes ($)
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={formData.pricePerMonth || ""}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            pricePerMonth: e.target.value
-                              ? parseFloat(e.target.value)
-                              : undefined,
-                          })
-                        }
-                        placeholder="4500.00"
-                        className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Operator Cost (si requiresOperator=true) */}
-              {formData.requiresOperator && formData.trackingType && (
-                <div className="mt-4 p-4 bg-yellow-900/10 border border-yellow-800 rounded-lg">
-                  <h3 className="text-sm font-semibold text-yellow-300 mb-3">
-                    Costo de Operario
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-1">
-                        Tipo de Costo
-                      </label>
-                      <select
-                        value={formData.operatorCostType || ""}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            operatorCostType: e.target.value
-                              ? (e.target.value as "PER_HOUR" | "PER_DAY")
-                              : null,
-                          })
-                        }
-                        className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                      >
-                        <option value="">Sin costo de operario</option>
-                        <option value="PER_HOUR">Por Hora</option>
-                        <option value="PER_DAY">Por Día</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-1">
-                        Tarifa del Operario ($)
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={formData.operatorCostRate || ""}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            operatorCostRate: e.target.value
-                              ? parseFloat(e.target.value)
-                              : undefined,
-                          })
-                        }
-                        placeholder="3000.00"
-                        className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {!formData.trackingType && (
-                <div className="text-center py-8 text-gray-500">
-                  Selecciona un tipo de seguimiento para configurar precios de
-                  alquiler
-                </div>
-              )}
             </div>
-          )}
+
+            {/* Pricing fields según trackingType */}
+            {formData.trackingType === "MACHINERY" && (
+              <div className="space-y-4 p-4 bg-blue-900/10 border border-blue-800 rounded-lg">
+                <h3 className="text-sm font-semibold text-blue-300">
+                  Precios para MAQUINARIA
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      Precio por Hora ($)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.pricePerHour || ""}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          pricePerHour: e.target.value
+                            ? parseFloat(e.target.value)
+                            : undefined,
+                        })
+                      }
+                      placeholder="625.00"
+                      className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      Horas Mínimas por Día
+                    </label>
+                    <input
+                      type="number"
+                      step="0.5"
+                      min="0"
+                      value={formData.minDailyHours || ""}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          minDailyHours: e.target.value
+                            ? parseFloat(e.target.value)
+                            : undefined,
+                        })
+                      }
+                      placeholder="8"
+                      className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      Precio por Km ($)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.pricePerKm || ""}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          pricePerKm: e.target.value
+                            ? parseFloat(e.target.value)
+                            : undefined,
+                        })
+                      }
+                      placeholder="5.00"
+                      className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {formData.trackingType === "TOOL" && (
+              <div className="space-y-4 p-4 bg-green-900/10 border border-green-800 rounded-lg">
+                <h3 className="text-sm font-semibold text-green-300">
+                  Precios para HERRAMIENTA
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      Precio por Día ($)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.pricePerDay || ""}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          pricePerDay: e.target.value
+                            ? parseFloat(e.target.value)
+                            : undefined,
+                        })
+                      }
+                      placeholder="200.00"
+                      className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      Precio por Semana ($)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.pricePerWeek || ""}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          pricePerWeek: e.target.value
+                            ? parseFloat(e.target.value)
+                            : undefined,
+                        })
+                      }
+                      placeholder="1200.00"
+                      className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      Precio por Mes ($)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.pricePerMonth || ""}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          pricePerMonth: e.target.value
+                            ? parseFloat(e.target.value)
+                            : undefined,
+                        })
+                      }
+                      placeholder="4500.00"
+                      className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Operator Cost (si requiresOperator=true) */}
+            {formData.requiresOperator && formData.trackingType && (
+              <div className="mt-4 p-4 bg-yellow-900/10 border border-yellow-800 rounded-lg">
+                <h3 className="text-sm font-semibold text-yellow-300 mb-3">
+                  Costo de Operario
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      Tipo de Costo
+                    </label>
+                    <select
+                      value={formData.operatorCostType || ""}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          operatorCostType: e.target.value
+                            ? (e.target.value as "PER_HOUR" | "PER_DAY")
+                            : null,
+                        })
+                      }
+                      className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                    >
+                      <option value="">Sin costo de operario</option>
+                      <option value="PER_HOUR">Por Hora</option>
+                      <option value="PER_DAY">Por Día</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      Tarifa del Operario ($)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.operatorCostRate || ""}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          operatorCostRate: e.target.value
+                            ? parseFloat(e.target.value)
+                            : undefined,
+                        })
+                      }
+                      placeholder="3000.00"
+                      className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {!formData.trackingType && (
+              <div className="text-center py-8 text-gray-500">
+                Selecciona un tipo de seguimiento para configurar precios de
+                alquiler
+              </div>
+            )}
+          </div>
 
           {/* Image Upload Card */}
           <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
