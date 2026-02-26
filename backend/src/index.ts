@@ -34,36 +34,44 @@ async function main() {
     // Crear app PRIMERO para que health check responda inmediatamente
     const app = createApp();
 
-    // Iniciar servidor ANTES de migraciones para que Azure vea health check
+    // Iniciar servidor ANTES de cualquier operación lenta
     const server = app.listen(config.port, () => {
       console.log(`🚀 Server running on port ${config.port}`);
       console.log(`📊 Environment: ${config.nodeEnv}`);
       console.log(`🔗 Health check: http://localhost:${config.port}/health`);
+      serverState.isReady = true; // Servidor listo INMEDIATAMENTE
     });
 
-    // Verificar conexión a la base de datos
-    console.log("🔄 Connecting to database...");
-    await prisma.$connect();
-    console.log("✅ Database connected");
-    serverState.dbConnected = true;
+    // Conectar a DB en background (no bloquea health checks)
+    connectDatabase();
 
-    // Ejecutar migraciones en producción (después de que el servidor esté escuchando)
-    // TEMPORAL: Deshabilitado para evitar timeout en Azure
-    // Ejecutar manualmente: DATABASE_URL="..." npx prisma migrate deploy
-    if (config.nodeEnv === "production" && process.env.AUTO_MIGRATE === "true") {
-      await runMigrations();
-    } else {
-      console.log("⏭️  Auto-migrations disabled, skipping...");
-      serverState.migrationsComplete = true; // En dev, no hay migraciones automáticas
-    }
-
-    serverState.isReady = true;
-    console.log("✅ Server fully initialized and ready");
   } catch (error) {
     console.error("❌ Failed to start server:", error);
     serverState.error =
       error instanceof Error ? error.message : "Unknown error";
     process.exit(1);
+  }
+}
+
+async function connectDatabase() {
+  try {
+    console.log("🔄 Connecting to database...");
+    await prisma.$connect();
+    console.log("✅ Database connected");
+    serverState.dbConnected = true;
+
+    // Migraciones (si están habilitadas)
+    if (config.nodeEnv === "production" && process.env.AUTO_MIGRATE === "true") {
+      await runMigrations();
+    } else {
+      console.log("⏭️  Auto-migrations disabled, skipping...");
+      serverState.migrationsComplete = true;
+    }
+  } catch (error) {
+    console.error("❌ Database connection failed:", error);
+    serverState.error = error instanceof Error ? error.message : "DB connection failed";
+    // NO hacemos process.exit() - dejamos que el servidor siga corriendo
+    // El health check reportará el error de DB
   }
 }
 
