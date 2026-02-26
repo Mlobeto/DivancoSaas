@@ -41,7 +41,7 @@ function extractCleanIp(req: Request): string {
 }
 
 const rateLimitOptions = {
-  validate: { ip: false },
+  validate: false as const,
   keyGenerator: extractCleanIp,
 };
 
