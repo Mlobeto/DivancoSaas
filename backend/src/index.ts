@@ -48,9 +48,12 @@ async function main() {
     serverState.dbConnected = true;
 
     // Ejecutar migraciones en producción (después de que el servidor esté escuchando)
-    if (config.nodeEnv === "production") {
+    // TEMPORAL: Deshabilitado para evitar timeout en Azure
+    // Ejecutar manualmente: DATABASE_URL="..." npx prisma migrate deploy
+    if (config.nodeEnv === "production" && process.env.AUTO_MIGRATE === "true") {
       await runMigrations();
     } else {
+      console.log("⏭️  Auto-migrations disabled, skipping...");
       serverState.migrationsComplete = true; // En dev, no hay migraciones automáticas
     }
 
