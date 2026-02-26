@@ -42,7 +42,9 @@ async function main() {
 
     // Iniciar servidor ANTES de cualquier operación lenta
     const server = app.listen(config.port, () => {
-      console.log(`🚀 Server running on port ${config.port} (took ${Date.now() - startTime}ms)`);
+      console.log(
+        `🚀 Server running on port ${config.port} (took ${Date.now() - startTime}ms)`,
+      );
       console.log(`📊 Environment: ${config.nodeEnv}`);
       console.log(`🔗 Health check: http://localhost:${config.port}/health`);
       serverState.isReady = true; // Servidor listo INMEDIATAMENTE
@@ -77,9 +79,7 @@ async function connectDatabase() {
     serverState.dbConnected = true;
 
     // Ejecutar migraciones en producción
-    if (
-      config.nodeEnv === "production"
-    ) {
+    if (config.nodeEnv === "production") {
       await runMigrations();
     } else {
       console.log("⏭️  Skipping migrations (not production)");

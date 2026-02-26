@@ -1,4 +1,5 @@
 import rateLimit from "express-rate-limit";
+import type { Request } from "express";
 
 /**
  * Rate limiting middleware
@@ -11,11 +12,35 @@ const RATE_LIMIT_WINDOW_MS = parseInt(
 ); // 15 min default
 
 /**
- * NO usamos keyGenerator custom para evitar problemas con IPv6 validation
- * Express + Azure manejan las IPs correctamente por defecto
+ * Azure puede enviar IPs con puerto (e.g. "181.0.205.126:18223")
+ * o con prefijo IPv6-mapped (e.g. "::ffff:10.0.0.1").
+ * Extraemos solo la IP limpia para que express-rate-limit no falle.
  */
+function extractCleanIp(req: Request): string {
+  const raw =
+    (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
+    req.ip ||
+    req.socket?.remoteAddress ||
+    "unknown";
+
+  // Strip IPv6-mapped prefix
+  let ip = raw.replace(/^::ffff:/, "");
+
+  // Strip port suffix from IPv4 (e.g. "181.0.205.126:18223" → "181.0.205.126")
+  if (ip.includes(".") && ip.includes(":")) {
+    ip = ip.split(":")[0];
+  }
+
+  return ip || "unknown";
+}
+
+const rateLimitOptions = {
+  validate: { ip: false },
+  keyGenerator: extractCleanIp,
+};
 
 export const apiLimiter = rateLimit({
+  ...rateLimitOptions,
   windowMs: RATE_LIMIT_WINDOW_MS,
   max: RATE_LIMIT_MAX,
   standardHeaders: true,
@@ -34,6 +59,7 @@ export const apiLimiter = rateLimit({
  * Stricter rate limit for auth endpoints
  */
 export const authLimiter = rateLimit({
+  ...rateLimitOptions,
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 10, // 10 attempts per window
   standardHeaders: true,
@@ -52,6 +78,7 @@ export const authLimiter = rateLimit({
  * Very strict rate limit for password reset
  */
 export const passwordResetLimiter = rateLimit({
+  ...rateLimitOptions,
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 3, // 3 attempts per hour
   standardHeaders: true,
