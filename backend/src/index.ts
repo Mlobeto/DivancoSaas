@@ -44,7 +44,6 @@ async function main() {
 
     // Conectar a DB en background (no bloquea health checks)
     connectDatabase();
-
   } catch (error) {
     console.error("❌ Failed to start server:", error);
     serverState.error =
@@ -61,7 +60,10 @@ async function connectDatabase() {
     serverState.dbConnected = true;
 
     // Migraciones (si están habilitadas)
-    if (config.nodeEnv === "production" && process.env.AUTO_MIGRATE === "true") {
+    if (
+      config.nodeEnv === "production" &&
+      process.env.AUTO_MIGRATE === "true"
+    ) {
       await runMigrations();
     } else {
       console.log("⏭️  Auto-migrations disabled, skipping...");
@@ -69,7 +71,8 @@ async function connectDatabase() {
     }
   } catch (error) {
     console.error("❌ Database connection failed:", error);
-    serverState.error = error instanceof Error ? error.message : "DB connection failed";
+    serverState.error =
+      error instanceof Error ? error.message : "DB connection failed";
     // NO hacemos process.exit() - dejamos que el servidor siga corriendo
     // El health check reportará el error de DB
   }
