@@ -149,7 +149,7 @@ export function createApp(): Application {
     try {
       // Usar serverState para evitar queries durante startup
       const { serverState } = await import("./index");
-      
+
       if (!serverState.dbConnected) {
         // Durante startup, antes de que la DB se conecte
         return res.status(200).json({
@@ -159,10 +159,10 @@ export function createApp(): Application {
           version: "1.0.0",
         });
       }
-      
+
       // DB conectada, verificar con query
       await prisma.$queryRaw`SELECT 1`;
-      
+
       res.status(200).json({
         status: "ok",
         timestamp: new Date().toISOString(),
