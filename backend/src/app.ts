@@ -143,9 +143,32 @@ export function createApp(): Application {
     swaggerUi.setup(swaggerSpec) as any,
   );
 
-  // Health check
-  app.get("/health", (req, res) => {
-    res.json({ status: "ok", timestamp: new Date().toISOString() });
+  // Health check (responde inmediatamente, incluso durante migraciones)
+  app.get("/health", async (req, res) => {
+    try {
+      // Importar el estado de forma dinámica para evitar circular dependencies
+      const { serverState } = await import("./index");
+
+      const health = {
+        status: serverState.isReady ? "ok" : "initializing",
+        timestamp: new Date().toISOString(),
+        database: serverState.dbConnected ? "connected" : "connecting",
+        migrations: serverState.migrationsComplete ? "complete" : "running",
+        ready: serverState.isReady,
+        error: serverState.error,
+      };
+
+      // Responder 200 OK incluso si está inicializando (para Azure health check)
+      // Si hay error, responder 503
+      const statusCode = serverState.error ? 503 : 200;
+      res.status(statusCode).json(health);
+    } catch (error) {
+      res.status(503).json({
+        status: "error",
+        timestamp: new Date().toISOString(),
+        error: "Health check failed",
+      });
+    }
   });
 
   // Webhooks (ANTES de otros middlewares - necesita raw body)

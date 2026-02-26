@@ -3,6 +3,14 @@ import { config } from "@config/index";
 import prisma from "@config/database";
 import { execSync } from "child_process";
 
+// Estado del servidor para health checks
+export const serverState = {
+  isReady: false,
+  dbConnected: false,
+  migrationsComplete: false,
+  error: null as string | null,
+};
+
 async function runMigrations() {
   try {
     console.log("🔄 Running database migrations...");
@@ -12,33 +20,46 @@ async function runMigrations() {
       cwd: process.cwd(),
     });
     console.log("✅ Migrations completed successfully");
+    serverState.migrationsComplete = true;
   } catch (error) {
     console.error("❌ Migration failed:", error);
+    serverState.error =
+      error instanceof Error ? error.message : "Migration failed";
     throw error;
   }
 }
 
 async function main() {
   try {
-    // Verificar conexión a la base de datos
-    await prisma.$connect();
-    console.log("✅ Database connected");
-
-    // Ejecutar migraciones en producción
-    if (config.nodeEnv === "production") {
-      await runMigrations();
-    }
-
-    // Crear y arrancar servidor
+    // Crear app PRIMERO para que health check responda inmediatamente
     const app = createApp();
 
-    app.listen(config.port, () => {
+    // Iniciar servidor ANTES de migraciones para que Azure vea health check
+    const server = app.listen(config.port, () => {
       console.log(`🚀 Server running on port ${config.port}`);
       console.log(`📊 Environment: ${config.nodeEnv}`);
       console.log(`🔗 Health check: http://localhost:${config.port}/health`);
     });
+
+    // Verificar conexión a la base de datos
+    console.log("🔄 Connecting to database...");
+    await prisma.$connect();
+    console.log("✅ Database connected");
+    serverState.dbConnected = true;
+
+    // Ejecutar migraciones en producción (después de que el servidor esté escuchando)
+    if (config.nodeEnv === "production") {
+      await runMigrations();
+    } else {
+      serverState.migrationsComplete = true; // En dev, no hay migraciones automáticas
+    }
+
+    serverState.isReady = true;
+    console.log("✅ Server fully initialized and ready");
   } catch (error) {
     console.error("❌ Failed to start server:", error);
+    serverState.error =
+      error instanceof Error ? error.message : "Unknown error";
     process.exit(1);
   }
 }
