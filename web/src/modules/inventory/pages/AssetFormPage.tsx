@@ -907,6 +907,11 @@ export function AssetFormPage() {
                 Campos Personalizados
               </h2>
 
+              {/* DEBUG: Temporalmente muestra los datos crudos */}
+              <pre className="text-xs text-gray-400 mb-4 p-2 bg-gray-900 rounded overflow-auto max-h-40">
+                {JSON.stringify(selectedTemplate.customFields, null, 2)}
+              </pre>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {(selectedTemplate.customFields as any[]).map((field: any) => (
                   <div key={field.code}>
