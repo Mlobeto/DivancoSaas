@@ -55,7 +55,18 @@ async function main() {
 async function connectDatabase() {
   try {
     console.log("🔄 Connecting to database...");
-    await prisma.$connect();
+
+    // Timeout de 10 segundos para conexión DB
+    await Promise.race([
+      prisma.$connect(),
+      new Promise((_, reject) =>
+        setTimeout(
+          () => reject(new Error("DB connection timeout (10s)")),
+          10000,
+        ),
+      ),
+    ]);
+
     console.log("✅ Database connected");
     serverState.dbConnected = true;
 
@@ -75,6 +86,10 @@ async function connectDatabase() {
       error instanceof Error ? error.message : "DB connection failed";
     // NO hacemos process.exit() - dejamos que el servidor siga corriendo
     // El health check reportará el error de DB
+
+    // Reintentar conexión después de 5 segundos
+    console.log("🔄 Will retry DB connection in 5 seconds...");
+    setTimeout(() => connectDatabase(), 5000);
   }
 }
 
