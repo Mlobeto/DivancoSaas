@@ -39,6 +39,7 @@ export interface Asset {
   requiresOperator: boolean;
   requiresTracking: boolean;
   requiresClinic: boolean;
+  machineParts?: any[];
   createdAt: string;
   updatedAt: string;
 
@@ -82,6 +83,9 @@ export interface CreateAssetData {
   pricePerMonth?: number;
   operatorCostType?: "PER_HOUR" | "PER_DAY" | null;
   operatorCostRate?: number;
+
+  // Relación de partes (activos únicos)
+  machineParts?: any[];
 }
 
 export type UpdateAssetData = Partial<CreateAssetData>;

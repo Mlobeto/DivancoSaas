@@ -47,6 +47,19 @@ export const AssetCategoryLabels: Record<AssetCategory, string> = {
   [AssetCategory.SUPPLY_SAFETY]: "Equipo de Seguridad",
 };
 
+/** Determina si una categoría es alquilable (equipo/vehículo, no insumo) */
+export const isRentableCategory = (cat: AssetCategory) =>
+  [
+    AssetCategory.MACHINERY,
+    AssetCategory.IMPLEMENT,
+    AssetCategory.VEHICLE,
+    AssetCategory.TOOL,
+  ].includes(cat);
+
+/** Determina si una categoría es insumo/consumible */
+export const isSupplyCategory = (cat: AssetCategory) =>
+  cat.startsWith("SUPPLY_");
+
 export const FieldTypeLabels: Record<FieldType, string> = {
   [FieldType.TEXT]: "Texto",
   [FieldType.NUMBER]: "Número",
@@ -79,22 +92,30 @@ export interface AssetTemplate {
   businessUnitId: string;
   name: string;
   category: AssetCategory;
+  managementType: "UNIT" | "BULK";
   description?: string;
   icon?: string;
   requiresPreventiveMaintenance: boolean;
   requiresDocumentation: boolean;
 
+  // Stock
+  minStockLevel?: number;
+  requiresWeight?: boolean; // Si al registrar el activo se debe ingresar su peso
+
   // Nuevos campos RENTAL
-  attachments?: TemplateAttachments;
   presentation?: ProductPresentation;
   technicalSpecs?: Record<string, any>;
   compatibleWith?: CompatibilityConfig;
   businessRules?: BusinessRules;
-  rentalPricing?: RentalPricing; // Precios de alquiler y peso
+  rentalRules?: RentalRules; // Modalidades y reglas de alquiler
   hasExpiryDate: boolean;
   requiresLotTracking: boolean;
   isDangerous: boolean;
   hazardClass?: string;
+
+  // Relación de partes y mantenimiento preventivo
+  machineParts?: MachinePart[];
+  maintenanceSchedule?: MaintenanceScheduleItem[];
 
   customFields: CustomField[];
   createdAt: string;
@@ -146,40 +167,60 @@ export interface BusinessRules {
   autoSuggestSupplies?: string[];
 }
 
-export interface RentalPricing {
-  // Peso (para cálculo de transporte)
-  weight?: number; // kg
+export interface RentalRules {
+  // Modalidades habilitadas (los precios van en cada activo individual)
+  allowsHourly: boolean;
+  allowsDaily: boolean;
+  allowsWeekly: boolean;
+  allowsMonthly: boolean;
 
-  // Precios de alquiler (solo para MACHINERY, IMPLEMENT, VEHICLE, TOOL)
-  pricePerHour?: number; // Para MACHINERY principalmente
-  minDailyHours?: number; // STANDBY: horas mínimas garantizadas/día
-  pricePerDay?: number; // Para todos los alquilables
-  pricePerWeek?: number; // Opcional
-  pricePerMonth?: number; // Opcional
+  // Standby: horas mínimas garantizadas por día
+  // Aplica cuando se cobra por hora; en semana se calcula automáticamente
+  minDailyHours?: number;
 
-  // Costo de operario
-  operatorCostType?: "PER_DAY" | "PER_HOUR"; // null = sin operario
-  operatorCostRate?: number; // Tarifa del operario
+  // Operario
+  requiresOperator: boolean;
+  operatorBillingType?: "PER_DAY" | "PER_HOUR";
 
   // Transporte
-  pricePerKm?: number; // Costo por km de transporte (opcional)
+  chargesKm: boolean;
+}
+
+export interface MachinePart {
+  description: string;
+  quantity: number;
+  observations?: string;
+}
+
+export interface MaintenanceScheduleItem {
+  periodicity: string; // Ej: "250 horas", "ANUAL", "SEMANAL"
+  description: string;
+  requiredItems?: string;
 }
 
 export interface CreateTemplateInput {
   name: string;
   category: AssetCategory;
+  managementType?: "UNIT" | "BULK";
   description?: string;
   icon?: string;
   requiresPreventiveMaintenance: boolean;
   requiresDocumentation: boolean;
 
+  // Stock
+  minStockLevel?: number; // Solo BULK: alerta mínima de stock
+  requiresWeight?: boolean; // Si al crear el activo se debe registrar el peso
+
+  // Relácion de partes y mantenimiento preventivo
+  machineParts?: MachinePart[];
+  maintenanceSchedule?: MaintenanceScheduleItem[];
+
   // Nuevos campos RENTAL
-  attachments?: TemplateAttachments;
   presentation?: ProductPresentation;
   technicalSpecs?: Record<string, any>;
   compatibleWith?: CompatibilityConfig;
   businessRules?: BusinessRules;
-  rentalPricing?: RentalPricing; // Precios de alquiler y peso
+  rentalRules?: RentalRules; // Modalidades y reglas de alquiler
   hasExpiryDate?: boolean;
   requiresLotTracking?: boolean;
   isDangerous?: boolean;
@@ -192,16 +233,24 @@ export interface UpdateTemplateInput {
   name?: string;
   description?: string;
   icon?: string;
+  managementType?: "UNIT" | "BULK";
   requiresPreventiveMaintenance?: boolean;
   requiresDocumentation?: boolean;
 
+  // Stock
+  minStockLevel?: number;
+  requiresWeight?: boolean;
+
+  // Relación de partes y mantenimiento preventivo
+  machineParts?: MachinePart[];
+  maintenanceSchedule?: MaintenanceScheduleItem[];
+
   // Nuevos campos RENTAL
-  attachments?: TemplateAttachments;
   presentation?: ProductPresentation;
   technicalSpecs?: Record<string, any>;
   compatibleWith?: CompatibilityConfig;
   businessRules?: BusinessRules;
-  rentalPricing?: RentalPricing; // Precios de alquiler y peso
+  rentalRules?: RentalRules;
   hasExpiryDate?: boolean;
   requiresLotTracking?: boolean;
   isDangerous?: boolean;

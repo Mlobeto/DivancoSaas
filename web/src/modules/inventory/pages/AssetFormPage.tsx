@@ -12,8 +12,12 @@ import {
   assetsService,
   type CreateAssetData,
 } from "@/modules/inventory/services/assets.service";
-import { assetTemplateService } from "@/modules/inventory/services/asset-template.service";
-import { ArrowLeft, X, Image as ImageIcon } from "lucide-react";
+import {
+  assetTemplateService,
+  type MachinePart,
+  isSupplyCategory,
+} from "@/modules/inventory/services/asset-template.service";
+import { ArrowLeft, X, Image as ImageIcon, Trash2, Plus } from "lucide-react";
 import { AssetDocumentationModal } from "@/modules/inventory/components/AssetDocumentationModal";
 
 export function AssetFormPage() {
@@ -53,6 +57,7 @@ export function AssetFormPage() {
     pricePerMonth: undefined,
     operatorCostType: null,
     operatorCostRate: undefined,
+    machineParts: [],
   });
 
   // Fetch asset templates
@@ -147,6 +152,7 @@ export function AssetFormPage() {
                   (asset as any).operatorCostRate,
               )
             : undefined,
+        machineParts: (asset.machineParts as any[]) || [],
       });
       setManuallyEditedCode(true); // In edit mode, code is already set
 
@@ -995,6 +1001,150 @@ export function AssetFormPage() {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Parts List Card — only for non-supply individual assets */}
+          {selectedTemplate && !isSupplyCategory(selectedTemplate.category) && (
+            <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-white">
+                    🔩 Relación de Partes
+                  </h2>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Listado de componentes clave de este activo (motor, llantas,
+                    estibadores…)
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      machineParts: [
+                        ...((prev.machineParts as MachinePart[]) || []),
+                        { description: "", quantity: 1, observations: "" },
+                      ],
+                    }))
+                  }
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white text-sm rounded-lg transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  Agregar parte
+                </button>
+              </div>
+
+              {(!formData.machineParts ||
+                (formData.machineParts as MachinePart[]).length === 0) && (
+                <p className="text-sm text-gray-500 text-center py-4">
+                  Sin partes registradas. Haz clic en “Agregar parte” para
+                  comenzar.
+                </p>
+              )}
+
+              {(formData.machineParts as MachinePart[])?.length > 0 && (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-gray-400 text-xs text-left border-b border-gray-700">
+                        <th className="pb-2 pr-3">Descripción</th>
+                        <th className="pb-2 pr-3 w-24">Cantidad</th>
+                        <th className="pb-2 pr-3">Observación</th>
+                        <th className="pb-2 w-8"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(formData.machineParts as MachinePart[]).map(
+                        (part, idx) => (
+                          <tr key={idx} className="align-top">
+                            <td className="pr-3 pt-2">
+                              <input
+                                type="text"
+                                className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+                                placeholder="Ej: Motor principal"
+                                value={part.description}
+                                onChange={(e) =>
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    machineParts: (
+                                      prev.machineParts as MachinePart[]
+                                    ).map((p, i) =>
+                                      i === idx
+                                        ? { ...p, description: e.target.value }
+                                        : p,
+                                    ),
+                                  }))
+                                }
+                              />
+                            </td>
+                            <td className="pr-3 pt-2">
+                              <input
+                                type="number"
+                                min="0"
+                                className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+                                value={part.quantity}
+                                onChange={(e) =>
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    machineParts: (
+                                      prev.machineParts as MachinePart[]
+                                    ).map((p, i) =>
+                                      i === idx
+                                        ? {
+                                            ...p,
+                                            quantity:
+                                              parseInt(e.target.value) || 0,
+                                          }
+                                        : p,
+                                    ),
+                                  }))
+                                }
+                              />
+                            </td>
+                            <td className="pr-3 pt-2">
+                              <input
+                                type="text"
+                                className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+                                placeholder="Opcional"
+                                value={part.observations || ""}
+                                onChange={(e) =>
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    machineParts: (
+                                      prev.machineParts as MachinePart[]
+                                    ).map((p, i) =>
+                                      i === idx
+                                        ? { ...p, observations: e.target.value }
+                                        : p,
+                                    ),
+                                  }))
+                                }
+                              />
+                            </td>
+                            <td className="pt-2">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    machineParts: (
+                                      prev.machineParts as MachinePart[]
+                                    ).filter((_, i) => i !== idx),
+                                  }))
+                                }
+                                className="p-2 text-gray-500 hover:text-red-400 transition-colors"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        ),
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
 

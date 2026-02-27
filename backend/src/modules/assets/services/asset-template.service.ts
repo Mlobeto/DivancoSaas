@@ -21,10 +21,18 @@ export enum FieldType {
 }
 
 export enum AssetCategory {
+  // Equipos alquilables
   MACHINERY = "MACHINERY", // Maquinaria pesada
-  IMPLEMENT = "IMPLEMENT", // Implementos (andamios, herramientas)
+  IMPLEMENT = "IMPLEMENT", // Implementos (andamios, herramientas grandes)
   VEHICLE = "VEHICLE", // Vehículos
-  TOOL = "TOOL", // Herramientas menores
+  TOOL = "TOOL", // Herramientas eléctricas y manuales
+  // Insumos (consumibles, no se alquilan)
+  SUPPLY_FUEL = "SUPPLY_FUEL",
+  SUPPLY_OIL = "SUPPLY_OIL",
+  SUPPLY_PAINT = "SUPPLY_PAINT",
+  SUPPLY_SPARE_PART = "SUPPLY_SPARE_PART",
+  SUPPLY_CONSUMABLE = "SUPPLY_CONSUMABLE",
+  SUPPLY_SAFETY = "SUPPLY_SAFETY",
 }
 
 export enum AssetManagementType {
@@ -49,6 +57,18 @@ export interface CustomField {
   helperText?: string;
 }
 
+export interface MachinePart {
+  description: string;
+  quantity: number;
+  observations?: string;
+}
+
+export interface MaintenanceScheduleItem {
+  periodicity: string; // Ej: "250 horas", "ANUAL", "SEMANAL"
+  description: string;
+  requiredItems?: string; // Ej: "Aceite 15W-40, Filtro de motor"
+}
+
 export interface CreateTemplateInput {
   name: string;
   category: AssetCategory;
@@ -58,6 +78,10 @@ export interface CreateTemplateInput {
   requiresPreventiveMaintenance: boolean;
   requiresDocumentation?: boolean;
   customFields: CustomField[];
+  minStockLevel?: number;
+  requiresWeight?: boolean;
+  machineParts?: MachinePart[];
+  maintenanceSchedule?: MaintenanceScheduleItem[];
 }
 
 export interface UpdateTemplateInput {
@@ -68,6 +92,10 @@ export interface UpdateTemplateInput {
   requiresPreventiveMaintenance?: boolean;
   requiresDocumentation?: boolean;
   customFields?: CustomField[];
+  minStockLevel?: number;
+  requiresWeight?: boolean;
+  machineParts?: MachinePart[];
+  maintenanceSchedule?: MaintenanceScheduleItem[];
 }
 
 export interface ListTemplatesOptions {
@@ -210,6 +238,18 @@ export class AssetTemplateService {
         requiresPreventiveMaintenance: data.requiresPreventiveMaintenance,
         requiresDocumentation: data.requiresDocumentation ?? false,
         customFields: data.customFields as any,
+        ...(data.minStockLevel !== undefined && {
+          minStockLevel: data.minStockLevel,
+        }),
+        ...(data.requiresWeight !== undefined && {
+          requiresWeight: data.requiresWeight,
+        }),
+        ...(data.machineParts !== undefined && {
+          machineParts: data.machineParts as any,
+        }),
+        ...(data.maintenanceSchedule !== undefined && {
+          maintenanceSchedule: data.maintenanceSchedule as any,
+        }),
       },
       include: {
         businessUnit: true,
@@ -317,6 +357,18 @@ export class AssetTemplateService {
           requiresDocumentation: data.requiresDocumentation,
         }),
         ...(data.customFields && { customFields: data.customFields as any }),
+        ...(data.minStockLevel !== undefined && {
+          minStockLevel: data.minStockLevel,
+        }),
+        ...(data.requiresWeight !== undefined && {
+          requiresWeight: data.requiresWeight,
+        }),
+        ...(data.machineParts !== undefined && {
+          machineParts: data.machineParts as any,
+        }),
+        ...(data.maintenanceSchedule !== undefined && {
+          maintenanceSchedule: data.maintenanceSchedule as any,
+        }),
       },
     });
 

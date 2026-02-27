@@ -46,6 +46,9 @@ export interface CreateAssetDTO {
 
   // Costos de mantenimiento diario
   maintenanceCostDaily?: number; // ej: 50 ($/día)
+
+  // Relación de partes (únicos)
+  machineParts?: any[];
 }
 
 export interface UpdateAssetDTO {
@@ -75,6 +78,7 @@ export interface UpdateAssetDTO {
   operatorCostType?: "PER_DAY" | "PER_HOUR" | null;
   operatorCostRate?: number;
   maintenanceCostDaily?: number;
+  machineParts?: any[];
 }
 
 export interface AssetFilters {

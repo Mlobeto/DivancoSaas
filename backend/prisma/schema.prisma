@@ -717,6 +717,14 @@ model AssetTemplate {
   // Management type: individual tracking vs bulk inventory
   managementType AssetManagementType @default(UNIT)
 
+  // ═══════════════════════════════════════
+  // STOCK Y PESO
+  // ═══════════════════════════════════════
+  // Solo BULK: cantidad mínima antes de alertar a compras
+  minStockLevel  Int? // ej: 3 → si hay menos de 3 unidades disponibles, alertar
+  // Si al registrar un activo de este tipo se debe pedir el peso
+  requiresWeight Boolean @default(false)
+
   requiresPreventiveMaintenance Boolean @default(false)
   requiresDocumentation         Boolean @default(false) // Si requiere SOAT, Seguro, Certificaciones, etc.
 
@@ -734,6 +742,16 @@ model AssetTemplate {
   // RENTAL VERTICAL: Especificaciones técnicas
   // ═══════════════════════════════════════
   technicalSpecs Json? // Flexible: { power: "75HP", fuelType: "Diesel" } o { viscosity: "SAE 15W-40", apiGrade: "CI-4" }
+
+  // ═══════════════════════════════════════
+  // MAQUINARIA: Relación de partes
+  // ═══════════════════════════════════════
+  machineParts Json? // [{ description: "Llantas", quantity: 4, observations: "" }]
+
+  // ═══════════════════════════════════════
+  // MAQUINARIA: Plan de mantenimiento preventivo
+  // ═══════════════════════════════════════
+  maintenanceSchedule Json? // [{ periodicity: "250 horas", description: "Cambio aceite y filtros", requiredItems: "Aceite 15W-40, Filtro de motor" }]
 
   // ═══════════════════════════════════════
   // RENTAL VERTICAL: Compatibilidad con equipos
@@ -854,6 +872,11 @@ model Asset {
 
   // Datos dinámicos según template
   customData Json? // Almacena los valores de los customFields del template
+
+  // ═══════════════════════════════════════
+  // MAQUINARIA: Relación de partes (individual por activo)
+  // ═══════════════════════════════════════
+  machineParts Json? // [{ description: "Llantas", quantity: 4, observations: "" }]
 
   requiresOperator Boolean @default(false)
   requiresTracking Boolean @default(false)

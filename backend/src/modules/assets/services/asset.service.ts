@@ -95,6 +95,9 @@ export class AssetService {
         // Campos de template
         templateId: data.templateId,
         customData: data.customData,
+        ...(data.machineParts !== undefined && {
+          machineParts: data.machineParts as any,
+        }),
         imageUrl: data.imageUrl,
         // Campos de compra
         purchaseOrderId: data.purchaseOrderId,
@@ -307,6 +310,9 @@ export class AssetService {
           requiresClinic: data.requiresClinic,
         }),
         ...(data.customData !== undefined && { customData: data.customData }),
+        ...(data.machineParts !== undefined && {
+          machineParts: data.machineParts as any,
+        }),
         ...(data.imageUrl !== undefined && { imageUrl: data.imageUrl }),
         ...(data.supplierId !== undefined && { supplierId: data.supplierId }),
         ...(data.purchaseDate !== undefined && {

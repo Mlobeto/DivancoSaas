@@ -13,6 +13,7 @@ import { Layout } from "@/core/components/Layout";
 import { X, Save, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 import {
   assetTemplateService,
+  isRentableCategory,
   type CreateTemplateInput,
   AssetCategory,
 } from "@/modules/inventory/services/asset-template.service";
@@ -22,20 +23,9 @@ import {
   TechnicalSpecsStep,
   RentalPricingStep,
   BusinessRulesStep,
-  AttachmentsStep,
   PreviewStep,
 } from "@/modules/inventory/components/TemplateWizardSteps";
 import { EXAMPLE_TEMPLATES } from "@/modules/inventory/data/example-templates";
-
-// Helper para saber si una categoría es alquilable
-const isRentableCategory = (category: AssetCategory) => {
-  return [
-    AssetCategory.MACHINERY,
-    AssetCategory.IMPLEMENT,
-    AssetCategory.VEHICLE,
-    AssetCategory.TOOL,
-  ].includes(category);
-};
 
 // Pasos base (siempre visibles)
 const BASE_STEPS = [
@@ -44,18 +34,17 @@ const BASE_STEPS = [
   { id: 3, name: "Especificaciones", component: TechnicalSpecsStep },
 ];
 
-// Paso de pricing (solo para alquilables)
+// Paso de modalidades (solo para alquilables)
 const PRICING_STEP = {
   id: 4,
-  name: "Precios de Alquiler",
+  name: "Modalidades de Alquiler",
   component: RentalPricingStep,
 };
 
 // Pasos finales
 const FINAL_STEPS = [
   { id: 5, name: "Reglas de Negocio", component: BusinessRulesStep },
-  { id: 6, name: "Archivos", component: AttachmentsStep },
-  { id: 7, name: "Vista Previa", component: PreviewStep },
+  { id: 6, name: "Vista Previa", component: PreviewStep },
 ];
 
 export function TemplateWizardPage() {
@@ -69,8 +58,11 @@ export function TemplateWizardPage() {
     category: AssetCategory.MACHINERY,
     description: "",
     icon: "",
+    managementType: "UNIT",
     requiresPreventiveMaintenance: false,
+    requiresWeight: false,
     requiresDocumentation: false,
+    machineParts: [],
     customFields: [],
     hasExpiryDate: false,
     requiresLotTracking: false,
@@ -91,20 +83,23 @@ export function TemplateWizardPage() {
         category: existingTemplate.category,
         description: existingTemplate.description,
         icon: existingTemplate.icon || "",
+        managementType: existingTemplate.managementType ?? "UNIT",
+        minStockLevel: existingTemplate.minStockLevel,
+        requiresWeight: existingTemplate.requiresWeight ?? false,
         requiresPreventiveMaintenance:
           existingTemplate.requiresPreventiveMaintenance,
         requiresDocumentation: existingTemplate.requiresDocumentation || false,
         customFields: existingTemplate.customFields,
-        attachments: existingTemplate.attachments,
         presentation: existingTemplate.presentation,
         technicalSpecs: existingTemplate.technicalSpecs,
         compatibleWith: existingTemplate.compatibleWith,
         businessRules: existingTemplate.businessRules,
-        rentalPricing: existingTemplate.rentalPricing,
+        rentalRules: existingTemplate.rentalRules,
         hasExpiryDate: existingTemplate.hasExpiryDate,
         requiresLotTracking: existingTemplate.requiresLotTracking,
         isDangerous: existingTemplate.isDangerous,
         hazardClass: existingTemplate.hazardClass,
+        machineParts: (existingTemplate.machineParts as any) || [],
       });
     }
   }, [existingTemplate]);
