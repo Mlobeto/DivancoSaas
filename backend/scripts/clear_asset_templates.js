@@ -29,14 +29,29 @@ async function main() {
   }
 
   // Use findFirst because User unique key is composite in this schema
-  const superAdmin = await prisma.user.findFirst({
+  let superAdmin = await prisma.user.findFirst({
     where: { email: superAdminEmail },
   });
   if (!superAdmin) {
-    console.error(
-      `SuperAdmin with email "${superAdminEmail}" not found. Aborting.`,
+    console.warn(
+      `SuperAdmin with email "${superAdminEmail}" not found. Creating one.`,
     );
-    process.exit(1);
+    // create a new SuperAdmin with a random temporary password
+    const bcrypt = require("bcrypt");
+    const randomPassword = Math.random().toString(36).slice(-10) + "A1!";
+    const hashed = await bcrypt.hash(randomPassword, 10);
+    superAdmin = await prisma.user.create({
+      data: {
+        email: superAdminEmail,
+        password: hashed,
+        firstName: "Owner",
+        lastName: "Admin",
+        role: "SUPER_ADMIN",
+        status: "ACTIVE",
+        tenantId: null,
+      },
+    });
+    console.log(`Created SuperAdmin with password: ${randomPassword}`);
   }
 
   console.log("Found SuperAdmin:", superAdminEmail);
