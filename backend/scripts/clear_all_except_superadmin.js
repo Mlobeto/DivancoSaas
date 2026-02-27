@@ -12,9 +12,10 @@ const prisma = new PrismaClient();
 
 async function main() {
   const superAdminEmail = process.argv[2];
+  const resetPassword = process.argv.includes("--reset-password");
   if (!superAdminEmail) {
     console.error(
-      "Usage: node scripts/clear_all_except_superadmin.js <SuperAdminEmail>",
+      "Usage: node scripts/clear_all_except_superadmin.js <SuperAdminEmail> [--reset-password]",
     );
     process.exit(1);
   }
@@ -22,11 +23,8 @@ async function main() {
   let superAdmin = await prisma.user.findFirst({
     where: { email: superAdminEmail },
   });
+  const bcrypt = require("bcrypt");
   if (!superAdmin) {
-    console.warn(
-      `SuperAdmin with email "${superAdminEmail}" not found. Creating one.`,
-    );
-    const bcrypt = require("bcrypt");
     const randomPassword = Math.random().toString(36).slice(-10) + "A1!";
     const hashed = await bcrypt.hash(randomPassword, 10);
     superAdmin = await prisma.user.create({
@@ -41,37 +39,17 @@ async function main() {
       },
     });
     console.log(`Created SuperAdmin with password: ${randomPassword}`);
+  } else if (resetPassword) {
+    const randomPassword = Math.random().toString(36).slice(-10) + "A1!";
+    const hashed = await bcrypt.hash(randomPassword, 10);
+    await prisma.user.update({
+      where: { id: superAdmin.id },
+      data: { password: hashed },
+    });
+    console.log(`SuperAdmin password reset. New password: ${randomPassword}`);
   }
 
-  // Delete all users except SuperAdmin
-  await prisma.user.deleteMany({ where: { email: { not: superAdminEmail } } });
-
-  // Delete tenants, business units, clients, assets, templates, contracts, orders, etc.
-  await prisma.tenant.deleteMany({});
-  await prisma.businessUnit.deleteMany({});
-  await prisma.client.deleteMany({});
-  await prisma.asset.deleteMany({});
-  await prisma.assetTemplate.deleteMany({});
-  await prisma.purchaseOrder.deleteMany({});
-  await prisma.purchaseOrderItem.deleteMany({});
-  await prisma.contract.deleteMany({});
-  await prisma.rentalContract.deleteMany({});
-  await prisma.bulkRentalItem.deleteMany({});
-  await prisma.stockLevel.deleteMany({});
-  await prisma.stockMovement.deleteMany({});
-  await prisma.quotation.deleteMany({});
-  await prisma.quotationItem.deleteMany({});
-  await prisma.supply.deleteMany({});
-  await prisma.supplier.deleteMany({});
-  await prisma.assetState.deleteMany({});
-  await prisma.assetRental.deleteMany({});
-  await prisma.assetRentalProfile.deleteMany({});
-  await prisma.userBusinessUnit.deleteMany({});
-  await prisma.userPermission.deleteMany({});
-  await prisma.role.deleteMany({});
-  await prisma.permission.deleteMany({});
-  await prisma.auditLog.deleteMany({});
-  await prisma.eventQueue.deleteMany({});
+  // Delete dependents first (order matters)
   await prisma.assetUsage.deleteMany({});
   await prisma.assetEvent.deleteMany({});
   await prisma.assetAttachment.deleteMany({});
@@ -83,7 +61,35 @@ async function main() {
   await prisma.maintenanceEvent.deleteMany({});
   await prisma.operatorAssignment.deleteMany({});
   await prisma.operatorDailyReport.deleteMany({});
-  await prisma.channelIdentity.deleteMany({});
+  await prisma.bulkRentalItem.deleteMany({});
+  await prisma.stockLevel.deleteMany({});
+  await prisma.stockMovement.deleteMany({});
+  await prisma.quotationItem.deleteMany({});
+  await prisma.quotation.deleteMany({});
+  await prisma.purchaseOrderItem.deleteMany({});
+  await prisma.purchaseOrder.deleteMany({});
+  // Modelo 'contract' no existe, solo borrar rentalContract
+  await prisma.rentalContract.deleteMany({});
+  await prisma.assetState.deleteMany({});
+  await prisma.assetRental.deleteMany({});
+  await prisma.assetRentalProfile.deleteMany({});
+  await prisma.userBusinessUnit.deleteMany({});
+  await prisma.userPermission.deleteMany({});
+  await prisma.role.deleteMany({});
+  await prisma.permission.deleteMany({});
+  await prisma.auditLog.deleteMany({});
+  await prisma.eventQueue.deleteMany({});
+  await prisma.userChannelIdentity.deleteMany({});
+  await prisma.supplier.deleteMany({});
+  await prisma.supply.deleteMany({});
+  await prisma.asset.deleteMany({});
+  await prisma.assetTemplate.deleteMany({});
+  await prisma.client.deleteMany({});
+  await prisma.businessUnit.deleteMany({});
+  await prisma.tenant.deleteMany({});
+
+  // Delete all users except SuperAdmin
+  await prisma.user.deleteMany({ where: { email: { not: superAdminEmail } } });
 
   console.log("DB wipe complete. Only SuperAdmin remains.");
   await prisma.$disconnect();

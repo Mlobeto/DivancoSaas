@@ -40,6 +40,8 @@ export interface Tenant {
   status?: "ACTIVE" | "SUSPENDED" | "CANCELLED";
   country?: string;
   billingEmail?: string;
+  contactEmail?: string;
+  contactPhone?: string;
   enabledModules?: string[]; // Modules assigned to this tenant
   vertical?: string | null; // Vertical assigned to this tenant
 }

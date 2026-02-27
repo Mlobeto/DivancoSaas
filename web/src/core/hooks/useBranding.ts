@@ -5,6 +5,7 @@
 
 import { useState, useEffect } from "react";
 import { brandingApi } from "@/core/services/branding.api";
+import { useAuthStore } from "@/store/auth.store";
 import type {
   BusinessUnitBranding,
   UpdateBrandingDTO,
@@ -30,6 +31,7 @@ export interface UseBrandingReturn {
   setFormData: React.Dispatch<React.SetStateAction<UpdateBrandingDTO>>;
   updateHeaderConfig: (updates: Partial<HeaderConfig>) => void;
   updateFooterConfig: (updates: Partial<FooterConfig>) => void;
+  updateContactInfo: (contactInfo: ContactInfo) => void;
   save: () => Promise<void>;
   uploadLogo: (file: File) => Promise<void>;
   generatePreview: (
@@ -65,6 +67,7 @@ const DEFAULT_FORM_DATA: UpdateBrandingDTO = {
 export function useBranding(
   businessUnitId: string | undefined,
 ): UseBrandingReturn {
+  const { tenant } = useAuthStore();
   const [branding, setBranding] = useState<BusinessUnitBranding | null>(null);
   const [formData, setFormData] =
     useState<UpdateBrandingDTO>(DEFAULT_FORM_DATA);
@@ -94,7 +97,7 @@ export function useBranding(
     return () => clearTimeout(timer);
   }, [success]);
 
-  // Load branding data
+  // Load branding data from API
   useEffect(() => {
     if (!businessUnitId) {
       setLoading(false);
@@ -106,18 +109,9 @@ export function useBranding(
         setLoading(true);
         setError(null);
         const data = await brandingApi.get(businessUnitId);
-        setBranding(data);
-
-        // Update form data
-        setFormData({
-          logoUrl: data.logoUrl,
-          primaryColor: data.primaryColor,
-          secondaryColor: data.secondaryColor,
-          fontFamily: data.fontFamily,
-          contactInfo: data.contactInfo,
-          headerConfig: data.headerConfig,
-          footerConfig: data.footerConfig,
-        });
+        if (data) {
+          setBranding(data);
+        }
       } catch (err: any) {
         console.error("Error loading branding:", err);
         setError(
@@ -130,6 +124,30 @@ export function useBranding(
 
     loadBranding();
   }, [businessUnitId]);
+
+  // Build formData whenever branding or tenant changes (handles async auth load)
+  useEffect(() => {
+    if (!branding) return;
+
+    // Pre-fill contact info with tenant data if fields are empty
+    const contactInfo: ContactInfo = { ...(branding.contactInfo || {}) };
+    if (!contactInfo.email && tenant?.contactEmail) {
+      contactInfo.email = tenant.contactEmail;
+    }
+    if (!contactInfo.phone && tenant?.contactPhone) {
+      contactInfo.phone = tenant.contactPhone;
+    }
+
+    setFormData({
+      logoUrl: branding.logoUrl,
+      primaryColor: branding.primaryColor,
+      secondaryColor: branding.secondaryColor,
+      fontFamily: branding.fontFamily,
+      contactInfo,
+      headerConfig: branding.headerConfig,
+      footerConfig: branding.footerConfig,
+    });
+  }, [branding, tenant]);
 
   // Save configuration
   const save = async () => {

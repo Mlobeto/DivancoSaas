@@ -27,10 +27,10 @@ export function ContactSection({ value, onChange }: ContactSectionProps) {
           </label>
           <input
             type="email"
-            value={value.email || ""}
+            value={value?.email || ""}
             onChange={(e) => handleChange("email", e.target.value)}
             placeholder="contacto@empresa.com"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900"
           />
         </div>
 
@@ -40,10 +40,10 @@ export function ContactSection({ value, onChange }: ContactSectionProps) {
           </label>
           <input
             type="tel"
-            value={value.phone || ""}
+            value={value?.phone || ""}
             onChange={(e) => handleChange("phone", e.target.value)}
             placeholder="+57 300 123 4567"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900"
           />
         </div>
 
@@ -53,10 +53,10 @@ export function ContactSection({ value, onChange }: ContactSectionProps) {
           </label>
           <input
             type="url"
-            value={value.website || ""}
+            value={value?.website || ""}
             onChange={(e) => handleChange("website", e.target.value)}
             placeholder="https://www.empresa.com"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900"
           />
         </div>
 
@@ -66,10 +66,10 @@ export function ContactSection({ value, onChange }: ContactSectionProps) {
           </label>
           <input
             type="text"
-            value={value.address || ""}
+            value={value?.address || ""}
             onChange={(e) => handleChange("address", e.target.value)}
             placeholder="Calle 123 #45-67, Ciudad, País"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900"
           />
         </div>
       </div>

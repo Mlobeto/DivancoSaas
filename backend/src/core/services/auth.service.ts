@@ -48,6 +48,8 @@ interface AuthResponse {
     status?: string;
     country?: string | null;
     billingEmail?: string | null;
+    contactEmail?: string | null;
+    contactPhone?: string | null;
     enabledModules?: string[];
     vertical?: string | null;
   } | null;
@@ -244,6 +246,8 @@ export class AuthService {
         name: result.tenant.name,
         slug: result.tenant.slug,
         plan: result.tenant.plan,
+        contactEmail: result.tenant.contactEmail,
+        contactPhone: result.tenant.contactPhone,
         enabledModules: [],
         vertical: null,
       },
@@ -422,6 +426,8 @@ export class AuthService {
             status: user.tenant.status,
             country: user.tenant.country,
             billingEmail: user.tenant.billingEmail,
+            contactEmail: user.tenant.contactEmail,
+            contactPhone: user.tenant.contactPhone,
             enabledModules,
             vertical,
           }
@@ -688,6 +694,9 @@ export class AuthService {
             plan: userWithRelations.tenant.plan,
             status: userWithRelations.tenant.status,
             country: userWithRelations.tenant.country,
+            billingEmail: userWithRelations.tenant.billingEmail,
+            contactEmail: userWithRelations.tenant.contactEmail,
+            contactPhone: userWithRelations.tenant.contactPhone,
             enabledModules,
             vertical,
           }

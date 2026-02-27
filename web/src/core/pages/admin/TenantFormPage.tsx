@@ -31,6 +31,8 @@ interface TenantFormData {
   slug: string;
   plan: string;
   billingEmail: string;
+  contactEmail: string;
+  contactPhone: string;
   country: string;
   status: "ACTIVE" | "SUSPENDED" | "CANCELLED";
   enabledModules: string[];
@@ -82,6 +84,8 @@ export function TenantFormPage() {
     slug: "",
     plan: "basic",
     billingEmail: "",
+    contactEmail: "",
+    contactPhone: "",
     country: "CO",
     status: "ACTIVE",
     enabledModules: [],
@@ -202,6 +206,8 @@ export function TenantFormPage() {
           slug: tenant.slug,
           plan: tenant.plan || "basic",
           billingEmail: tenant.billingEmail || "",
+          contactEmail: tenant.contactEmail || "",
+          contactPhone: tenant.contactPhone || "",
           country: tenant.country || "CO",
           status: tenant.status,
           enabledModules: tenant.enabledModules || [],
@@ -373,26 +379,6 @@ export function TenantFormPage() {
                   />
                 </div>
 
-                {/* Slug */}
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Slug (URL) *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.slug}
-                    onChange={(e) =>
-                      setFormData({ ...formData, slug: e.target.value })
-                    }
-                    className="input w-full font-mono"
-                    placeholder="constructora-abc"
-                    required
-                  />
-                  <p className="text-xs text-dark-400 mt-1">
-                    Se usa en la URL: /{formData.slug}
-                  </p>
-                </div>
-
                 {/* Plan and Country */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -431,6 +417,45 @@ export function TenantFormPage() {
                       <option value="CL">Chile</option>
                       <option value="PE">Perú</option>
                     </select>
+                  </div>
+                </div>
+
+                {/* Contact Information */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Email de Contacto (Notificaciones)
+                    </label>
+                    <input
+                      type="email"
+                      value={formData.contactEmail}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          contactEmail: e.target.value,
+                        })
+                      }
+                      className="input w-full"
+                      placeholder="contacto@empresa.com"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      WhatsApp / Teléfono de Contacto
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.contactPhone}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          contactPhone: e.target.value,
+                        })
+                      }
+                      className="input w-full"
+                      placeholder="+57 300 123 4567"
+                    />
                   </div>
                 </div>
 

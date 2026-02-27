@@ -7,6 +7,8 @@ export interface CreateTenantInput {
   slug: string;
   plan?: string;
   billingEmail?: string;
+  contactEmail?: string;
+  contactPhone?: string;
   country?: string;
   preferredPaymentProvider?: string;
   enabledModules?: string[]; // inventory, clients, purchases, etc.
@@ -23,6 +25,8 @@ interface UpdateTenantInput {
   slug?: string;
   plan?: string;
   billingEmail?: string;
+  contactEmail?: string;
+  contactPhone?: string;
   country?: string;
   preferredPaymentProvider?: string;
   status?: TenantStatus;
@@ -130,6 +134,8 @@ export class TenantService {
           slug: data.slug,
           plan: data.plan || "free",
           billingEmail: data.billingEmail,
+          contactEmail: data.contactEmail,
+          contactPhone: data.contactPhone,
           country: data.country,
           preferredPaymentProvider: data.preferredPaymentProvider,
         },
@@ -214,6 +220,8 @@ export class TenantService {
         slug: data.slug,
         plan: data.plan,
         billingEmail: data.billingEmail,
+        contactEmail: data.contactEmail,
+        contactPhone: data.contactPhone,
         country: data.country,
         preferredPaymentProvider: data.preferredPaymentProvider,
         status: data.status,

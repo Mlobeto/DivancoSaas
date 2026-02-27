@@ -24,6 +24,10 @@ model Tenant {
   plan         String  @default("free") // free, pro, enterprise
   billingEmail String?
 
+  // Contact Information (for sending contracts, notifications, etc.)
+  contactEmail String?
+  contactPhone String?
+
   // Payment Provider Selection
   country                  String? // ISO 3166-1 alpha-2 (CO, MX, US, etc.)
   preferredPaymentProvider String? // stripe, wompi, mercadopago
