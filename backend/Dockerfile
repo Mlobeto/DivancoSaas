@@ -73,4 +73,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=5 \
     CMD node -e "const p=process.env.PORT||3000;require('http').get('http://localhost:'+p+'/health',(r)=>{process.exit(r.statusCode===200?0:1)}).on('error',()=>process.exit(1))"
 
 # Start command: server handles DB connection and migrations internally
-CMD ["npm", "run", "start"]
+# Usamos node directamente en lugar de npm para que las señales (SIGTERM) lleguen correctamente al proceso
+CMD ["node", "dist/src/index.js"]
