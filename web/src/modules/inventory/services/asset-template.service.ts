@@ -285,6 +285,16 @@ export interface TemplateStats {
 class AssetTemplateService {
   private readonly basePath = "/modules/assets/templates";
 
+  /** Mapea la respuesta cruda de la API al tipo AssetTemplate del frontend.
+   *  La DB guarda el campo como `rentalPricing`; el frontend usa `rentalRules`. */
+  private mapTemplate(raw: any): AssetTemplate {
+    const { rentalPricing, ...rest } = raw;
+    return {
+      ...rest,
+      rentalRules: rentalPricing ?? undefined,
+    } as AssetTemplate;
+  }
+
   /**
    * Listar plantillas
    */
@@ -297,7 +307,7 @@ class AssetTemplateService {
 
     const response = await api.get<{
       success: boolean;
-      data: AssetTemplate[];
+      data: any[];
       pagination: {
         page: number;
         limit: number;
@@ -306,8 +316,10 @@ class AssetTemplateService {
       };
     }>(`${this.basePath}?${params}`);
 
-    console.log("Asset Templates API Response:", response.data); // Debug log
-    return response.data;
+    return {
+      ...response.data,
+      data: (response.data.data ?? []).map((t) => this.mapTemplate(t)),
+    };
   }
 
   /**
@@ -316,10 +328,10 @@ class AssetTemplateService {
   async getById(id: string) {
     const response = await api.get<{
       success: boolean;
-      data: AssetTemplate;
+      data: any;
     }>(`${this.basePath}/${id}`);
 
-    return response.data.data;
+    return this.mapTemplate(response.data.data);
   }
 
   /**

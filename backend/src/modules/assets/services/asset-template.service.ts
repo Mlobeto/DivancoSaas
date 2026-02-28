@@ -82,6 +82,11 @@ export interface CreateTemplateInput {
   requiresWeight?: boolean;
   machineParts?: MachinePart[];
   maintenanceSchedule?: MaintenanceScheduleItem[];
+  rentalRules?: Record<string, any>; // Modalidades y reglas de alquiler (guardado como rentalPricing en DB)
+  technicalSpecs?: Record<string, any>;
+  presentation?: Record<string, any>;
+  compatibleWith?: Record<string, any>;
+  businessRules?: Record<string, any>;
 }
 
 export interface UpdateTemplateInput {
@@ -96,6 +101,11 @@ export interface UpdateTemplateInput {
   requiresWeight?: boolean;
   machineParts?: MachinePart[];
   maintenanceSchedule?: MaintenanceScheduleItem[];
+  rentalRules?: Record<string, any>;
+  technicalSpecs?: Record<string, any>;
+  presentation?: Record<string, any>;
+  compatibleWith?: Record<string, any>;
+  businessRules?: Record<string, any>;
 }
 
 export interface ListTemplatesOptions {
@@ -250,6 +260,21 @@ export class AssetTemplateService {
         ...(data.maintenanceSchedule !== undefined && {
           maintenanceSchedule: data.maintenanceSchedule as any,
         }),
+        ...(data.rentalRules !== undefined && {
+          rentalPricing: data.rentalRules as any,
+        }),
+        ...(data.technicalSpecs !== undefined && {
+          technicalSpecs: data.technicalSpecs as any,
+        }),
+        ...(data.presentation !== undefined && {
+          presentation: data.presentation as any,
+        }),
+        ...(data.compatibleWith !== undefined && {
+          compatibleWith: data.compatibleWith as any,
+        }),
+        ...(data.businessRules !== undefined && {
+          businessRules: data.businessRules as any,
+        }),
       },
       include: {
         businessUnit: true,
@@ -368,6 +393,21 @@ export class AssetTemplateService {
         }),
         ...(data.maintenanceSchedule !== undefined && {
           maintenanceSchedule: data.maintenanceSchedule as any,
+        }),
+        ...(data.rentalRules !== undefined && {
+          rentalPricing: data.rentalRules as any,
+        }),
+        ...(data.technicalSpecs !== undefined && {
+          technicalSpecs: data.technicalSpecs as any,
+        }),
+        ...(data.presentation !== undefined && {
+          presentation: data.presentation as any,
+        }),
+        ...(data.compatibleWith !== undefined && {
+          compatibleWith: data.compatibleWith as any,
+        }),
+        ...(data.businessRules !== undefined && {
+          businessRules: data.businessRules as any,
         }),
       },
     });

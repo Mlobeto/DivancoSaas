@@ -17,7 +17,14 @@ import {
   type MachinePart,
   isSupplyCategory,
 } from "@/modules/inventory/services/asset-template.service";
-import { ArrowLeft, X, Image as ImageIcon, Trash2, Plus } from "lucide-react";
+import {
+  ArrowLeft,
+  X,
+  Image as ImageIcon,
+  Trash2,
+  Plus,
+  FileText,
+} from "lucide-react";
 import { AssetDocumentationModal } from "@/modules/inventory/components/AssetDocumentationModal";
 
 export function AssetFormPage() {
@@ -29,6 +36,9 @@ export function AssetFormPage() {
 
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
+  const [additionalImages, setAdditionalImages] = useState<File[]>([]);
+  const [additionalPreviews, setAdditionalPreviews] = useState<string[]>([]);
+  const [pdfDocuments, setPdfDocuments] = useState<File[]>([]);
   const [showDocModal, setShowDocModal] = useState(false);
   const [createdAssetId, setCreatedAssetId] = useState<string | null>(null);
   const [suggestedCode, setSuggestedCode] = useState<string>("");
@@ -165,10 +175,31 @@ export function AssetFormPage() {
   // Auto-configure fields based on selected template
   useEffect(() => {
     if (selectedTemplate && !isEditMode) {
+      // Mapear categoria del template al assetType del activo
+      const categoryToType: Record<string, string> = {
+        MACHINERY: "MAQUINARIA",
+        IMPLEMENT: "IMPLEMENTO",
+        VEHICLE: "VEHICULO",
+        TOOL: "HERRAMIENTA",
+        SUPPLY_FUEL: "INSUMO",
+        SUPPLY_OIL: "INSUMO",
+        SUPPLY_PAINT: "INSUMO",
+        SUPPLY_SPARE_PART: "INSUMO",
+        SUPPLY_CONSUMABLE: "INSUMO",
+        SUPPLY_SAFETY: "INSUMO",
+      };
       setFormData((prev) => ({
         ...prev,
-        // Si el template requiere mantenimiento preventivo, automáticamente requiere historia clínica
+        assetType: categoryToType[selectedTemplate.category] ?? prev.assetType,
         requiresClinic: selectedTemplate.requiresPreventiveMaintenance,
+        // Auto-setear trackingType según categoría
+        trackingType: ["MACHINERY", "VEHICLE"].includes(
+          selectedTemplate.category,
+        )
+          ? "MACHINERY"
+          : ["IMPLEMENT", "TOOL"].includes(selectedTemplate.category)
+            ? "TOOL"
+            : prev.trackingType,
       }));
     }
   }, [selectedTemplate, isEditMode]);
@@ -188,30 +219,41 @@ export function AssetFormPage() {
     }
   }, [formData.assetType, isEditMode, manuallyEditedCode]);
 
-  // Create/Update mutations
   const createMutation = useMutation({
     mutationFn: assetsService.create,
-    onSuccess: (newAsset) => {
+    onSuccess: async (newAsset) => {
       setCreatedAssetId(newAsset.id);
       queryClient.invalidateQueries({ queryKey: ["assets"] });
 
-      // If there's an image, upload it
+      // Upload main image
       if (selectedImage) {
-        uploadImageMutation.mutate({
-          assetId: newAsset.id,
-          file: selectedImage,
+        await assetsService.uploadMainImage(newAsset.id, selectedImage);
+      }
+
+      // Upload additional images
+      if (additionalImages.length > 0) {
+        await assetsService.uploadAttachments(newAsset.id, {
+          files: additionalImages,
         });
+      }
+
+      // Upload PDF documents
+      if (pdfDocuments.length > 0) {
+        await assetsService.uploadAttachments(newAsset.id, {
+          files: pdfDocuments,
+        });
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["assets"] });
+
+      if (
+        confirm(
+          "¿Deseas agregar documentación al activo ahora (SOAT, seguro, etc.)?",
+        )
+      ) {
+        setShowDocModal(true);
       } else {
-        // Otherwise, prompt for documentation
-        if (
-          confirm(
-            "¿Deseas agregar documentación al activo ahora (SOAT, seguro, etc.)?",
-          )
-        ) {
-          setShowDocModal(true);
-        } else {
-          navigate("/inventory");
-        }
+        navigate("/inventory");
       }
     },
   });
@@ -219,52 +261,37 @@ export function AssetFormPage() {
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: CreateAssetData }) =>
       assetsService.update(id, data),
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ["assets"] });
       queryClient.invalidateQueries({ queryKey: ["asset", id] });
 
-      // If there's a new image, upload it
       if (selectedImage) {
-        uploadImageMutation.mutate({ assetId: id!, file: selectedImage });
-      } else {
-        navigate("/inventory");
+        await assetsService.uploadMainImage(id!, selectedImage);
       }
+      if (additionalImages.length > 0) {
+        await assetsService.uploadAttachments(id!, { files: additionalImages });
+      }
+      if (pdfDocuments.length > 0) {
+        await assetsService.uploadAttachments(id!, { files: pdfDocuments });
+      }
+
+      navigate("/inventory");
     },
   });
 
+  // kept for compatibility but no longer needed as standalone
   const uploadImageMutation = useMutation({
     mutationFn: ({ assetId, file }: { assetId: string; file: File }) =>
       assetsService.uploadMainImage(assetId, file),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["assets"] });
-
-      // After uploading image, ask for documentation
-      if (!isEditMode && createdAssetId) {
-        if (
-          confirm(
-            "¿Deseas agregar documentación al activo ahora (SOAT, seguro, etc.)?",
-          )
-        ) {
-          setShowDocModal(true);
-        } else {
-          navigate("/inventory");
-        }
-      } else {
-        navigate("/inventory");
-      }
-    },
+    onSuccess: () => {},
   });
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       setSelectedImage(file);
-
-      // Preview
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
+      reader.onloadend = () => setImagePreview(reader.result as string);
       reader.readAsDataURL(file);
     }
   };
@@ -272,6 +299,36 @@ export function AssetFormPage() {
   const handleRemoveImage = () => {
     setSelectedImage(null);
     setImagePreview("");
+  };
+
+  const handleAdditionalImages = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (files.length === 0) return;
+    setAdditionalImages((prev) => [...prev, ...files]);
+    files.forEach((file) => {
+      const reader = new FileReader();
+      reader.onloadend = () =>
+        setAdditionalPreviews((prev) => [...prev, reader.result as string]);
+      reader.readAsDataURL(file);
+    });
+    e.target.value = "";
+  };
+
+  const handleRemoveAdditional = (index: number) => {
+    setAdditionalImages((prev) => prev.filter((_, i) => i !== index));
+    setAdditionalPreviews((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handlePdfFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []).filter(
+      (f) => f.type === "application/pdf",
+    );
+    setPdfDocuments((prev) => [...prev, ...files]);
+    e.target.value = "";
+  };
+
+  const handleRemovePdf = (index: number) => {
+    setPdfDocuments((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -379,31 +436,38 @@ export function AssetFormPage() {
                     La plantilla no se puede cambiar
                   </p>
                 )}
-                {selectedTemplate && !isEditMode && (
-                  <div className="mt-3 p-3 bg-[#2b2b2b] border border-[#0696d7]/30 rounded">
-                    <p className="text-xs text-[#9e9e9e] mb-2 font-semibold">
-                      Configuraciones heredadas del template:
-                    </p>
-                    <ul className="space-y-1 text-xs text-[#e0e0e0]">
-                      {selectedTemplate.requiresPreventiveMaintenance && (
-                        <li className="flex items-center gap-2">
-                          <span className="text-[#4caf50]">✓</span>
-                          Requiere historia clínica de mantenimiento
-                        </li>
-                      )}
-                      {selectedTemplate.requiresDocumentation && (
-                        <li className="flex items-center gap-2">
-                          <span className="text-[#4caf50]">✓</span>
-                          Requiere documentación (SOAT, Seguro, Certificaciones)
-                        </li>
-                      )}
-                      {!selectedTemplate.requiresPreventiveMaintenance &&
-                        !selectedTemplate.requiresDocumentation && (
-                          <li className="text-[#9e9e9e]">
-                            Sin configuraciones especiales
-                          </li>
+                {selectedTemplate && (
+                  <div className="mt-3 p-3 bg-[#2b2b2b] border border-[#0696d7]/30 rounded space-y-1">
+                    <div className="flex items-center gap-2 text-xs text-[#e0e0e0]">
+                      <span className="text-2xl">
+                        {selectedTemplate.icon || "🏗️"}
+                      </span>
+                      <div>
+                        <p className="font-semibold text-[#0696d7]">
+                          {selectedTemplate.name}
+                        </p>
+                        {selectedTemplate.description && (
+                          <p className="text-[#9e9e9e]">
+                            {selectedTemplate.description}
+                          </p>
                         )}
-                    </ul>
+                      </div>
+                    </div>
+                    {(selectedTemplate.requiresPreventiveMaintenance ||
+                      selectedTemplate.requiresDocumentation) && (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {selectedTemplate.requiresPreventiveMaintenance && (
+                          <span className="px-2 py-0.5 bg-blue-900/40 border border-blue-700/40 text-blue-300 text-[11px] rounded-full">
+                            📋 Requiere historial de mantenimiento
+                          </span>
+                        )}
+                        {selectedTemplate.requiresDocumentation && (
+                          <span className="px-2 py-0.5 bg-green-900/40 border border-green-700/40 text-green-300 text-[11px] rounded-full">
+                            📄 Requiere documentación
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -451,25 +515,27 @@ export function AssetFormPage() {
                 />
               </div>
 
-              {/* Asset Type */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">
-                  Tipo de Activo <span className="text-red-400">*</span>
-                </label>
-                <select
-                  value={formData.assetType}
-                  onChange={(e) =>
-                    setFormData({ ...formData, assetType: e.target.value })
-                  }
-                  required
-                  className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="IMPLEMENTO">Implemento</option>
-                  <option value="HERRAMIENTA">Herramienta</option>
-                  <option value="VEHICULO">Vehículo</option>
-                  <option value="MAQUINARIA">Maquinaria</option>
-                </select>
-              </div>
+              {/* Asset Type — solo si no hay plantilla seleccionada */}
+              {!formData.templateId && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
+                    Tipo de Activo <span className="text-red-400">*</span>
+                  </label>
+                  <select
+                    value={formData.assetType}
+                    onChange={(e) =>
+                      setFormData({ ...formData, assetType: e.target.value })
+                    }
+                    required
+                    className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="IMPLEMENTO">Implemento</option>
+                    <option value="HERRAMIENTA">Herramienta</option>
+                    <option value="VEHICULO">Vehículo</option>
+                    <option value="MAQUINARIA">Maquinaria</option>
+                  </select>
+                </div>
+              )}
 
               {/* Acquisition Cost */}
               <div>
@@ -528,481 +594,877 @@ export function AssetFormPage() {
                 />
               </div>
 
-              {/* Boolean Flags */}
-              <div className="md:col-span-2 space-y-3">
-                <div className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    id="requiresOperator"
-                    checked={formData.requiresOperator}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        requiresOperator: e.target.checked,
-                      })
-                    }
-                    className="w-4 h-4 bg-gray-900 border-gray-700 rounded text-blue-600 focus:ring-2 focus:ring-blue-500"
-                  />
-                  <label
-                    htmlFor="requiresOperator"
-                    className="text-sm text-gray-300 cursor-pointer"
-                  >
-                    Requiere operador
-                  </label>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    id="requiresTracking"
-                    checked={formData.requiresTracking}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        requiresTracking: e.target.checked,
-                      })
-                    }
-                    className="w-4 h-4 bg-gray-900 border-gray-700 rounded text-blue-600 focus:ring-2 focus:ring-blue-500"
-                  />
-                  <label
-                    htmlFor="requiresTracking"
-                    className="text-sm text-gray-300 cursor-pointer"
-                  >
-                    Requiere seguimiento
-                  </label>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    id="requiresClinic"
-                    checked={formData.requiresClinic}
-                    disabled={selectedTemplate?.requiresPreventiveMaintenance}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        requiresClinic: e.target.checked,
-                      })
-                    }
-                    className="w-4 h-4 bg-gray-900 border-gray-700 rounded text-blue-600 focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                  />
-                  <label
-                    htmlFor="requiresClinic"
-                    className={`text-sm cursor-pointer ${
-                      selectedTemplate?.requiresPreventiveMaintenance
-                        ? "text-gray-400"
-                        : "text-gray-300"
-                    }`}
-                  >
-                    Requiere historia clínica de mantenimiento
-                    {selectedTemplate?.requiresPreventiveMaintenance && (
-                      <span className="ml-2 text-xs text-primary-400">
-                        (configurado por template)
-                      </span>
-                    )}
-                  </label>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Rental Configuration Card - Siempre visible para arquitectura multi-vertical */}
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-            <h2 className="text-lg font-semibold text-white mb-4">
-              ⚙️ Configuración de Alquiler (Rental)
-            </h2>
-            <p className="text-sm text-gray-400 mb-4">
-              Configura los precios y opciones de alquiler para este activo
-            </p>
-
-            {/* Tracking Type */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Tipo de Seguimiento
-              </label>
-              <select
-                value={formData.trackingType || ""}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    trackingType: e.target.value
-                      ? (e.target.value as "MACHINERY" | "TOOL")
-                      : null,
-                  })
-                }
-                className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Sin configuración de alquiler</option>
-                <option value="MACHINERY">
-                  MAQUINARIA (Cobro por hora + km)
-                </option>
-                <option value="TOOL">
-                  HERRAMIENTA (Cobro por día/semana/mes)
-                </option>
-              </select>
-              <p className="text-xs text-gray-500 mt-1">
-                Selecciona cómo se realizará el seguimiento y cobro del alquiler
-              </p>
-            </div>
-
-            {/* Pricing fields según trackingType */}
-            {formData.trackingType === "MACHINERY" && (
-              <div className="space-y-4 p-4 bg-blue-900/10 border border-blue-800 rounded-lg">
-                <h3 className="text-sm font-semibold text-blue-300">
-                  Precios para MAQUINARIA
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-1">
-                      Precio por Hora ($)
-                    </label>
+              {/* Flags — solo si no hay plantilla (la plantilla los hereda automáticamente) */}
+              {!formData.templateId && (
+                <div className="md:col-span-2 space-y-3">
+                  <div className="flex items-center gap-3">
                     <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.pricePerHour || ""}
+                      type="checkbox"
+                      id="requiresOperator"
+                      checked={formData.requiresOperator}
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          pricePerHour: e.target.value
-                            ? parseFloat(e.target.value)
-                            : undefined,
+                          requiresOperator: e.target.checked,
                         })
                       }
-                      placeholder="625.00"
-                      className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-4 h-4 bg-gray-900 border-gray-700 rounded text-blue-600 focus:ring-2 focus:ring-blue-500"
                     />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-1">
-                      Horas Mínimas por Día
-                    </label>
-                    <input
-                      type="number"
-                      step="0.5"
-                      min="0"
-                      value={formData.minDailyHours || ""}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          minDailyHours: e.target.value
-                            ? parseFloat(e.target.value)
-                            : undefined,
-                        })
-                      }
-                      placeholder="8"
-                      className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-1">
-                      Precio por Km ($)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.pricePerKm || ""}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          pricePerKm: e.target.value
-                            ? parseFloat(e.target.value)
-                            : undefined,
-                        })
-                      }
-                      placeholder="5.00"
-                      className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {formData.trackingType === "TOOL" && (
-              <div className="space-y-4 p-4 bg-green-900/10 border border-green-800 rounded-lg">
-                <h3 className="text-sm font-semibold text-green-300">
-                  Precios para HERRAMIENTA
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-1">
-                      Precio por Día ($)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.pricePerDay || ""}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          pricePerDay: e.target.value
-                            ? parseFloat(e.target.value)
-                            : undefined,
-                        })
-                      }
-                      placeholder="200.00"
-                      className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-1">
-                      Precio por Semana ($)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.pricePerWeek || ""}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          pricePerWeek: e.target.value
-                            ? parseFloat(e.target.value)
-                            : undefined,
-                        })
-                      }
-                      placeholder="1200.00"
-                      className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-1">
-                      Precio por Mes ($)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.pricePerMonth || ""}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          pricePerMonth: e.target.value
-                            ? parseFloat(e.target.value)
-                            : undefined,
-                        })
-                      }
-                      placeholder="4500.00"
-                      className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Operator Cost (si requiresOperator=true) */}
-            {formData.requiresOperator && formData.trackingType && (
-              <div className="mt-4 p-4 bg-yellow-900/10 border border-yellow-800 rounded-lg">
-                <h3 className="text-sm font-semibold text-yellow-300 mb-3">
-                  Costo de Operario
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-1">
-                      Tipo de Costo
-                    </label>
-                    <select
-                      value={formData.operatorCostType || ""}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          operatorCostType: e.target.value
-                            ? (e.target.value as "PER_HOUR" | "PER_DAY")
-                            : null,
-                        })
-                      }
-                      className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                    <label
+                      htmlFor="requiresOperator"
+                      className="text-sm text-gray-300 cursor-pointer"
                     >
-                      <option value="">Sin costo de operario</option>
-                      <option value="PER_HOUR">Por Hora</option>
-                      <option value="PER_DAY">Por Día</option>
-                    </select>
+                      Requiere operador
+                    </label>
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-1">
-                      Tarifa del Operario ($)
-                    </label>
+                  <div className="flex items-center gap-3">
                     <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.operatorCostRate || ""}
+                      type="checkbox"
+                      id="requiresTracking"
+                      checked={formData.requiresTracking}
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          operatorCostRate: e.target.value
-                            ? parseFloat(e.target.value)
-                            : undefined,
+                          requiresTracking: e.target.checked,
                         })
                       }
-                      placeholder="3000.00"
-                      className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                      className="w-4 h-4 bg-gray-900 border-gray-700 rounded text-blue-600 focus:ring-2 focus:ring-blue-500"
                     />
+                    <label
+                      htmlFor="requiresTracking"
+                      className="text-sm text-gray-300 cursor-pointer"
+                    >
+                      Requiere seguimiento
+                    </label>
                   </div>
-                </div>
-              </div>
-            )}
 
-            {!formData.trackingType && (
-              <div className="text-center py-8 text-gray-500">
-                Selecciona un tipo de seguimiento para configurar precios de
-                alquiler
-              </div>
-            )}
-          </div>
-
-          {/* Image Upload Card */}
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-            <h2 className="text-lg font-semibold text-white mb-4">
-              Imagen Principal
-            </h2>
-
-            <div className="space-y-4">
-              {imagePreview ? (
-                <div className="relative">
-                  <img
-                    src={imagePreview}
-                    alt="Preview"
-                    className="w-full h-64 object-cover rounded-lg"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleRemoveImage}
-                    className="absolute top-2 right-2 p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-              ) : (
-                <div className="border-2 border-dashed border-gray-600 rounded-lg p-12 text-center hover:border-blue-500 transition-colors">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageChange}
-                    className="hidden"
-                    id="image-upload"
-                  />
-                  <label
-                    htmlFor="image-upload"
-                    className="cursor-pointer flex flex-col items-center"
-                  >
-                    <ImageIcon className="w-16 h-16 text-gray-400 mb-3" />
-                    <p className="text-gray-300 mb-1">
-                      Haz clic para seleccionar una imagen
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      JPG, PNG, WebP (máx 5MB)
-                    </p>
-                  </label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      id="requiresClinic"
+                      checked={formData.requiresClinic}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          requiresClinic: e.target.checked,
+                        })
+                      }
+                      className="w-4 h-4 bg-gray-900 border-gray-700 rounded text-blue-600 focus:ring-2 focus:ring-blue-500"
+                    />
+                    <label
+                      htmlFor="requiresClinic"
+                      className="text-sm text-gray-300 cursor-pointer"
+                    >
+                      Requiere historia clínica de mantenimiento
+                    </label>
+                  </div>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Custom Fields Card */}
-          {selectedTemplate && selectedTemplate.customFields && (
-            <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-              <h2 className="text-lg font-semibold text-white mb-4">
-                Campos Personalizados
-              </h2>
+          {/* Rental Configuration Card */}
+          {selectedTemplate ? (
+            /* ── Plantilla seleccionada: solo pedir precios habilitados ── */
+            (() => {
+              const rules = selectedTemplate.rentalRules;
+              if (!rules) return null;
+              return (
+                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 space-y-4">
+                  <div>
+                    <h2 className="text-lg font-semibold text-white">
+                      💰 Precios de Alquiler
+                    </h2>
+                    <p className="text-sm text-gray-400 mt-1">
+                      Ingresá los precios para las modalidades habilitadas en la
+                      plantilla
+                    </p>
+                  </div>
 
-              {/* DEBUG: Temporalmente muestra los datos crudos */}
-              <pre className="text-xs text-gray-400 mb-4 p-2 bg-gray-900 rounded overflow-auto max-h-40">
-                {JSON.stringify(selectedTemplate.customFields, null, 2)}
-              </pre>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {(selectedTemplate.customFields as any[]).map((field: any) => (
-                  <div key={field.code}>
-                    <label className="block text-sm font-medium text-gray-300 mb-1">
-                      {field.name}
-                      {field.required && (
-                        <span className="text-red-400"> *</span>
-                      )}
-                    </label>
-
-                    {field.type === "text" && (
-                      <input
-                        type="text"
-                        value={formData.customData?.[field.code] || ""}
-                        onChange={(e) =>
-                          handleCustomFieldChange(field.code, e.target.value)
-                        }
-                        required={field.required}
-                        placeholder={field.placeholder}
-                        className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    )}
-
-                    {field.type === "number" && (
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={formData.customData?.[field.code] || ""}
-                        onChange={(e) =>
-                          handleCustomFieldChange(
-                            field.code,
-                            parseFloat(e.target.value),
-                          )
-                        }
-                        required={field.required}
-                        placeholder={field.placeholder}
-                        className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    )}
-
-                    {field.type === "select" && field.options && (
-                      <select
-                        value={formData.customData?.[field.code] || ""}
-                        onChange={(e) =>
-                          handleCustomFieldChange(field.code, e.target.value)
-                        }
-                        required={field.required}
-                        className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="">Seleccionar...</option>
-                        {field.options.map((opt: string) => (
-                          <option key={opt} value={opt}>
-                            {opt}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-
-                    {field.type === "boolean" && (
-                      <div className="flex items-center gap-3 pt-2">
-                        <input
-                          type="checkbox"
-                          id={`custom-${field.code}`}
-                          checked={formData.customData?.[field.code] || false}
-                          onChange={(e) =>
-                            handleCustomFieldChange(
-                              field.code,
-                              e.target.checked,
-                            )
-                          }
-                          className="w-4 h-4 bg-gray-900 border-gray-700 rounded text-blue-600 focus:ring-2 focus:ring-blue-500"
-                        />
-                        <label
-                          htmlFor={`custom-${field.code}`}
-                          className="text-sm text-gray-300 cursor-pointer"
-                        >
-                          {field.placeholder || "Sí/No"}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {rules.allowsHourly && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">
+                          Precio por Hora ($)
                         </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={formData.pricePerHour || ""}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              pricePerHour: e.target.value
+                                ? parseFloat(e.target.value)
+                                : undefined,
+                            })
+                          }
+                          placeholder="625.00"
+                          className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    )}
+
+                    {rules.allowsHourly &&
+                      rules.minDailyHours !== undefined && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-300 mb-1">
+                            Horas Mínimas / Día
+                            <span className="ml-1 text-xs text-gray-500">
+                              (mín. {rules.minDailyHours}h según plantilla)
+                            </span>
+                          </label>
+                          <input
+                            type="number"
+                            step="0.5"
+                            min="0"
+                            value={formData.minDailyHours || ""}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                minDailyHours: e.target.value
+                                  ? parseFloat(e.target.value)
+                                  : undefined,
+                              })
+                            }
+                            placeholder={String(rules.minDailyHours)}
+                            className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                      )}
+
+                    {rules.chargesKm && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">
+                          Precio por Km ($)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={formData.pricePerKm || ""}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              pricePerKm: e.target.value
+                                ? parseFloat(e.target.value)
+                                : undefined,
+                            })
+                          }
+                          placeholder="5.00"
+                          className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    )}
+
+                    {rules.allowsDaily && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">
+                          Precio por Día ($)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={formData.pricePerDay || ""}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              pricePerDay: e.target.value
+                                ? parseFloat(e.target.value)
+                                : undefined,
+                            })
+                          }
+                          placeholder="200.00"
+                          className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    )}
+
+                    {rules.allowsWeekly && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">
+                          Precio por Semana ($)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={formData.pricePerWeek || ""}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              pricePerWeek: e.target.value
+                                ? parseFloat(e.target.value)
+                                : undefined,
+                            })
+                          }
+                          placeholder="1200.00"
+                          className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    )}
+
+                    {rules.allowsMonthly && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">
+                          Precio por Mes ($)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={formData.pricePerMonth || ""}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              pricePerMonth: e.target.value
+                                ? parseFloat(e.target.value)
+                                : undefined,
+                            })
+                          }
+                          placeholder="4500.00"
+                          className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
                       </div>
                     )}
                   </div>
-                ))}
+
+                  {/* Costo de operario si la plantilla lo requiere */}
+                  {rules.requiresOperator && (
+                    <div className="pt-4 border-t border-gray-700">
+                      <h3 className="text-sm font-semibold text-yellow-300 mb-3">
+                        👷 Costo de Operario
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-300 mb-1">
+                            Tipo de cobro
+                          </label>
+                          <select
+                            value={
+                              formData.operatorCostType ||
+                              rules.operatorBillingType ||
+                              ""
+                            }
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                operatorCostType: e.target.value
+                                  ? (e.target.value as "PER_HOUR" | "PER_DAY")
+                                  : null,
+                              })
+                            }
+                            className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                          >
+                            <option value="">Seleccionar…</option>
+                            <option value="PER_HOUR">Por Hora</option>
+                            <option value="PER_DAY">Por Día</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-300 mb-1">
+                            Tarifa del Operario ($)
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={formData.operatorCostRate || ""}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                operatorCostRate: e.target.value
+                                  ? parseFloat(e.target.value)
+                                  : undefined,
+                              })
+                            }
+                            placeholder="3000.00"
+                            className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {!rules.allowsHourly &&
+                    !rules.allowsDaily &&
+                    !rules.allowsWeekly &&
+                    !rules.allowsMonthly && (
+                      <p className="text-sm text-gray-500 text-center py-4">
+                        La plantilla no tiene modalidades de alquiler
+                        configuradas.
+                      </p>
+                    )}
+                </div>
+              );
+            })()
+          ) : (
+            /* ── Sin plantilla: formulario genérico ── */
+            <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+              <h2 className="text-lg font-semibold text-white mb-4">
+                ⚙️ Configuración de Alquiler (Rental)
+              </h2>
+              <p className="text-sm text-gray-400 mb-4">
+                Configura los precios y opciones de alquiler para este activo
+              </p>
+
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Tipo de Seguimiento
+                </label>
+                <select
+                  value={formData.trackingType || ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      trackingType: e.target.value
+                        ? (e.target.value as "MACHINERY" | "TOOL")
+                        : null,
+                    })
+                  }
+                  className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Sin configuración de alquiler</option>
+                  <option value="MACHINERY">
+                    MAQUINARIA (Cobro por hora + km)
+                  </option>
+                  <option value="TOOL">
+                    HERRAMIENTA (Cobro por día/semana/mes)
+                  </option>
+                </select>
               </div>
+
+              {formData.trackingType === "MACHINERY" && (
+                <div className="space-y-4 p-4 bg-blue-900/10 border border-blue-800 rounded-lg">
+                  <h3 className="text-sm font-semibold text-blue-300">
+                    Precios para MAQUINARIA
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-1">
+                        Precio por Hora ($)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.pricePerHour || ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            pricePerHour: e.target.value
+                              ? parseFloat(e.target.value)
+                              : undefined,
+                          })
+                        }
+                        placeholder="625.00"
+                        className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-1">
+                        Horas Mínimas por Día
+                      </label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        min="0"
+                        value={formData.minDailyHours || ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            minDailyHours: e.target.value
+                              ? parseFloat(e.target.value)
+                              : undefined,
+                          })
+                        }
+                        placeholder="8"
+                        className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-1">
+                        Precio por Km ($)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.pricePerKm || ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            pricePerKm: e.target.value
+                              ? parseFloat(e.target.value)
+                              : undefined,
+                          })
+                        }
+                        placeholder="5.00"
+                        className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {formData.trackingType === "TOOL" && (
+                <div className="space-y-4 p-4 bg-green-900/10 border border-green-800 rounded-lg">
+                  <h3 className="text-sm font-semibold text-green-300">
+                    Precios para HERRAMIENTA
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-1">
+                        Precio por Día ($)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.pricePerDay || ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            pricePerDay: e.target.value
+                              ? parseFloat(e.target.value)
+                              : undefined,
+                          })
+                        }
+                        placeholder="200.00"
+                        className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-1">
+                        Precio por Semana ($)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.pricePerWeek || ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            pricePerWeek: e.target.value
+                              ? parseFloat(e.target.value)
+                              : undefined,
+                          })
+                        }
+                        placeholder="1200.00"
+                        className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-1">
+                        Precio por Mes ($)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.pricePerMonth || ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            pricePerMonth: e.target.value
+                              ? parseFloat(e.target.value)
+                              : undefined,
+                          })
+                        }
+                        placeholder="4500.00"
+                        className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {formData.requiresOperator && formData.trackingType && (
+                <div className="mt-4 p-4 bg-yellow-900/10 border border-yellow-800 rounded-lg">
+                  <h3 className="text-sm font-semibold text-yellow-300 mb-3">
+                    Costo de Operario
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-1">
+                        Tipo de Costo
+                      </label>
+                      <select
+                        value={formData.operatorCostType || ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            operatorCostType: e.target.value
+                              ? (e.target.value as "PER_HOUR" | "PER_DAY")
+                              : null,
+                          })
+                        }
+                        className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                      >
+                        <option value="">Sin costo de operario</option>
+                        <option value="PER_HOUR">Por Hora</option>
+                        <option value="PER_DAY">Por Día</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-1">
+                        Tarifa del Operario ($)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.operatorCostRate || ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            operatorCostRate: e.target.value
+                              ? parseFloat(e.target.value)
+                              : undefined,
+                          })
+                        }
+                        placeholder="3000.00"
+                        className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {!formData.trackingType && (
+                <div className="text-center py-8 text-gray-500">
+                  Seleccioná un tipo de seguimiento para configurar precios de
+                  alquiler
+                </div>
+              )}
             </div>
           )}
+
+          {/* Media & Documents Card */}
+          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 space-y-6">
+            <h2 className="text-lg font-semibold text-white">
+              📎 Fotos y Documentos
+            </h2>
+
+            {/* Foto principal */}
+            <div>
+              <p className="text-sm font-medium text-gray-300 mb-2">
+                Foto principal
+              </p>
+              {imagePreview ? (
+                <div className="relative w-full h-52">
+                  <img
+                    src={imagePreview}
+                    alt="Preview"
+                    className="w-full h-full object-cover rounded-lg"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleRemoveImage}
+                    className="absolute top-2 right-2 p-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <label
+                  htmlFor="image-upload"
+                  className="cursor-pointer flex flex-col items-center justify-center border-2 border-dashed border-gray-600 rounded-lg h-40 hover:border-blue-500 transition-colors"
+                >
+                  <ImageIcon className="w-10 h-10 text-gray-400 mb-2" />
+                  <span className="text-sm text-gray-300">
+                    Clic para seleccionar
+                  </span>
+                  <span className="text-xs text-gray-500 mt-1">
+                    JPG, PNG, WebP (máx 5MB)
+                  </span>
+                  <input
+                    type="file"
+                    id="image-upload"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    className="hidden"
+                  />
+                </label>
+              )}
+            </div>
+
+            {/* Fotos adicionales */}
+            <div>
+              <p className="text-sm font-medium text-gray-300 mb-2">
+                Fotos adicionales
+              </p>
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                {additionalPreviews.map((src, i) => (
+                  <div key={i} className="relative aspect-square">
+                    <img
+                      src={src}
+                      className="w-full h-full object-cover rounded-lg"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveAdditional(i)}
+                      className="absolute top-1 right-1 p-0.5 bg-red-600 text-white rounded"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+                <label
+                  htmlFor="additional-images"
+                  className="cursor-pointer aspect-square flex flex-col items-center justify-center border-2 border-dashed border-gray-600 rounded-lg hover:border-blue-500 transition-colors"
+                >
+                  <Plus className="w-6 h-6 text-gray-400" />
+                  <span className="text-xs text-gray-500 mt-1">Agregar</span>
+                  <input
+                    type="file"
+                    id="additional-images"
+                    accept="image/*"
+                    multiple
+                    onChange={handleAdditionalImages}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            </div>
+
+            {/* PDFs */}
+            <div>
+              <p className="text-sm font-medium text-gray-300 mb-2">
+                Documentos PDF
+              </p>
+              <div className="space-y-2">
+                {pdfDocuments.map((file, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center gap-3 px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg"
+                  >
+                    <FileText className="w-5 h-5 text-red-400 shrink-0" />
+                    <span className="text-sm text-gray-300 flex-1 truncate">
+                      {file.name}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      {(file.size / 1024).toFixed(0)} KB
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemovePdf(i)}
+                      className="p-1 hover:text-red-400 text-gray-400 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+                <label
+                  htmlFor="pdf-upload"
+                  className="cursor-pointer flex items-center gap-2 px-3 py-2 border-2 border-dashed border-gray-600 rounded-lg hover:border-blue-500 transition-colors"
+                >
+                  <Plus className="w-4 h-4 text-gray-400" />
+                  <span className="text-sm text-gray-400">Agregar PDF</span>
+                  <input
+                    type="file"
+                    id="pdf-upload"
+                    accept="application/pdf"
+                    multiple
+                    onChange={handlePdfFiles}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {/* Technical Specs from Template */}
+          {selectedTemplate &&
+            selectedTemplate.technicalSpecs &&
+            Object.keys(selectedTemplate.technicalSpecs as Record<string, any>)
+              .length > 0 && (
+              <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+                <h2 className="text-lg font-semibold text-white mb-1">
+                  🔧 Especificaciones Técnicas
+                </h2>
+                <p className="text-sm text-gray-400 mb-4">
+                  Campos definidos en la plantilla — ingresá los valores reales
+                  de este activo
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {Object.keys(
+                    selectedTemplate.technicalSpecs as Record<string, any>,
+                  ).map((specKey) => (
+                    <div key={specKey}>
+                      <label className="block text-sm font-medium text-gray-300 mb-1">
+                        {specKey}
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.customData?.[specKey] || ""}
+                        onChange={(e) =>
+                          handleCustomFieldChange(specKey, e.target.value)
+                        }
+                        placeholder={`Ej: ${(selectedTemplate.technicalSpecs as any)[specKey] || specKey}`}
+                        className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  ))}
+                  {selectedTemplate.requiresWeight && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-1">
+                        Peso (kg)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.customData?.["peso_kg"] || ""}
+                        onChange={(e) =>
+                          handleCustomFieldChange("peso_kg", e.target.value)
+                        }
+                        placeholder="Ej: 3500"
+                        className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+          {/* Custom Fields Card */}
+          {selectedTemplate &&
+            selectedTemplate.customFields &&
+            selectedTemplate.customFields.length > 0 && (
+              <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+                <h2 className="text-lg font-semibold text-white mb-4">
+                  Campos Personalizados
+                </h2>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {(selectedTemplate.customFields as any[]).map(
+                    (field: any) => {
+                      // Support both key/label (interface) and code/name (legacy)
+                      const fieldKey = field.key ?? field.code;
+                      const fieldLabel = field.label ?? field.name;
+                      return (
+                        <div key={fieldKey}>
+                          <label className="block text-sm font-medium text-gray-300 mb-1">
+                            {fieldLabel}
+                            {field.required && (
+                              <span className="text-red-400"> *</span>
+                            )}
+                          </label>
+
+                          {(field.type === "text" || field.type === "TEXT") && (
+                            <input
+                              type="text"
+                              value={formData.customData?.[fieldKey] || ""}
+                              onChange={(e) =>
+                                handleCustomFieldChange(
+                                  fieldKey,
+                                  e.target.value,
+                                )
+                              }
+                              required={field.required}
+                              placeholder={field.placeholder}
+                              className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          )}
+
+                          {(field.type === "number" ||
+                            field.type === "NUMBER") && (
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={formData.customData?.[fieldKey] || ""}
+                              onChange={(e) =>
+                                handleCustomFieldChange(
+                                  fieldKey,
+                                  parseFloat(e.target.value),
+                                )
+                              }
+                              required={field.required}
+                              placeholder={field.placeholder}
+                              className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          )}
+
+                          {(field.type === "select" ||
+                            field.type === "SELECT") &&
+                            (field.options || field.validations?.options) && (
+                              <select
+                                value={formData.customData?.[fieldKey] || ""}
+                                onChange={(e) =>
+                                  handleCustomFieldChange(
+                                    fieldKey,
+                                    e.target.value,
+                                  )
+                                }
+                                required={field.required}
+                                className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              >
+                                <option value="">Seleccionar...</option>
+                                {(
+                                  field.options ??
+                                  field.validations?.options ??
+                                  []
+                                ).map((opt: string) => (
+                                  <option key={opt} value={opt}>
+                                    {opt}
+                                  </option>
+                                ))}
+                              </select>
+                            )}
+
+                          {(field.type === "boolean" ||
+                            field.type === "BOOLEAN") && (
+                            <div className="flex items-center gap-3 pt-2">
+                              <input
+                                type="checkbox"
+                                id={`custom-${fieldKey}`}
+                                checked={
+                                  formData.customData?.[fieldKey] || false
+                                }
+                                onChange={(e) =>
+                                  handleCustomFieldChange(
+                                    fieldKey,
+                                    e.target.checked,
+                                  )
+                                }
+                                className="w-4 h-4 bg-gray-900 border-gray-700 rounded text-blue-600 focus:ring-2 focus:ring-blue-500"
+                              />
+                              <label
+                                htmlFor={`custom-${fieldKey}`}
+                                className="text-sm text-gray-300 cursor-pointer"
+                              >
+                                {field.placeholder || "Sí/No"}
+                              </label>
+                            </div>
+                          )}
+
+                          {(field.type === "textarea" ||
+                            field.type === "TEXTAREA") && (
+                            <textarea
+                              rows={3}
+                              value={formData.customData?.[fieldKey] || ""}
+                              onChange={(e) =>
+                                handleCustomFieldChange(
+                                  fieldKey,
+                                  e.target.value,
+                                )
+                              }
+                              placeholder={field.placeholder}
+                              className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                            />
+                          )}
+                        </div>
+                      );
+                    },
+                  )}
+                </div>
+              </div>
+            )}
 
           {/* Parts List Card — only for non-supply individual assets */}
           {selectedTemplate && !isSupplyCategory(selectedTemplate.category) && (
