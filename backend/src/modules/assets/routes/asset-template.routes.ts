@@ -64,8 +64,14 @@ const createTemplateSchema = z.object({
   hasExpiryDate: z.boolean().optional().default(false),
   requiresLotTracking: z.boolean().optional().default(false),
   isDangerous: z.boolean().optional().default(false),
-  hazardClass: z.string().nullish(),
-  minStockLevel: z.number().nullish(),
+  hazardClass: z
+    .string()
+    .nullish()
+    .transform((v) => v ?? undefined),
+  minStockLevel: z
+    .number()
+    .nullish()
+    .transform((v) => v ?? undefined),
   customFields: z.array(customFieldSchema).default([]),
   technicalSpecs: z.record(z.string(), z.any()).nullish(),
   machineParts: z.array(z.any()).nullish(),
@@ -95,8 +101,14 @@ const updateTemplateSchema = z.object({
   hasExpiryDate: z.boolean().optional(),
   requiresLotTracking: z.boolean().optional(),
   isDangerous: z.boolean().optional(),
-  hazardClass: z.string().nullish(),
-  minStockLevel: z.number().nullish(),
+  hazardClass: z
+    .string()
+    .nullish()
+    .transform((v) => v ?? undefined),
+  minStockLevel: z
+    .number()
+    .nullish()
+    .transform((v) => v ?? undefined),
   customFields: z.array(customFieldSchema).optional(),
   technicalSpecs: z.record(z.string(), z.any()).nullish(),
   machineParts: z.array(z.any()).nullish(),

@@ -275,7 +275,9 @@ export class QuotationEmailService {
 
     // 4. Enviar email con PDF adjunto via EmailService (con fallback a consola en dev)
     if (!quotation.client.email) {
-      throw new Error(`El cliente "${quotation.client.name}" no tiene email registrado.`);
+      throw new Error(
+        `El cliente "${quotation.client.name}" no tiene email registrado.`,
+      );
     }
     await emailService.sendGenericEmail(quotation.businessUnitId, {
       to: quotation.client.email,
