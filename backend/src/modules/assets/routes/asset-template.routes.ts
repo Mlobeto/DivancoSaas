@@ -48,7 +48,11 @@ const createTemplateSchema = z.object({
   name: z.string().min(2).max(100),
   category: z.nativeEnum(AssetCategory),
   managementType: z.nativeEnum(AssetManagementType),
-  description: z.string().max(500).nullish(),
+  description: z
+    .string()
+    .max(500)
+    .nullish()
+    .transform((v) => v ?? undefined),
   icon: z.string().max(50).nullish(),
   requiresPreventiveMaintenance: z.boolean().optional().default(false),
   requiresDocumentation: z.boolean().optional().default(false),
@@ -71,7 +75,11 @@ const createTemplateSchema = z.object({
 const updateTemplateSchema = z.object({
   name: z.string().min(2).max(100).optional(),
   managementType: z.nativeEnum(AssetManagementType).optional(),
-  description: z.string().max(500).nullish(),
+  description: z
+    .string()
+    .max(500)
+    .nullish()
+    .transform((v) => v ?? undefined),
   icon: z.string().max(50).nullish(),
   requiresPreventiveMaintenance: z.boolean().optional(),
   requiresDocumentation: z.boolean().optional(),
