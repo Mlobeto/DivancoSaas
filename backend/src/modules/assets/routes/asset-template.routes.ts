@@ -53,7 +53,11 @@ const createTemplateSchema = z.object({
     .max(500)
     .nullish()
     .transform((v) => v ?? undefined),
-  icon: z.string().max(50).nullish(),
+  icon: z
+    .string()
+    .max(50)
+    .nullish()
+    .transform((v) => v ?? undefined),
   requiresPreventiveMaintenance: z.boolean().optional().default(false),
   requiresDocumentation: z.boolean().optional().default(false),
   requiresWeight: z.boolean().optional().default(false),
@@ -80,7 +84,11 @@ const updateTemplateSchema = z.object({
     .max(500)
     .nullish()
     .transform((v) => v ?? undefined),
-  icon: z.string().max(50).nullish(),
+  icon: z
+    .string()
+    .max(50)
+    .nullish()
+    .transform((v) => v ?? undefined),
   requiresPreventiveMaintenance: z.boolean().optional(),
   requiresDocumentation: z.boolean().optional(),
   requiresWeight: z.boolean().optional(),
