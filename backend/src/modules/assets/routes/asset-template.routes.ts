@@ -73,13 +73,34 @@ const createTemplateSchema = z.object({
     .nullish()
     .transform((v) => v ?? undefined),
   customFields: z.array(customFieldSchema).default([]),
-  technicalSpecs: z.record(z.string(), z.any()).nullish(),
-  machineParts: z.array(z.any()).nullish(),
-  maintenanceSchedule: z.array(z.any()).nullish(),
-  presentation: z.any().nullish(),
-  compatibleWith: z.any().nullish(),
-  businessRules: z.any().nullish(),
-  rentalRules: z.any().nullish(),
+  technicalSpecs: z
+    .record(z.string(), z.any())
+    .nullish()
+    .transform((v) => v ?? undefined),
+  machineParts: z
+    .array(z.any())
+    .nullish()
+    .transform((v) => v ?? undefined),
+  maintenanceSchedule: z
+    .array(z.any())
+    .nullish()
+    .transform((v) => v ?? undefined),
+  presentation: z
+    .any()
+    .nullish()
+    .transform((v) => v ?? undefined),
+  compatibleWith: z
+    .any()
+    .nullish()
+    .transform((v) => v ?? undefined),
+  businessRules: z
+    .any()
+    .nullish()
+    .transform((v) => v ?? undefined),
+  rentalRules: z
+    .any()
+    .nullish()
+    .transform((v) => v ?? undefined),
 });
 
 const updateTemplateSchema = z.object({
@@ -110,13 +131,34 @@ const updateTemplateSchema = z.object({
     .nullish()
     .transform((v) => v ?? undefined),
   customFields: z.array(customFieldSchema).optional(),
-  technicalSpecs: z.record(z.string(), z.any()).nullish(),
-  machineParts: z.array(z.any()).nullish(),
-  maintenanceSchedule: z.array(z.any()).nullish(),
-  presentation: z.any().nullish(),
-  compatibleWith: z.any().nullish(),
-  businessRules: z.any().nullish(),
-  rentalRules: z.any().nullish(),
+  technicalSpecs: z
+    .record(z.string(), z.any())
+    .nullish()
+    .transform((v) => v ?? undefined),
+  machineParts: z
+    .array(z.any())
+    .nullish()
+    .transform((v) => v ?? undefined),
+  maintenanceSchedule: z
+    .array(z.any())
+    .nullish()
+    .transform((v) => v ?? undefined),
+  presentation: z
+    .any()
+    .nullish()
+    .transform((v) => v ?? undefined),
+  compatibleWith: z
+    .any()
+    .nullish()
+    .transform((v) => v ?? undefined),
+  businessRules: z
+    .any()
+    .nullish()
+    .transform((v) => v ?? undefined),
+  rentalRules: z
+    .any()
+    .nullish()
+    .transform((v) => v ?? undefined),
 });
 
 const listQuerySchema = z.object({
