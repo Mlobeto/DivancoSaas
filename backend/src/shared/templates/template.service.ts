@@ -257,8 +257,11 @@ export class TemplateService {
       throw new Error(`Template ${params.templateId} is not active`);
     }
 
-    // Compilar plantilla
-    const compiledTemplate = this.handlebars.compile(template.content);
+    // Compilar plantilla (eliminar bloque placeholder si quedó guardado)
+    const PLACEHOLDER_RE =
+      /<div[^>]*>\s*<h2[^>]*>[^<]*Empieza insertando bloques[^<]*<\/h2>[\s\S]*?<\/div>/gi;
+    const cleanContent = template.content.replace(PLACEHOLDER_RE, "").trim();
+    const compiledTemplate = this.handlebars.compile(cleanContent);
 
     // Preparar datos con helpers y opciones
     const enrichedData = this.enrichData(params.data, params.options);

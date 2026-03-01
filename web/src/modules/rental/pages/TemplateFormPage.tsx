@@ -39,12 +39,8 @@ export function TemplateFormPage() {
       setType(template.type);
       setContent(template.content);
     } else {
-      // Set default content for new templates (se verá renderizado en el preview)
-      const defaultContent = `<div style="text-align: center; padding: 40px; background: #f3f4f6; border-radius: 8px; margin: 20px 0;">
-  <h2 style="color: #1e40af; margin: 0 0 12px 0;">👈 Empieza insertando bloques</h2>
-  <p style="color: #6b7280; margin: 0;">Haz click en los bloques del panel izquierdo para construir tu plantilla de cotización</p>
-</div>`;
-      setContent(defaultContent);
+      // Contenido vacío para nuevas plantillas
+      setContent("");
     }
   }, [template, tenant]);
 
