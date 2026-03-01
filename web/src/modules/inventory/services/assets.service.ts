@@ -179,16 +179,29 @@ export const assetsService = {
    * Create new asset
    */
   async create(data: CreateAssetData): Promise<Asset> {
-    const response = await api.post<ApiResponse<Asset>>(
-      "/modules/assets/assets",
-      data,
-    );
+    try {
+      const response = await api.post<ApiResponse<Asset>>(
+        "/modules/assets/assets",
+        data,
+      );
 
-    if (!response.data.success) {
-      throw new Error(response.data.error?.message || "Failed to create asset");
+      if (!response.data.success) {
+        const errMsg =
+          typeof response.data.error === "string"
+            ? response.data.error
+            : (response.data.error as any)?.message || "Error al crear activo";
+        throw new Error(errMsg);
+      }
+
+      return response.data.data!;
+    } catch (err: any) {
+      // Axios lanza error para 4xx/5xx; extraer mensaje del body
+      const apiMsg =
+        typeof err.response?.data?.error === "string"
+          ? err.response.data.error
+          : err.response?.data?.error?.message;
+      throw new Error(apiMsg || err.message || "Error al crear activo");
     }
-
-    return response.data.data!;
   },
 
   /**

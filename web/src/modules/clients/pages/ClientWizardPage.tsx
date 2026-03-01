@@ -1,9 +1,89 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { Layout } from "@/core/components/Layout";
 import { clientService } from "../services/client.service";
-import { ClientType, ClientStatus, Client } from "../types/client.types";
+import {
+  ClientType,
+  ClientStatus,
+  Client,
+  ClientTaxProfile,
+} from "../types/client.types";
+
+// Colombia: tipos de documento disponibles por tipo de cliente
+const CO_DOC_TYPES_COMPANY = [
+  { value: "NIT", label: "NIT (Número de Identificación Tributaria)" },
+  { value: "CE", label: "CE (Cédula de Extranjería)" },
+  { value: "PP", label: "PP (Pasaporte)" },
+];
+const CO_DOC_TYPES_PERSON = [
+  { value: "CC", label: "CC (Cédula de Ciudadanía)" },
+  { value: "CE", label: "CE (Cédula de Extranjería)" },
+  { value: "NIT", label: "NIT (Persona Natural con NIT)" },
+  { value: "PP", label: "PP (Pasaporte)" },
+  { value: "TI", label: "TI (Tarjeta de Identidad)" },
+];
+
+const CO_TAX_REGIMES = [
+  { value: "RESPONSABLE_IVA", label: "Responsable de IVA (Régimen Común)" },
+  {
+    value: "NO_RESPONSABLE_IVA",
+    label: "No Responsable de IVA (Régimen Simplificado)",
+  },
+  { value: "GRAN_CONTRIBUYENTE", label: "Gran Contribuyente" },
+  {
+    value: "REGIMEN_ESPECIAL",
+    label: "Régimen Especial (Entidades sin ánimo de lucro)",
+  },
+  { value: "REGIMEN_SIMPLE", label: "Régimen Simple de Tributación (SIMPLE)" },
+];
+
+const CO_FISCAL_RESPONSIBILITIES = [
+  { value: "O-13", label: "O-13 – Gran contribuyente" },
+  { value: "O-14", label: "O-14 – Agente de retención en la fuente" },
+  { value: "O-15", label: "O-15 – Autorretenedor" },
+  { value: "O-16", label: "O-16 – Obligado a llevar contabilidad" },
+  { value: "O-23", label: "O-23 – No obligado a llevar contabilidad" },
+  { value: "O-47", label: "O-47 – Régimen simple de tributación" },
+  { value: "R-99-PN", label: "R-99-PN – No aplica – Otros" },
+];
+
+const CO_DEPARTMENTS = [
+  "Amazonas",
+  "Antioquia",
+  "Arauca",
+  "Atlántico",
+  "Bolívar",
+  "Boyacá",
+  "Caldas",
+  "Caquetá",
+  "Casanare",
+  "Cauca",
+  "Cesar",
+  "Chocó",
+  "Córdoba",
+  "Cundinamarca",
+  "Guainía",
+  "Guaviare",
+  "Huila",
+  "La Guajira",
+  "Magdalena",
+  "Meta",
+  "Nariño",
+  "Norte de Santander",
+  "Putumayo",
+  "Quindío",
+  "Risaralda",
+  "San Andrés y Providencia",
+  "Santander",
+  "Sucre",
+  "Tolima",
+  "Valle del Cauca",
+  "Vaupés",
+  "Vichada",
+  "Bogotá D.C.",
+];
 
 export function ClientWizardPage() {
   const { id } = useParams();
@@ -23,6 +103,27 @@ export function ClientWizardPage() {
   });
 
   const [tagInput, setTagInput] = useState("");
+  const [showBilling, setShowBilling] = useState(true);
+
+  // Estado separado para el perfil tributario/facturación
+  const [taxProfile, setTaxProfile] = useState<
+    Partial<
+      Omit<ClientTaxProfile, "id" | "clientId" | "createdAt" | "updatedAt">
+    >
+  >({
+    countryCode: "CO",
+    taxIdType: "",
+    taxIdNumber: "",
+    taxRegime: "",
+    fiscalResponsibility: "",
+    fiscalAddressLine1: "",
+    city: "",
+    state: "",
+    postalCode: "",
+  });
+
+  // Dígito de verificación (solo para NIT)
+  const [nitDV, setNitDV] = useState("");
 
   const { data: existingClient, isLoading: isLoadingClient } = useQuery({
     queryKey: ["client", id],
@@ -42,6 +143,31 @@ export function ClientWizardPage() {
         status: existingClient.status,
         tags: existingClient.tags || [],
       });
+
+      // Cargar perfil tributario existente (primero del array)
+      const existingTax = existingClient.taxProfiles?.[0];
+      if (existingTax) {
+        setTaxProfile({
+          countryCode: existingTax.countryCode,
+          taxIdType: existingTax.taxIdType,
+          taxIdNumber: existingTax.taxIdNumber,
+          taxRegime: existingTax.taxRegime || "",
+          fiscalResponsibility: existingTax.fiscalResponsibility || "",
+          fiscalAddressLine1: existingTax.fiscalAddressLine1 || "",
+          city: existingTax.city || "",
+          state: existingTax.state || "",
+          postalCode: existingTax.postalCode || "",
+        });
+        // Extraer DV si el número es "123456789-5"
+        if (
+          existingTax.taxIdType === "NIT" &&
+          existingTax.taxIdNumber?.includes("-")
+        ) {
+          const parts = existingTax.taxIdNumber.split("-");
+          setNitDV(parts[1] || "");
+          setTaxProfile((prev) => ({ ...prev, taxIdNumber: parts[0] }));
+        }
+      }
     }
   }, [existingClient]);
 
@@ -61,7 +187,36 @@ export function ClientWizardPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    mutation.mutate(formData);
+
+    // Construir taxProfile: si tiene tipo y número, agregarlo al payload
+    const hasTaxProfile = taxProfile.taxIdType && taxProfile.taxIdNumber;
+    const taxIdNumberFull =
+      taxProfile.taxIdType === "NIT" && nitDV
+        ? `${taxProfile.taxIdNumber}-${nitDV}`
+        : taxProfile.taxIdNumber;
+
+    const payload: any = {
+      ...formData,
+      ...(hasTaxProfile
+        ? {
+            taxProfile: {
+              ...taxProfile,
+              countryCode: formData.countryCode || "CO",
+              taxIdNumber: taxIdNumberFull,
+              // Limpiar campos vacíos
+              taxRegime: taxProfile.taxRegime || undefined,
+              fiscalResponsibility:
+                taxProfile.fiscalResponsibility || undefined,
+              fiscalAddressLine1: taxProfile.fiscalAddressLine1 || undefined,
+              city: taxProfile.city || undefined,
+              state: taxProfile.state || undefined,
+              postalCode: taxProfile.postalCode || undefined,
+            },
+          }
+        : {}),
+    };
+
+    mutation.mutate(payload);
   };
 
   const handleAddTag = () => {
@@ -277,6 +432,236 @@ export function ClientWizardPage() {
                 ))}
               </div>
             </div>
+
+            {/* ─── Facturación ─── */}
+            <div className="col-span-2 mt-2">
+              <button
+                type="button"
+                className="flex items-center gap-2 text-sm font-semibold text-primary-300 w-full border-b border-dark-700 pb-2"
+                onClick={() => setShowBilling((v) => !v)}
+              >
+                {showBilling ? (
+                  <ChevronUp className="w-4 h-4" />
+                ) : (
+                  <ChevronDown className="w-4 h-4" />
+                )}
+                Información de Facturación
+                <span className="text-xs font-normal text-dark-400 ml-1">
+                  (tributario / DIAN)
+                </span>
+              </button>
+            </div>
+
+            {showBilling && (
+              <>
+                {/* Tipo de documento */}
+                <div className="form-group">
+                  <label className="form-label">Tipo de Documento</label>
+                  <select
+                    className="form-input"
+                    value={taxProfile.taxIdType || ""}
+                    onChange={(e) =>
+                      setTaxProfile({
+                        ...taxProfile,
+                        taxIdType: e.target.value,
+                        taxIdNumber: "",
+                      })
+                    }
+                  >
+                    <option value="">-- Sin documento tributario --</option>
+                    {(formData.type === ClientType.COMPANY
+                      ? CO_DOC_TYPES_COMPANY
+                      : CO_DOC_TYPES_PERSON
+                    ).map((d) => (
+                      <option key={d.value} value={d.value}>
+                        {d.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Número de documento */}
+                <div className="form-group">
+                  <label className="form-label">
+                    {taxProfile.taxIdType === "NIT"
+                      ? "NIT (sin dígito de verificación)"
+                      : taxProfile.taxIdType
+                        ? `Número de ${taxProfile.taxIdType}`
+                        : "Número de Documento"}
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      className="form-input flex-1"
+                      placeholder={
+                        taxProfile.taxIdType === "NIT" ? "ej: 800123456" : ""
+                      }
+                      value={taxProfile.taxIdNumber || ""}
+                      onChange={(e) =>
+                        setTaxProfile({
+                          ...taxProfile,
+                          taxIdNumber: e.target.value,
+                        })
+                      }
+                    />
+                    {taxProfile.taxIdType === "NIT" && (
+                      <div className="flex flex-col items-center">
+                        <label className="text-xs text-dark-400 mb-1">DV</label>
+                        <input
+                          type="text"
+                          maxLength={1}
+                          className="form-input w-14 text-center"
+                          placeholder="5"
+                          value={nitDV}
+                          onChange={(e) =>
+                            setNitDV(e.target.value.replace(/\D/g, ""))
+                          }
+                        />
+                      </div>
+                    )}
+                  </div>
+                  {taxProfile.taxIdType === "NIT" && (
+                    <p className="text-xs text-dark-400 mt-1">
+                      Se guardará como{" "}
+                      <span className="text-primary-300">
+                        {taxProfile.taxIdNumber || "000"}-{nitDV || "0"}
+                      </span>
+                    </p>
+                  )}
+                </div>
+
+                {/* Régimen tributario — solo Colombia */}
+                {(formData.countryCode === "CO" || !formData.countryCode) && (
+                  <div className="form-group">
+                    <label className="form-label">Régimen Tributario</label>
+                    <select
+                      className="form-input"
+                      value={taxProfile.taxRegime || ""}
+                      onChange={(e) =>
+                        setTaxProfile({
+                          ...taxProfile,
+                          taxRegime: e.target.value,
+                        })
+                      }
+                    >
+                      <option value="">-- Seleccionar régimen --</option>
+                      {CO_TAX_REGIMES.map((r) => (
+                        <option key={r.value} value={r.value}>
+                          {r.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Responsabilidad fiscal — solo Colombia */}
+                {(formData.countryCode === "CO" || !formData.countryCode) && (
+                  <div className="form-group">
+                    <label className="form-label">
+                      Responsabilidad Fiscal (DIAN)
+                    </label>
+                    <select
+                      className="form-input"
+                      value={taxProfile.fiscalResponsibility || ""}
+                      onChange={(e) =>
+                        setTaxProfile({
+                          ...taxProfile,
+                          fiscalResponsibility: e.target.value,
+                        })
+                      }
+                    >
+                      <option value="">
+                        -- Seleccionar responsabilidad --
+                      </option>
+                      {CO_FISCAL_RESPONSIBILITIES.map((r) => (
+                        <option key={r.value} value={r.value}>
+                          {r.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Dirección fiscal */}
+                <div className="col-span-2 form-group">
+                  <label className="form-label">Dirección Fiscal</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="Ej: Cra 15 # 88-64, Ofic 501"
+                    value={taxProfile.fiscalAddressLine1 || ""}
+                    onChange={(e) =>
+                      setTaxProfile({
+                        ...taxProfile,
+                        fiscalAddressLine1: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+
+                {/* Ciudad */}
+                <div className="form-group">
+                  <label className="form-label">Ciudad</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="Ej: Bogotá"
+                    value={taxProfile.city || ""}
+                    onChange={(e) =>
+                      setTaxProfile({ ...taxProfile, city: e.target.value })
+                    }
+                  />
+                </div>
+
+                {/* Departamento */}
+                <div className="form-group">
+                  <label className="form-label">Departamento</label>
+                  {formData.countryCode === "CO" || !formData.countryCode ? (
+                    <select
+                      className="form-input"
+                      value={taxProfile.state || ""}
+                      onChange={(e) =>
+                        setTaxProfile({ ...taxProfile, state: e.target.value })
+                      }
+                    >
+                      <option value="">-- Seleccionar --</option>
+                      {CO_DEPARTMENTS.map((d) => (
+                        <option key={d} value={d}>
+                          {d}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="Estado / Provincia"
+                      value={taxProfile.state || ""}
+                      onChange={(e) =>
+                        setTaxProfile({ ...taxProfile, state: e.target.value })
+                      }
+                    />
+                  )}
+                </div>
+
+                {/* Código postal */}
+                <div className="form-group">
+                  <label className="form-label">Código Postal</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="Ej: 110111"
+                    value={taxProfile.postalCode || ""}
+                    onChange={(e) =>
+                      setTaxProfile({
+                        ...taxProfile,
+                        postalCode: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+              </>
+            )}
           </div>
 
           <div className="flex justify-end gap-3 pt-6 border-t border-dark-700">

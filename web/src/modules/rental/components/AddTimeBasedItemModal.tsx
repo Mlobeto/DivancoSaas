@@ -1,9 +1,6 @@
 import { useState, useEffect } from "react";
-import { X, Clock, Calendar, User, Settings } from "lucide-react";
-import type {
-  RentalPeriodType,
-  OperatorCostType,
-} from "../types/quotation.types";
+import { X, Clock, User, Calculator } from "lucide-react";
+import type { OperatorCostType } from "../types/quotation.types";
 import type { AssetRentalProfile } from "@/modules/inventory/services/assets.service";
 
 interface AssetSearchResult {
@@ -20,7 +17,7 @@ interface AssetSearchResult {
   operatorCostType: "PER_HOUR" | "PER_DAY" | null;
   operatorCostRate: number | null;
   requiresOperator: boolean;
-  rentalProfile?: AssetRentalProfile; // Multi-vertical extension
+  rentalProfile?: AssetRentalProfile;
 }
 
 interface AddTimeBasedItemModalProps {
@@ -42,13 +39,81 @@ export interface TimeBasedItemData {
   rentalDays: number;
   startDate: string;
   endDate: string;
-  rentalPeriodType: RentalPeriodType;
+  rentalPeriodType: "hourly" | "daily" | "weekly" | "monthly";
   standbyHours?: number;
   operatorIncluded: boolean;
   operatorCostType?: OperatorCostType;
   customUnitPrice?: number;
   customOperatorCost?: number;
+  // Precios calculados automáticamente (para mostrar en la lista)
+  calculatedUnitPrice: number;
+  calculatedOperatorCost: number;
 }
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+interface PriceBreakdown {
+  months: number;
+  weeks: number;
+  days: number;
+  monthlyPrice: number;
+  weeklyPrice: number;
+  dailyPrice: number;
+  total: number;
+  dominantPeriod: "daily" | "weekly" | "monthly";
+}
+
+/**
+ * Precio escalonado para implementos/herramientas:
+ *   ≥30 días → meses completos + semanas restantes + días restantes
+ *   ≥7 días  → semanas completas + días restantes
+ *   <7 días  → días × pricePerDay
+ */
+function calcTieredPrice(
+  totalDays: number,
+  pricePerDay: number,
+  pricePerWeek: number | null,
+  pricePerMonth: number | null,
+): PriceBreakdown {
+  let remaining = totalDays;
+
+  let months = 0;
+  if (pricePerMonth && remaining >= 30) {
+    months = Math.floor(remaining / 30);
+    remaining -= months * 30;
+  }
+
+  let weeks = 0;
+  if (pricePerWeek && remaining >= 7) {
+    weeks = Math.floor(remaining / 7);
+    remaining -= weeks * 7;
+  }
+
+  const days = remaining;
+  const total =
+    months * (pricePerMonth ?? 0) +
+    weeks * (pricePerWeek ?? 0) +
+    days * pricePerDay;
+
+  const dominantPeriod: PriceBreakdown["dominantPeriod"] =
+    months > 0 ? "monthly" : weeks > 0 ? "weekly" : "daily";
+
+  return {
+    months,
+    weeks,
+    days,
+    monthlyPrice: pricePerMonth ?? 0,
+    weeklyPrice: pricePerWeek ?? 0,
+    dailyPrice: pricePerDay,
+    total,
+    dominantPeriod,
+  };
+}
+
+const fmt = (n: number) =>
+  n.toLocaleString("es-CO", { minimumFractionDigits: 0 });
+
+// ─── Component ───────────────────────────────────────────────────────────────
 
 export function AddTimeBasedItemModal({
   isOpen,
@@ -60,109 +125,83 @@ export function AddTimeBasedItemModal({
   onAdd,
 }: AddTimeBasedItemModalProps) {
   const [quantity, setQuantity] = useState(1);
-  const [rentalPeriodType, setRentalPeriodType] =
-    useState<RentalPeriodType>("daily");
   const [standbyHours, setStandbyHours] = useState(8);
   const [operatorIncluded, setOperatorIncluded] = useState(false);
   const [operatorCostType, setOperatorCostType] =
     useState<OperatorCostType>("PER_DAY");
-  const [customUnitPrice, setCustomUnitPrice] = useState<number | undefined>(
-    undefined,
-  );
+  const [customUnitPrice, setCustomUnitPrice] = useState<number | undefined>();
   const [customOperatorCost, setCustomOperatorCost] = useState<
     number | undefined
-  >(undefined);
+  >();
 
-  // Calcular precio automático
-  const [calculatedPrice, setCalculatedPrice] = useState(0);
-  const [calculatedOperatorCost, setCalculatedOperatorCost] = useState(0);
+  // ── Valores del perfil de alquiler ──────────────────────────────────────
+  const getVal = (field: keyof AssetRentalProfile) => {
+    const pv = asset?.rentalProfile?.[field];
+    const lv = asset?.[field as keyof AssetSearchResult];
+    return Number(pv ?? lv ?? 0) || 0;
+  };
 
+  const trackingType =
+    asset?.rentalProfile?.trackingType ?? asset?.trackingType ?? null;
+
+  const pricePerHour = getVal("pricePerHour");
+  const pricePerDay = getVal("pricePerDay");
+  const pricePerWeek = getVal("pricePerWeek") || null;
+  const pricePerMonth = getVal("pricePerMonth") || null;
+  const operatorRate = getVal("operatorCostRate");
+
+  // ── Precio calculado automáticamente ────────────────────────────────────
+  const machineryBasePrice =
+    trackingType === "MACHINERY"
+      ? estimatedDays * standbyHours * pricePerHour
+      : 0;
+
+  const tiered: PriceBreakdown | null =
+    trackingType !== "MACHINERY" && pricePerDay > 0
+      ? calcTieredPrice(estimatedDays, pricePerDay, pricePerWeek, pricePerMonth)
+      : null;
+
+  const calculatedBasePrice =
+    trackingType === "MACHINERY" ? machineryBasePrice : (tiered?.total ?? 0);
+
+  const calculatedOperatorCost = (() => {
+    if (!operatorIncluded || !operatorRate) return 0;
+    if (operatorCostType === "PER_HOUR")
+      return estimatedDays * standbyHours * operatorRate;
+    return estimatedDays * operatorRate;
+  })();
+
+  // ── Reset al cambiar asset ───────────────────────────────────────────────
   useEffect(() => {
     if (!asset) return;
-
-    // Helper: Obtener valor con fallback desde rentalProfile (multi-vertical)
-    const getPrice = (field: keyof AssetRentalProfile) => {
-      const profileValue = asset.rentalProfile?.[field];
-      const legacyValue = asset[field as keyof AssetSearchResult];
-      return profileValue ?? legacyValue ?? 0;
-    };
-
-    // Calcular precio base según tipo de activo
-    let basePrice = 0;
-    const trackingType =
-      asset.rentalProfile?.trackingType || asset.trackingType;
-
-    if (trackingType === "MACHINERY") {
-      const hourlyRate = Number(getPrice("pricePerHour"));
-      basePrice = estimatedDays * standbyHours * hourlyRate;
-    } else if (trackingType === "TOOL") {
-      const pricePerMonth = Number(getPrice("pricePerMonth"));
-      const pricePerWeek = Number(getPrice("pricePerWeek"));
-      const pricePerDay = Number(getPrice("pricePerDay"));
-
-      if (estimatedDays >= 30 && pricePerMonth) {
-        basePrice = pricePerMonth;
-      } else if (estimatedDays >= 7 && pricePerWeek) {
-        basePrice = pricePerWeek;
-      } else {
-        basePrice = pricePerDay * estimatedDays;
-      }
-    }
-    setCalculatedPrice(basePrice);
-
-    // Calcular costo de operario
-    let operCost = 0;
-    const operatorRate = Number(getPrice("operatorCostRate"));
-    if (operatorIncluded && operatorRate) {
-      if (operatorCostType === "PER_HOUR") {
-        operCost = estimatedDays * standbyHours * operatorRate;
-      } else {
-        operCost = estimatedDays * operatorRate;
-      }
-    }
-    setCalculatedOperatorCost(operCost);
-  }, [
-    asset,
-    estimatedDays,
-    standbyHours,
-    operatorIncluded,
-    operatorCostType,
-    rentalPeriodType,
-  ]);
-
-  // Reset form when asset changes
-  useEffect(() => {
-    if (asset) {
-      const trackingType =
-        asset.rentalProfile?.trackingType || asset.trackingType;
-      const minDailyHours =
-        asset.rentalProfile?.minDailyHours || asset.minDailyHours;
-      const operatorCostType =
-        asset.rentalProfile?.operatorCostType || asset.operatorCostType;
-
-      setQuantity(1);
-      setRentalPeriodType(trackingType === "MACHINERY" ? "hourly" : "daily");
-      setStandbyHours(minDailyHours || 8);
-      setOperatorIncluded(asset.requiresOperator);
-      setOperatorCostType(operatorCostType || "PER_DAY");
-      setCustomUnitPrice(undefined);
-      setCustomOperatorCost(undefined);
-    }
+    const mh = asset.rentalProfile?.minDailyHours ?? asset.minDailyHours;
+    const oct = asset.rentalProfile?.operatorCostType ?? asset.operatorCostType;
+    setQuantity(1);
+    setStandbyHours(Number(mh) || 8);
+    setOperatorIncluded(asset.requiresOperator ?? false);
+    setOperatorCostType((oct as OperatorCostType) ?? "PER_DAY");
+    setCustomUnitPrice(undefined);
+    setCustomOperatorCost(undefined);
   }, [asset]);
 
   if (!isOpen || !asset) return null;
 
+  const effectiveBase = customUnitPrice ?? calculatedBasePrice;
+  const effectiveOp = customOperatorCost ?? calculatedOperatorCost;
+  const totalItem = (effectiveBase + effectiveOp) * quantity;
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const rentalPeriodType: TimeBasedItemData["rentalPeriodType"] =
+      trackingType === "MACHINERY"
+        ? "hourly"
+        : (tiered?.dominantPeriod ?? "daily");
 
-    const trackingType =
-      asset.rentalProfile?.trackingType || asset.trackingType;
-
-    const itemData: TimeBasedItemData = {
+    onAdd({
       assetId: asset.id,
       assetName: asset.name,
       assetCode: asset.code,
-      trackingType: trackingType,
+      trackingType,
       quantity,
       rentalDays: estimatedDays,
       startDate: estimatedStartDate,
@@ -173,318 +212,264 @@ export function AddTimeBasedItemModal({
       operatorCostType: operatorIncluded ? operatorCostType : undefined,
       customUnitPrice,
       customOperatorCost,
-    };
-
-    onAdd(itemData);
+      calculatedUnitPrice: calculatedBasePrice,
+      calculatedOperatorCost: calculatedOperatorCost,
+    });
     onClose();
   };
 
-  const totalPrice =
-    (customUnitPrice || calculatedPrice) +
-    (customOperatorCost || calculatedOperatorCost);
-
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex items-center justify-between">
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+      <div className="card max-w-lg w-full max-h-[90vh] overflow-y-auto p-0 space-y-0">
+        {/* ── Header ── */}
+        <div className="flex items-start justify-between p-5 border-b border-dark-700">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">
-              Agregar Item - Alquiler por Tiempo
+            <h2 className="font-semibold text-dark-100 text-base">
+              {asset.name}
             </h2>
-            <p className="text-sm text-gray-500 mt-1">
-              {asset.name} ({asset.code})
+            <p className="text-xs text-dark-400 mt-0.5">
+              {asset.code} ·{" "}
+              {trackingType === "MACHINERY"
+                ? "Maquinaria"
+                : "Implemento / Herramienta"}
+            </p>
+            <p className="text-xs text-primary-400 mt-1">
+              {estimatedStartDate} → {estimatedEndDate} ·{" "}
+              <strong>{estimatedDays} días</strong>
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-dark-400 hover:text-dark-100 transition-colors"
           >
-            <X className="w-6 h-6" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* Período de Alquiler */}
-          <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
-            <div className="flex items-center gap-2 mb-3">
-              <Calendar className="w-5 h-5 text-blue-600" />
-              <h3 className="font-medium text-gray-900">Período de Alquiler</h3>
-            </div>
-
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Inicio
-                </label>
-                <input
-                  type="date"
-                  value={estimatedStartDate}
-                  disabled
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Fin
-                </label>
-                <input
-                  type="date"
-                  value={estimatedEndDate}
-                  disabled
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Días
-                </label>
-                <input
-                  type="number"
-                  value={estimatedDays}
-                  disabled
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 font-semibold"
-                />
-              </div>
-            </div>
+        <form onSubmit={handleSubmit} className="p-5 space-y-5">
+          {/* ── Cantidad ── */}
+          <div className="form-group">
+            <label className="form-label">Cantidad</label>
+            <input
+              type="number"
+              min="1"
+              className="form-input w-24"
+              value={quantity}
+              onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
+            />
           </div>
 
-          {/* Configuración del Item */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Settings className="w-5 h-5 text-gray-600" />
-              <h3 className="font-medium text-gray-900">Configuración</h3>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Cantidad
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  value={quantity}
-                  onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Tipo de Período
-                </label>
-                <select
-                  value={rentalPeriodType}
-                  onChange={(e) =>
-                    setRentalPeriodType(e.target.value as RentalPeriodType)
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                >
-                  <option value="hourly">Por Hora</option>
-                  <option value="daily">Por Día</option>
-                  <option value="weekly">Por Semana</option>
-                  <option value="monthly">Por Mes</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Standby Hours (solo para MACHINERY) */}
-            {(() => {
-              const trackingType =
-                asset.rentalProfile?.trackingType || asset.trackingType;
-              return (
-                trackingType === "MACHINERY" && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      <div className="flex items-center gap-2">
-                        <Clock className="w-4 h-4" />
-                        Horas Standby (mínimo garantizado/día)
-                      </div>
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="24"
-                      value={standbyHours}
-                      onChange={(e) =>
-                        setStandbyHours(parseInt(e.target.value) || 8)
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Horas mínimas garantizadas de uso por día (afecta cálculo
-                      de precio)
-                    </p>
-                  </div>
-                )
-              );
-            })()}
-          </div>
-
-          {/* Operario */}
-          <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <User className="w-5 h-5 text-gray-600" />
-                <h3 className="font-medium text-gray-900">Operario</h3>
-              </div>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={operatorIncluded}
-                  onChange={(e) => setOperatorIncluded(e.target.checked)}
-                  className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-                />
-                <span className="text-sm font-medium text-gray-700">
-                  Incluir Operario
-                </span>
+          {/* ── Standby hours – solo MACHINERY ── */}
+          {trackingType === "MACHINERY" && (
+            <div className="form-group">
+              <label className="form-label flex items-center gap-1.5">
+                <Clock className="w-4 h-4 text-primary-400" />
+                Horas standby garantizadas / día
               </label>
+              <input
+                type="number"
+                min="1"
+                max="24"
+                className="form-input w-24"
+                value={standbyHours}
+                onChange={(e) => setStandbyHours(parseInt(e.target.value) || 8)}
+              />
+              <p className="text-xs text-dark-400 mt-1">
+                Mínimo de horas/día que se facturan aunque la máquina esté
+                parada
+              </p>
             </div>
+          )}
+
+          {/* ── Desglose de precio calculado ── */}
+          <div className="bg-dark-800 rounded-lg p-4 space-y-2 border border-dark-700">
+            <div className="flex items-center gap-2 mb-2">
+              <Calculator className="w-4 h-4 text-primary-400" />
+              <span className="text-sm font-medium text-dark-200">
+                Precio calculado automáticamente
+              </span>
+            </div>
+
+            {trackingType === "MACHINERY" ? (
+              <div className="flex justify-between text-sm text-dark-300">
+                <span>
+                  {estimatedDays} días × {standbyHours} hrs × $
+                  {fmt(pricePerHour)}/hr
+                </span>
+                <span className="font-semibold text-primary-300">
+                  ${fmt(machineryBasePrice)}
+                </span>
+              </div>
+            ) : tiered ? (
+              <div className="text-sm text-dark-300 space-y-1">
+                {tiered.months > 0 && (
+                  <div className="flex justify-between">
+                    <span>
+                      {tiered.months} {tiered.months === 1 ? "mes" : "meses"} ×
+                      ${fmt(tiered.monthlyPrice)}
+                    </span>
+                    <span className="font-semibold">
+                      ${fmt(tiered.months * tiered.monthlyPrice)}
+                    </span>
+                  </div>
+                )}
+                {tiered.weeks > 0 && (
+                  <div className="flex justify-between">
+                    <span>
+                      {tiered.weeks} {tiered.weeks === 1 ? "semana" : "semanas"}{" "}
+                      × ${fmt(tiered.weeklyPrice)}
+                    </span>
+                    <span className="font-semibold">
+                      ${fmt(tiered.weeks * tiered.weeklyPrice)}
+                    </span>
+                  </div>
+                )}
+                {tiered.days > 0 && (
+                  <div className="flex justify-between">
+                    <span>
+                      {tiered.days} {tiered.days === 1 ? "día" : "días"} × $
+                      {fmt(tiered.dailyPrice)}
+                    </span>
+                    <span className="font-semibold">
+                      ${fmt(tiered.days * tiered.dailyPrice)}
+                    </span>
+                  </div>
+                )}
+                <div className="border-t border-dark-600 pt-1 flex justify-between font-semibold text-primary-300">
+                  <span>Subtotal implemento</span>
+                  <span>${fmt(tiered.total)}</span>
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-dark-400">
+                Sin precio configurado en el perfil de alquiler
+              </p>
+            )}
+          </div>
+
+          {/* ── Precio personalizado ── */}
+          <div className="form-group">
+            <label className="form-label">
+              Precio personalizado (opcional)
+            </label>
+            <input
+              type="number"
+              min="0"
+              step="1000"
+              className="form-input"
+              value={customUnitPrice ?? ""}
+              onChange={(e) =>
+                setCustomUnitPrice(
+                  e.target.value ? parseFloat(e.target.value) : undefined,
+                )
+              }
+              placeholder={`Auto: $${fmt(calculatedBasePrice)}`}
+            />
+            <p className="text-xs text-dark-400 mt-1">
+              Completar solo si desea sobreescribir el precio calculado
+            </p>
+          </div>
+
+          {/* ── Operario ── */}
+          <div className="border border-dark-700 rounded-lg p-4 space-y-3">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={operatorIncluded}
+                onChange={(e) => setOperatorIncluded(e.target.checked)}
+                className="w-4 h-4 rounded accent-primary-500"
+              />
+              <span className="flex items-center gap-1.5 font-medium text-dark-200 text-sm">
+                <User className="w-4 h-4 text-primary-400" />
+                Incluir operario
+              </span>
+            </label>
 
             {operatorIncluded && (
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Tipo de Costo
-                  </label>
+              <div className="space-y-3 pt-1">
+                <div className="form-group">
+                  <label className="form-label">Modalidad de cobro</label>
                   <select
+                    className="form-input"
                     value={operatorCostType}
                     onChange={(e) =>
                       setOperatorCostType(e.target.value as OperatorCostType)
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                   >
-                    <option value="PER_DAY">Por Día</option>
-                    <option value="PER_HOUR">Por Hora</option>
+                    <option value="PER_DAY">Por día (viáticos fijos)</option>
+                    <option value="PER_HOUR">Por hora</option>
                   </select>
                 </div>
 
-                <div className="text-sm text-gray-600 bg-white p-3 rounded border border-gray-200">
+                <div className="text-sm text-dark-300 bg-dark-800 rounded p-3 space-y-1">
                   <div className="flex justify-between">
-                    <span>Tarifa operario:</span>
-                    <span className="font-semibold">
-                      $
-                      {(
-                        asset.rentalProfile?.operatorCostRate ||
-                        asset.operatorCostRate
-                      )?.toLocaleString() || 0}
-                      /{operatorCostType === "PER_HOUR" ? "hora" : "día"}
+                    <span>
+                      Tarifa: ${fmt(operatorRate)}/
+                      {operatorCostType === "PER_HOUR" ? "hr" : "día"}
+                    </span>
+                    <span className="font-semibold text-primary-300">
+                      ${fmt(calculatedOperatorCost)}
                     </span>
                   </div>
-                  <div className="flex justify-between mt-1">
-                    <span>Costo calculado ({estimatedDays} días):</span>
-                    <span className="font-semibold text-blue-600">
-                      ${calculatedOperatorCost.toLocaleString()}
-                    </span>
-                  </div>
+                  {operatorCostType === "PER_HOUR" && (
+                    <p className="text-xs text-dark-400">
+                      {estimatedDays} días × {standbyHours} hrs
+                    </p>
+                  )}
                 </div>
 
-                {/* Override operador */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Costo Operario Custom (opcional)
+                <div className="form-group">
+                  <label className="form-label">
+                    Costo operario personalizado (opcional)
                   </label>
                   <input
                     type="number"
                     min="0"
-                    step="0.01"
-                    value={customOperatorCost || ""}
+                    step="1000"
+                    className="form-input"
+                    value={customOperatorCost ?? ""}
                     onChange={(e) =>
                       setCustomOperatorCost(
                         e.target.value ? parseFloat(e.target.value) : undefined,
                       )
                     }
-                    placeholder={`Auto: $${calculatedOperatorCost.toLocaleString()}`}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    placeholder={`Auto: $${fmt(calculatedOperatorCost)}`}
                   />
                 </div>
               </div>
             )}
           </div>
 
-          {/* Precio Base */}
-          <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-            <h3 className="font-medium text-gray-900 mb-3">Precio Base</h3>
-
-            <div className="text-sm text-gray-600 bg-white p-3 rounded border border-gray-200 mb-3">
-              <div className="flex justify-between">
-                <span>Precio calculado automático:</span>
-                <span className="font-semibold text-green-600">
-                  ${calculatedPrice.toLocaleString()}
-                </span>
-              </div>
-              {(() => {
-                const trackingType =
-                  asset.rentalProfile?.trackingType || asset.trackingType;
-                const pricePerHour =
-                  asset.rentalProfile?.pricePerHour || asset.pricePerHour;
-
-                return (
-                  trackingType === "MACHINERY" && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      {estimatedDays} días × {standbyHours} hrs/día × $
-                      {pricePerHour}/hr
-                    </p>
-                  )
-                );
-              })()}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Precio Custom (opcional)
-              </label>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={customUnitPrice || ""}
-                onChange={(e) =>
-                  setCustomUnitPrice(
-                    e.target.value ? parseFloat(e.target.value) : undefined,
-                  )
-                }
-                placeholder={`Auto: $${calculatedPrice.toLocaleString()}`}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-              />
-            </div>
-          </div>
-
-          {/* Total */}
-          <div className="p-4 bg-blue-600 text-white rounded-lg">
+          {/* ── Total ── */}
+          <div className="bg-primary-900/30 border border-primary-700/40 rounded-lg p-4">
             <div className="flex justify-between items-center">
-              <span className="text-lg font-semibold">TOTAL ITEM:</span>
-              <span className="text-2xl font-bold">
-                ${totalPrice.toLocaleString()}
+              <span className="text-dark-200 font-medium">
+                TOTAL ÍTEM
+                {quantity > 1 && (
+                  <span className="text-xs text-dark-400 ml-1">
+                    ({quantity} × ${fmt(effectiveBase + effectiveOp)})
+                  </span>
+                )}
+              </span>
+              <span className="text-xl font-bold text-primary-300">
+                ${fmt(totalItem)}
               </span>
             </div>
             {operatorIncluded && (
-              <p className="text-sm text-blue-100 mt-1">
-                Base: ${(customUnitPrice || calculatedPrice).toLocaleString()} +
-                Operario: $
-                {(
-                  customOperatorCost || calculatedOperatorCost
-                ).toLocaleString()}
+              <p className="text-xs text-dark-400 mt-1">
+                Implemento: ${fmt(effectiveBase)} · Operario: $
+                {fmt(effectiveOp * quantity)}
               </p>
             )}
           </div>
 
-          {/* Actions */}
-          <div className="flex justify-end gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-            >
+          <div className="flex justify-end gap-3 pt-1">
+            <button type="button" onClick={onClose} className="btn-ghost">
               Cancelar
             </button>
-            <button
-              type="submit"
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Agregar Item
+            <button type="submit" className="btn-primary">
+              Agregar a cotización
             </button>
           </div>
         </form>

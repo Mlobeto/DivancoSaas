@@ -70,6 +70,10 @@ import { PurchasesModule } from "./modules/purchases/purchases.module";
 import { ClientsModule } from "./modules/clients/clients.module";
 import rentalModule from "./modules/rental/rental.module";
 import { initializeRentalJobs } from "./modules/rental/rental.jobs";
+import {
+  publicQuotationController,
+  receiptUpload,
+} from "./modules/rental/controllers/public-quotation.controller";
 
 export function createApp(): Application {
   const app = express();
@@ -218,6 +222,22 @@ export function createApp(): Application {
   app.use("/api/v1/modules/purchases", purchasesModule.getRoutes());
   app.use("/api/v1/modules/clients", clientsModule.getRoutes());
   app.use("/api/v1/rental", rentalModule.routes);
+
+  // ────────────────────────────────────────
+  // PUBLIC ROUTES (sin autenticación)
+  // Para flujos orientados al cliente final
+  // ────────────────────────────────────────
+  // Formulario HTML para subir comprobante de pago
+  app.get(
+    "/api/v1/public/quotations/:token/upload",
+    publicQuotationController.uploadForm.bind(publicQuotationController),
+  );
+  // POST para recibir el archivo
+  app.post(
+    "/api/v1/public/quotations/:token/upload",
+    receiptUpload.single("receipt"),
+    publicQuotationController.uploadReceipt.bind(publicQuotationController),
+  );
 
   // TODO: Cargar rutas de módulos dinámicamente
   // loadModuleRoutes(app);

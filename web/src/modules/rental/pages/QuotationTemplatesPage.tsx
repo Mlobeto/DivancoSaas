@@ -10,7 +10,9 @@ import { Edit, Trash2, Eye, CheckCircle, XCircle } from "lucide-react";
 // Helper to get template type label in Spanish
 const getTemplateTypeLabel = (type: TemplateType): string => {
   const labels: Record<TemplateType, string> = {
-    quotation: "Cotización",
+    quotation_rental: "Cotización Alquiler",
+    quotation_service: "Cotización Trabajo/Servicio",
+    quotation: "Cotización (legado)",
     contract: "Contrato",
     contract_report: "Informe de Contrato",
     attachment: "Adjunto",
@@ -172,7 +174,11 @@ export function QuotationTemplatesPage() {
             className="form-input w-64"
           >
             <option value="">Todos los tipos</option>
-            <option value="quotation">Cotización</option>
+            <option value="quotation_rental">Cotización Alquiler</option>
+            <option value="quotation_service">
+              Cotización Trabajo/Servicio
+            </option>
+            <option value="quotation">Cotización (legado)</option>
             <option value="contract">Contrato</option>
             <option value="contract_report">Informe de Contrato</option>
             <option value="attachment">Adjunto Personalizable</option>

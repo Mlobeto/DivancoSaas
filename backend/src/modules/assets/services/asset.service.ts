@@ -75,6 +75,21 @@ export class AssetService {
       throw new Error("operatorCostType requires operatorCostRate");
     }
 
+    // Verificar código duplicado dentro de la business unit
+    if (data.code) {
+      const existing = await this.prisma.asset.findFirst({
+        where: { businessUnitId, code: data.code },
+        select: { id: true },
+      });
+      if (existing) {
+        const err: any = new Error(
+          `El código "${data.code}" ya está en uso en esta unidad de negocio. Use un código diferente.`,
+        );
+        err.statusCode = 409;
+        throw err;
+      }
+    }
+
     // Determinar si necesita crear rentalProfile
     const hasRentalData =
       data.trackingType || data.pricePerHour || data.pricePerDay;

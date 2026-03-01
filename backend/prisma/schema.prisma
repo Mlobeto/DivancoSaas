@@ -855,20 +855,20 @@ model Asset {
   // ═══════════════════════════════════════
 
   // Para MACHINERY:
-  pricePerHour  Decimal? @db.Decimal(10, 2) // $625/hora
+  pricePerHour  Decimal? @db.Decimal(15, 2) // $625/hora
   minDailyHours Decimal? @db.Decimal(5, 2) // STANDBY: Mínimo horas/día (ej: 3.0)
-  pricePerKm    Decimal? @db.Decimal(10, 2) // $5/km (opcional)
+  pricePerKm    Decimal? @db.Decimal(15, 2) // $5/km (opcional)
 
   // Para TOOL:
-  pricePerDay   Decimal? @db.Decimal(10, 2) // $200/día
-  pricePerWeek  Decimal? @db.Decimal(10, 2) // $1,200/sem (opcional)
-  pricePerMonth Decimal? @db.Decimal(10, 2) // $4,500/mes (opcional)
+  pricePerDay   Decimal? @db.Decimal(15, 2) // $200/día
+  pricePerWeek  Decimal? @db.Decimal(15, 2) // $1,200/sem (opcional)
+  pricePerMonth Decimal? @db.Decimal(15, 2) // $4,500/mes (opcional)
 
   // Costo del operario (si aplica)
   operatorCostType String? // "PER_DAY" | "PER_HOUR" | null (sin operario)
-  operatorCostRate Decimal? @db.Decimal(10, 2) // $3,000/día OR $375/hora
+  operatorCostRate Decimal? @db.Decimal(15, 2) // $3,000/día OR $375/hora
 
-  maintenanceCostDaily Decimal? @db.Decimal(10, 2)
+  maintenanceCostDaily Decimal? @db.Decimal(15, 2)
 
   // Datos dinámicos según template
   customData Json? // Almacena los valores de los customFields del template
@@ -954,25 +954,25 @@ model AssetRentalProfile {
   // ═══════════════════════════════════════
 
   // Para MACHINERY (maquinaria con operario):
-  pricePerHour  Decimal? @db.Decimal(10, 2) // $625/hora
+  pricePerHour  Decimal? @db.Decimal(15, 2) // $625/hora
   minDailyHours Decimal? @db.Decimal(5, 2) // STANDBY: Mínimo horas/día (ej: 3.0)
-  pricePerKm    Decimal? @db.Decimal(10, 2) // $5/km (opcional para vehículos)
+  pricePerKm    Decimal? @db.Decimal(15, 2) // $5/km (opcional para vehículos)
 
   // Para TOOL (herramientas sin operario):
-  pricePerDay   Decimal? @db.Decimal(10, 2) // $200/día
-  pricePerWeek  Decimal? @db.Decimal(10, 2) // $1,200/semana (opcional)
-  pricePerMonth Decimal? @db.Decimal(10, 2) // $4,500/mes (opcional)
+  pricePerDay   Decimal? @db.Decimal(15, 2) // $200/día
+  pricePerWeek  Decimal? @db.Decimal(15, 2) // $1,200/semana (opcional)
+  pricePerMonth Decimal? @db.Decimal(15, 2) // $4,500/mes (opcional)
 
   // ═══════════════════════════════════════
   // RENTAL: Costos de operador
   // ═══════════════════════════════════════
   operatorCostType String? // "PER_DAY" | "PER_HOUR" | null (sin operario)
-  operatorCostRate Decimal? @db.Decimal(10, 2) // $3,000/día OR $375/hora
+  operatorCostRate Decimal? @db.Decimal(15, 2) // $3,000/día OR $375/hora
 
   // ═══════════════════════════════════════
   // RENTAL: Mantenimiento
   // ═══════════════════════════════════════
-  maintenanceCostDaily Decimal? @db.Decimal(10, 2) // Costo diario de mantenimiento
+  maintenanceCostDaily Decimal? @db.Decimal(15, 2) // Costo diario de mantenimiento
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1054,9 +1054,9 @@ model AssetUsage {
   kmTraveled    Decimal? @db.Decimal(5, 2)
 
   // Cálculo de costos (automático)
-  machineryCost Decimal? @db.Decimal(10, 2) // Costo por uso de máquina
-  operatorCost  Decimal? @db.Decimal(10, 2) // Viáticos del operario
-  totalCost     Decimal? @db.Decimal(10, 2) // Total del día
+  machineryCost Decimal? @db.Decimal(15, 2) // Costo por uso de máquina
+  operatorCost  Decimal? @db.Decimal(15, 2) // Viáticos del operario
+  totalCost     Decimal? @db.Decimal(15, 2) // Total del día
 
   // Estado del reporte
   status      String    @default("pending") // "pending", "processed", "rejected"
@@ -2107,9 +2107,9 @@ model RentalAccountMovement {
   usageReportId String? // Si viene de reporte del operario
 
   // Desglose de cargo diario
-  machineryCost Decimal? @db.Decimal(10, 2) // Costo de máquina/herramienta
-  operatorCost  Decimal? @db.Decimal(10, 2) // Viáticos del operario
-  toolCost      Decimal? @db.Decimal(10, 2) // Costo herramientas
+  machineryCost Decimal? @db.Decimal(15, 2) // Costo de máquina/herramienta
+  operatorCost  Decimal? @db.Decimal(15, 2) // Viáticos del operario
+  toolCost      Decimal? @db.Decimal(15, 2) // Costo herramientas
 
   // Descripción
   description  String   @db.Text
@@ -2402,15 +2402,15 @@ model QuotationItem {
   productId   String? // Para otros rubros
   description String
   quantity    Int
-  unitPrice   Decimal @db.Decimal(10, 2)
-  total       Decimal @db.Decimal(10, 2)
+  unitPrice   Decimal @db.Decimal(15, 2)
+  total       Decimal @db.Decimal(15, 2)
 
   // Auto-cálculo de precios con override manual
-  calculatedUnitPrice    Decimal? @db.Decimal(10, 2) // Precio calculado automáticamente desde el asset
+  calculatedUnitPrice    Decimal? @db.Decimal(15, 2) // Precio calculado automáticamente desde el asset
   priceOverridden        Boolean  @default(false) // Flag: precio fue modificado manualmente
   operatorIncluded       Boolean  @default(false) // Si la cotización incluye operador
-  operatorCost           Decimal? @db.Decimal(10, 2) // Costo del operador (puede ser override)
-  calculatedOperatorCost Decimal? @db.Decimal(10, 2) // Costo del operador calculado automáticamente
+  operatorCost           Decimal? @db.Decimal(15, 2) // Costo del operador (puede ser override)
+  calculatedOperatorCost Decimal? @db.Decimal(15, 2) // Costo del operador calculado automáticamente
 
   // ═══════════════════════════════════════
   // RENTAL: Configuración avanzada (v4.0)
@@ -2431,10 +2431,10 @@ model QuotationItem {
   operatorCostType String? // "PER_DAY" | "PER_HOUR"
 
   // Desglose detallado de costos (opcional)
-  basePrice          Decimal? @db.Decimal(10, 2) // Precio base del asset solamente
-  operatorCostAmount Decimal? @db.Decimal(10, 2) // Costo del operador separado
-  maintenanceCost    Decimal? @db.Decimal(10, 2) // Costo de mantenimiento incluido
-  discount           Decimal? @db.Decimal(10, 2) // Descuento aplicado al item
+  basePrice          Decimal? @db.Decimal(15, 2) // Precio base del asset solamente
+  operatorCostAmount Decimal? @db.Decimal(15, 2) // Costo del operador separado
+  maintenanceCost    Decimal? @db.Decimal(15, 2) // Costo de mantenimiento incluido
+  discount           Decimal? @db.Decimal(15, 2) // Descuento aplicado al item
   discountReason     String? // Razón del descuento
 
   metadata  Json?

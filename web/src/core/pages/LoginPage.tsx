@@ -1,12 +1,11 @@
 import React, { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { authService } from "@/core/services/auth.service";
 import { useAuthStore } from "@/store/auth.store";
 import type { LoginRequest } from "@/core/types/api.types";
 
 export function LoginPage() {
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const passwordReset = searchParams.get("passwordReset");
   const setAuth = useAuthStore((state) => state.setAuth);

@@ -87,7 +87,18 @@ export class AssetsController {
         success: true,
         data: asset,
       });
-    } catch (error) {
+    } catch (error: any) {
+      // Código de activo duplicado — devolver 409 con mensaje legible
+      if (
+        error?.statusCode === 409 ||
+        (error?.code === "P2002" && error?.meta?.target?.includes("code"))
+      ) {
+        const code = req.body?.code ?? "";
+        return res.status(409).json({
+          success: false,
+          error: `El código "${code}" ya está en uso en esta unidad de negocio. Use un código diferente.`,
+        });
+      }
       next(error);
     }
   }

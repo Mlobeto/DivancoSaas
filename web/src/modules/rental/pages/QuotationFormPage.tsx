@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { Layout } from "@/core/components/Layout";
 import { useAuthStore } from "@/store/auth.store";
 import { clientService } from "@/modules/clients/services/client.service";
@@ -8,9 +8,9 @@ import {
   AlertCircle,
   Plus,
   User,
-  Clock,
   Briefcase,
   Search,
+  Pencil,
 } from "lucide-react";
 import { useQuotationForm } from "../hooks/useQuotationForm";
 import { QuotationTypeSelector } from "../components/QuotationTypeSelector";
@@ -30,6 +30,7 @@ import { PreviewPanel } from "../components/PreviewPanel";
 
 export function QuotationFormPage() {
   const navigate = useNavigate();
+  const { id: quotationId } = useParams<{ id: string }>();
   const { businessUnit } = useAuthStore();
 
   // Modal states
@@ -38,6 +39,10 @@ export function QuotationFormPage() {
   const [showServiceBasedModal, setShowServiceBasedModal] = useState(false);
 
   const {
+    // Meta
+    isEditMode,
+    loadingExisting,
+
     // State
     selectedClientId,
     setSelectedClientId,
@@ -70,6 +75,7 @@ export function QuotationFormPage() {
 
     // Handlers
     handleAddAsset,
+    addItem,
     updateItem,
     removeItem,
     calculateTotals,
@@ -77,16 +83,12 @@ export function QuotationFormPage() {
 
     // Mutation
     mutation,
-  } = useQuotationForm();
+  } = useQuotationForm({ quotationId });
 
   const { data: clientsData, isLoading: loadingClients } = useQuery({
     queryKey: ["clients", "dropdown"],
     queryFn: () => clientService.list({ limit: 100 }),
   });
-
-  // Debug log
-  console.log("Clients data:", clientsData);
-  console.log("Loading clients:", loadingClients);
 
   const totals = calculateTotals();
 
@@ -97,12 +99,24 @@ export function QuotationFormPage() {
 
   // Handle adding time-based item from modal
   const handleAddTimeBasedItem = (itemData: TimeBasedItemData) => {
-    const newItem = {
-      ...itemData,
-      calculatedUnitPrice: 0, // Will be calculated
-      calculatedOperatorCost: 0, // Will be calculated
-    };
-    handleAddAsset(newItem as any);
+    addItem({
+      assetId: itemData.assetId,
+      assetName: itemData.assetName,
+      assetCode: itemData.assetCode,
+      trackingType: itemData.trackingType,
+      quantity: itemData.quantity,
+      rentalDays: itemData.rentalDays,
+      startDate: itemData.startDate,
+      endDate: itemData.endDate,
+      rentalPeriodType: itemData.rentalPeriodType,
+      standbyHours: itemData.standbyHours,
+      operatorIncluded: itemData.operatorIncluded,
+      operatorCostType: itemData.operatorCostType,
+      customUnitPrice: itemData.customUnitPrice,
+      customOperatorCost: itemData.customOperatorCost,
+      calculatedUnitPrice: itemData.calculatedUnitPrice,
+      calculatedOperatorCost: itemData.calculatedOperatorCost,
+    });
   };
 
   // Handle adding service-based item from modal
@@ -138,8 +152,12 @@ export function QuotationFormPage() {
 
   return (
     <Layout
-      title="Nueva Cotización"
-      subtitle={`Crear cotización v4.0 - ${businessUnit?.name || "Sistema"}`}
+      title={isEditMode ? "Editar Cotización" : "Nueva Cotización"}
+      subtitle={
+        isEditMode
+          ? `Modificando cotización - ${businessUnit?.name || "Sistema"}`
+          : `Crear cotización v4.0 - ${businessUnit?.name || "Sistema"}`
+      }
       actions={
         <button
           onClick={() => navigate("/rental/quotations")}
@@ -210,6 +228,7 @@ export function QuotationFormPage() {
             <TemplateSelector
               templateId={templateId}
               onTemplateChange={setTemplateId}
+              quotationType={quotationType}
             />
 
             {/* Items Section */}
@@ -362,11 +381,19 @@ export function QuotationFormPage() {
                 type="submit"
                 className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={
-                  mutation.isPending || items.length === 0 || !selectedClientId
+                  mutation.isPending ||
+                  items.length === 0 ||
+                  !selectedClientId ||
+                  loadingExisting
                 }
               >
                 {mutation.isPending ? (
-                  <>Creando...</>
+                  <>{isEditMode ? "Guardando..." : "Creando..."}</>
+                ) : isEditMode ? (
+                  <>
+                    <Pencil className="w-4 h-4" />
+                    Guardar cambios
+                  </>
                 ) : (
                   <>
                     <Plus className="w-4 h-4" />
@@ -381,7 +408,7 @@ export function QuotationFormPage() {
               <div className="p-4 rounded-lg bg-red-50 border border-red-200 text-red-700">
                 <div className="flex items-center gap-2 mb-2">
                   <AlertCircle className="w-5 h-5" />
-                  <strong>Error al crear cotización</strong>
+                  <strong>{isEditMode ? "Error al guardar cambios" : "Error al crear cotización"}</strong>
                 </div>
                 <p className="text-sm">
                   {mutation.error instanceof Error

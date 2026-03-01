@@ -21,7 +21,13 @@ import {
 interface SimpleTemplateEditorProps {
   content: string;
   onChange: (content: string) => void;
-  templateType: "quotation" | "contract" | "contract_report" | "attachment";
+  templateType:
+    | "quotation"
+    | "quotation_rental"
+    | "quotation_service"
+    | "contract"
+    | "contract_report"
+    | "attachment";
   fontFamily?: string;
 }
 

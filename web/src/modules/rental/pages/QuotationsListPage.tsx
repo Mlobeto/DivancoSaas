@@ -17,6 +17,12 @@ import {
   XCircle,
   Mail,
   X,
+  Pencil,
+  RefreshCw,
+  Send,
+  ThumbsUp,
+  ThumbsDown,
+  CreditCard,
 } from "lucide-react";
 
 export function QuotationsListPage() {
@@ -38,6 +44,18 @@ export function QuotationsListPage() {
   const [selectedQuotationForEmail, setSelectedQuotationForEmail] =
     useState<Quotation | null>(null);
   const [customMessage, setCustomMessage] = useState("");
+
+  // Reject modal state
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [selectedQuotationForReject, setSelectedQuotationForReject] =
+    useState<Quotation | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+
+  // Confirm payment modal state
+  const [confirmPaymentModalOpen, setConfirmPaymentModalOpen] = useState(false);
+  const [selectedQuotationForPayment, setSelectedQuotationForPayment] =
+    useState<Quotation | null>(null);
+  const [paymentNotes, setPaymentNotes] = useState("");
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["quotations", tenant?.id, businessUnit?.id, filters],
@@ -84,20 +102,139 @@ export function QuotationsListPage() {
     });
   };
 
+  // Workflow: Send
+  const sendMutation = useMutation({
+    mutationFn: (quotationId: string) => quotationService.send(quotationId),
+    onSuccess: (_data, quotationId) => {
+      queryClient.invalidateQueries({ queryKey: ["quotations"] });
+      queryClient.invalidateQueries({ queryKey: ["quotation", quotationId] });
+      alert("✅ Cotización enviada exitosamente");
+    },
+    onError: (error: any) => {
+      alert(
+        `❌ Error al enviar: ${error.response?.data?.message || error.message || "Error desconocido"}`,
+      );
+    },
+  });
+
+  // Workflow: Approve
+  const approveMutation = useMutation({
+    mutationFn: (quotationId: string) => quotationService.approve(quotationId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["quotations"] });
+      alert("✅ Cotización aprobada");
+    },
+    onError: (error: any) => {
+      alert(
+        `❌ Error al aprobar: ${error.response?.data?.message || error.message || "Error desconocido"}`,
+      );
+    },
+  });
+
+  // Workflow: Reject
+  const rejectMutation = useMutation({
+    mutationFn: ({
+      quotationId,
+      reason,
+    }: {
+      quotationId: string;
+      reason?: string;
+    }) => quotationService.reject(quotationId, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["quotations"] });
+      setRejectModalOpen(false);
+      setSelectedQuotationForReject(null);
+      setRejectReason("");
+      alert("✅ Cotización rechazada");
+    },
+    onError: (error: any) => {
+      alert(
+        `❌ Error al rechazar: ${error.response?.data?.message || error.message || "Error desconocido"}`,
+      );
+    },
+  });
+
+  // Workflow: Confirm Payment
+  const confirmPaymentMutation = useMutation({
+    mutationFn: ({
+      quotationId,
+      notes,
+    }: {
+      quotationId: string;
+      notes?: string;
+    }) => quotationService.confirmPayment(quotationId, notes),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["quotations"] });
+      setConfirmPaymentModalOpen(false);
+      setSelectedQuotationForPayment(null);
+      setPaymentNotes("");
+      alert("✅ Pago confirmado exitosamente");
+    },
+    onError: (error: any) => {
+      alert(
+        `❌ Error al confirmar pago: ${error.response?.data?.message || error.message || "Error desconocido"}`,
+      );
+    },
+  });
+
+  const handleReject = (quotation: Quotation) => {
+    setSelectedQuotationForReject(quotation);
+    setRejectModalOpen(true);
+  };
+
+  const handleConfirmReject = () => {
+    if (!selectedQuotationForReject) return;
+    rejectMutation.mutate({
+      quotationId: selectedQuotationForReject.id,
+      reason: rejectReason || undefined,
+    });
+  };
+
+  const handleConfirmPayment = (quotation: Quotation) => {
+    setSelectedQuotationForPayment(quotation);
+    setConfirmPaymentModalOpen(true);
+  };
+
+  const handleConfirmPaymentSubmit = () => {
+    if (!selectedQuotationForPayment) return;
+    confirmPaymentMutation.mutate({
+      quotationId: selectedQuotationForPayment.id,
+      notes: paymentNotes || undefined,
+    });
+  };
+
   const statusColors: Record<QuotationStatus, string> = {
     draft: "bg-gray-700/30 text-gray-400 border-gray-600",
     sent: "bg-blue-900/30 text-blue-400 border-blue-800",
     viewed: "bg-cyan-900/30 text-cyan-400 border-cyan-800",
+    pending_approval: "bg-orange-900/30 text-orange-400 border-orange-800",
     signature_pending: "bg-yellow-900/30 text-yellow-400 border-yellow-800",
     signed: "bg-green-900/30 text-green-400 border-green-800",
     paid: "bg-emerald-900/30 text-emerald-400 border-emerald-800",
     cancelled: "bg-red-900/30 text-red-400 border-red-800",
   };
 
+  // Estados editables (no pagados ni cancelados)
+  const editableStatuses: QuotationStatus[] = [
+    "draft",
+    "sent",
+    "viewed",
+    "pending_approval",
+    "signature_pending",
+  ];
+  // Estados en que ya fue enviado (mostrar “Reenviar”)
+  const sentStatuses: QuotationStatus[] = [
+    "sent",
+    "viewed",
+    "signature_pending",
+    "signed",
+  ];
+
   const statusIcons: Record<QuotationStatus, any> = {
     draft: FileText,
     sent: FilePlus,
     viewed: Eye,
+    pending_approval: Clock,
     signature_pending: Clock,
     signed: CheckCircle,
     paid: CheckCircle,
@@ -108,6 +245,7 @@ export function QuotationsListPage() {
     draft: "Borrador",
     sent: "Enviada",
     viewed: "Vista",
+    pending_approval: "Pend. Aprobación",
     signature_pending: "Pendiente Firma",
     signed: "Firmada",
     paid: "Pagada",
@@ -209,6 +347,7 @@ export function QuotationsListPage() {
             <option value="">Todos los estados</option>
             <option value="draft">Borradores</option>
             <option value="sent">Enviadas</option>
+            <option value="pending_approval">Pend. Aprobación</option>
             <option value="signature_pending">Pendiente Firma</option>
             <option value="signed">Firmadas</option>
             <option value="paid">Pagadas</option>
@@ -275,7 +414,7 @@ export function QuotationsListPage() {
               </thead>
               <tbody>
                 {data?.data.map((quotation: Quotation) => {
-                  const StatusIcon = statusIcons[quotation.status];
+                  const StatusIcon = statusIcons[quotation.status] ?? FileText;
                   return (
                     <tr
                       key={quotation.id}
@@ -303,7 +442,9 @@ export function QuotationsListPage() {
                           {quotation.currency === "USD"
                             ? "$"
                             : quotation.currency}{" "}
-                          {quotation.totalAmount.toLocaleString()}
+                          {Number(quotation.totalAmount).toLocaleString(
+                            "es-CO",
+                          )}
                         </span>
                       </td>
                       <td className="p-4 text-sm">
@@ -335,6 +476,7 @@ export function QuotationsListPage() {
                       </td>
                       <td className="p-4 text-right">
                         <div className="flex items-center justify-end gap-2">
+                          {/* Ver detalles */}
                           <button
                             onClick={() =>
                               navigate(`/rental/quotations/${quotation.id}`)
@@ -344,13 +486,106 @@ export function QuotationsListPage() {
                           >
                             <Eye className="w-4 h-4" />
                           </button>
+
+                          {/* Editar (solo si no está pagada ni cancelada) */}
+                          {editableStatuses.includes(quotation.status) && (
+                            <ProtectedAction permission="quotations:update">
+                              <button
+                                onClick={() =>
+                                  navigate(
+                                    `/rental/quotations/${quotation.id}/edit`,
+                                  )
+                                }
+                                className="btn-ghost btn-sm text-yellow-400 hover:text-yellow-300"
+                                title={
+                                  quotation.status === "draft"
+                                    ? "Editar"
+                                    : "Editar (vuelve a borrador)"
+                                }
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                            </ProtectedAction>
+                          )}
+
+                          {/* Enviar workflow (solo borradores) */}
+                          {quotation.status === "draft" && (
+                            <ProtectedAction permission="quotations:create">
+                              <button
+                                onClick={() =>
+                                  sendMutation.mutate(quotation.id)
+                                }
+                                disabled={sendMutation.isPending}
+                                className="btn-sm btn-primary"
+                                title="Enviar cotización al cliente"
+                              >
+                                <Send className="w-4 h-4" />
+                              </button>
+                            </ProtectedAction>
+                          )}
+
+                          {/* Aprobar / Rechazar (solo pending_approval) */}
+                          {quotation.status === "pending_approval" && (
+                            <ProtectedAction permission="quotations:approve">
+                              <>
+                                <button
+                                  onClick={() =>
+                                    approveMutation.mutate(quotation.id)
+                                  }
+                                  disabled={approveMutation.isPending}
+                                  className="btn-sm btn-ghost text-green-400 hover:text-green-300"
+                                  title="Aprobar cotización"
+                                >
+                                  <ThumbsUp className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleReject(quotation)}
+                                  className="btn-sm btn-ghost text-red-400 hover:text-red-300"
+                                  title="Rechazar cotización"
+                                >
+                                  <ThumbsDown className="w-4 h-4" />
+                                </button>
+                              </>
+                            </ProtectedAction>
+                          )}
+
+                          {/* Confirmar pago (signed o si hay comprobante subido) */}
+                          {(quotation.status === "signed" ||
+                            (quotation.metadata?.paymentReceiptUrl &&
+                              !["paid", "cancelled"].includes(
+                                quotation.status,
+                              ))) && (
+                            <ProtectedAction permission="quotations:confirm-payment">
+                              <button
+                                onClick={() => handleConfirmPayment(quotation)}
+                                className="btn-sm btn-ghost text-emerald-400 hover:text-emerald-300"
+                                title="Confirmar pago recibido"
+                              >
+                                <CreditCard className="w-4 h-4" />
+                              </button>
+                            </ProtectedAction>
+                          )}
+
+                          {/* Enviar / Reenviar por email (requiere PDF) */}
                           {quotation.client?.email && quotation.pdfUrl && (
                             <button
                               onClick={() => handleSendEmail(quotation)}
-                              className="btn-primary btn-sm"
-                              title="Enviar por email"
+                              className={`btn-sm ${
+                                sentStatuses.includes(quotation.status)
+                                  ? "btn-ghost text-blue-400 hover:text-blue-300"
+                                  : "btn-primary"
+                              }`}
+                              title={
+                                sentStatuses.includes(quotation.status)
+                                  ? "Reenviar por email"
+                                  : "Enviar por email"
+                              }
                             >
-                              <Mail className="w-4 h-4" />
+                              {sentStatuses.includes(quotation.status) ? (
+                                <RefreshCw className="w-4 h-4" />
+                              ) : (
+                                <Mail className="w-4 h-4" />
+                              )}
                             </button>
                           )}
                         </div>
@@ -393,6 +628,170 @@ export function QuotationsListPage() {
         </div>
       )}
 
+      {/* Reject Modal */}
+      {rejectModalOpen && selectedQuotationForReject && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-dark-900 rounded-xl border border-dark-700 max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <ThumbsDown className="w-5 h-5 text-red-400" />
+                Rechazar Cotización
+              </h2>
+              <button
+                onClick={() => {
+                  setRejectModalOpen(false);
+                  setSelectedQuotationForReject(null);
+                  setRejectReason("");
+                }}
+                className="text-dark-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="mb-4 p-3 bg-dark-800 rounded-lg border border-dark-700">
+              <div className="text-sm text-dark-300 mb-1">
+                <strong>Cotización:</strong> {selectedQuotationForReject.code}
+              </div>
+              <div className="text-sm text-dark-300">
+                <strong>Cliente:</strong>{" "}
+                {selectedQuotationForReject.client?.name}
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-dark-300 mb-2">
+                Motivo del rechazo (Opcional)
+              </label>
+              <textarea
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                className="w-full px-3 py-2 bg-dark-800 border border-dark-700 rounded-lg text-white placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-red-500"
+                rows={3}
+                placeholder="Indica el motivo del rechazo..."
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setRejectModalOpen(false);
+                  setSelectedQuotationForReject(null);
+                  setRejectReason("");
+                }}
+                className="flex-1 px-4 py-2 border border-dark-600 rounded-lg text-dark-300 hover:bg-dark-800 transition-colors"
+                disabled={rejectMutation.isPending}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmReject}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                disabled={rejectMutation.isPending}
+              >
+                {rejectMutation.isPending ? (
+                  <>Rechazando...</>
+                ) : (
+                  <>
+                    <ThumbsDown className="w-4 h-4" />
+                    Rechazar
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Payment Modal */}
+      {confirmPaymentModalOpen && selectedQuotationForPayment && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-dark-900 rounded-xl border border-dark-700 max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <CreditCard className="w-5 h-5 text-emerald-400" />
+                Confirmar Pago Recibido
+              </h2>
+              <button
+                onClick={() => {
+                  setConfirmPaymentModalOpen(false);
+                  setSelectedQuotationForPayment(null);
+                  setPaymentNotes("");
+                }}
+                className="text-dark-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="mb-4 p-3 bg-dark-800 rounded-lg border border-dark-700">
+              <div className="text-sm text-dark-300 mb-1">
+                <strong>Cotización:</strong> {selectedQuotationForPayment.code}
+              </div>
+              <div className="text-sm text-dark-300 mb-1">
+                <strong>Cliente:</strong>{" "}
+                {selectedQuotationForPayment.client?.name}
+              </div>
+              <div className="text-sm text-dark-300">
+                <strong>Total:</strong>{" "}
+                {selectedQuotationForPayment.currency === "USD"
+                  ? "$"
+                  : selectedQuotationForPayment.currency}{" "}
+                {Number(selectedQuotationForPayment.totalAmount).toLocaleString(
+                  "es-CO",
+                )}
+              </div>
+              {selectedQuotationForPayment.metadata?.paymentReceiptUrl && (
+                <div className="mt-2 text-xs text-emerald-400">
+                  ✅ Comprobante de pago recibido por el cliente
+                </div>
+              )}
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-dark-300 mb-2">
+                Notas internas (Opcional)
+              </label>
+              <textarea
+                value={paymentNotes}
+                onChange={(e) => setPaymentNotes(e.target.value)}
+                className="w-full px-3 py-2 bg-dark-800 border border-dark-700 rounded-lg text-white placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                rows={3}
+                placeholder="Ej: Transferencia recibida el 15/01 por $5,000..."
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setConfirmPaymentModalOpen(false);
+                  setSelectedQuotationForPayment(null);
+                  setPaymentNotes("");
+                }}
+                className="flex-1 px-4 py-2 border border-dark-600 rounded-lg text-dark-300 hover:bg-dark-800 transition-colors"
+                disabled={confirmPaymentMutation.isPending}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmPaymentSubmit}
+                className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                disabled={confirmPaymentMutation.isPending}
+              >
+                {confirmPaymentMutation.isPending ? (
+                  <>Confirmando...</>
+                ) : (
+                  <>
+                    <CreditCard className="w-4 h-4" />
+                    Confirmar Pago
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Email Modal */}
       {emailModalOpen && selectedQuotationForEmail && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -400,7 +799,10 @@ export function QuotationsListPage() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold text-white flex items-center gap-2">
                 <Mail className="w-5 h-5 text-blue-400" />
-                Enviar Cotización por Email
+                {selectedQuotationForEmail &&
+                sentStatuses.includes(selectedQuotationForEmail.status)
+                  ? "Reenviar Cotización por Email"
+                  : "Enviar Cotización por Email"}
               </h2>
               <button
                 onClick={() => {

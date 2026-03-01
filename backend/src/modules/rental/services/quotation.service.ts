@@ -291,8 +291,12 @@ export class QuotationService {
                 ? new Decimal(item.calculatedOperatorCost)
                 : null,
             rentalDays: item.rentalDays,
-            rentalStartDate: item.rentalStartDate,
-            rentalEndDate: item.rentalEndDate,
+            rentalStartDate: item.rentalStartDate
+              ? new Date(item.rentalStartDate)
+              : null,
+            rentalEndDate: item.rentalEndDate
+              ? new Date(item.rentalEndDate)
+              : null,
 
             // v4.0: Nuevos campos
             rentalPeriodType: item.rentalPeriodType,
@@ -326,6 +330,160 @@ export class QuotationService {
     });
 
     return quotation;
+  }
+
+  /**
+   * Actualizar cotización completa (campos + items).
+   * Solo se permite si el status no es "paid" ni "cancelled".
+   * Si estaba en estado distinto a "draft", vuelve a "draft" y limpia el PDF
+   * para que se regenere y reenvíe.
+   */
+  async updateQuotation(
+    quotationId: string,
+    params: Partial<CreateQuotationParams> & { updatedBy?: string },
+  ) {
+    const quotation = await prisma.quotation.findUnique({
+      where: { id: quotationId },
+    });
+
+    if (!quotation) throw new Error(`Cotización ${quotationId} no encontrada`);
+    if (["paid", "cancelled"].includes(quotation.status)) {
+      throw new Error(
+        `No se puede editar una cotización en estado "${quotation.status}"`,
+      );
+    }
+
+    // Recalcular precios de los items nuevos
+    const itemsWithPrices = await Promise.all(
+      (params.items || []).map(async (item) => {
+        const pricing = await this.calculateItemPrice(
+          quotation.tenantId,
+          quotation.businessUnitId,
+          item,
+        );
+        return { ...item, ...pricing };
+      }),
+    );
+
+    const subtotal = itemsWithPrices.reduce(
+      (sum, item) => sum + item.quantity * (item.unitPrice + item.operatorCost),
+      0,
+    );
+    const taxRate =
+      params.taxRate !== undefined ? params.taxRate : Number(quotation.taxRate);
+    const taxAmount = subtotal * (taxRate / 100);
+    const totalAmount = subtotal + taxAmount;
+
+    // Calcular validUntil si viene validityDays
+    let validUntil = params.validUntil || quotation.validUntil;
+
+    const updated = await prisma.$transaction(async (tx) => {
+      // 1. Eliminar items actuales
+      await tx.quotationItem.deleteMany({ where: { quotationId } });
+
+      // 2. Actualizar cabecera y crear los nuevos items
+      return tx.quotation.update({
+        where: { id: quotationId },
+        data: {
+          // Volver a draft si estaba en otro estado (necesita re-enviarse)
+          status: "draft",
+          // Limpiar PDF ya que el contenido cambió
+          pdfUrl: null,
+
+          clientId: params.clientId ?? quotation.clientId,
+          validUntil,
+          subtotal: new Decimal(subtotal),
+          taxRate: new Decimal(taxRate),
+          taxAmount: new Decimal(taxAmount),
+          totalAmount: new Decimal(totalAmount),
+
+          quotationType:
+            params.quotationType ?? (quotation.quotationType as any),
+          estimatedStartDate:
+            params.estimatedStartDate !== undefined
+              ? params.estimatedStartDate
+              : quotation.estimatedStartDate,
+          estimatedEndDate:
+            params.estimatedEndDate !== undefined
+              ? params.estimatedEndDate
+              : quotation.estimatedEndDate,
+          estimatedDays:
+            params.estimatedDays !== undefined
+              ? params.estimatedDays
+              : quotation.estimatedDays,
+          serviceDescription:
+            params.serviceDescription !== undefined
+              ? params.serviceDescription
+              : quotation.serviceDescription,
+
+          notes: params.notes !== undefined ? params.notes : quotation.notes,
+          termsAndConditions:
+            params.termsAndConditions !== undefined
+              ? params.termsAndConditions
+              : quotation.termsAndConditions,
+
+          metadata: {
+            ...((quotation.metadata as any) || {}),
+            lastUpdatedBy: params.updatedBy,
+            lastUpdatedAt: new Date().toISOString(),
+          },
+
+          items: {
+            create: itemsWithPrices.map((item, index) => ({
+              assetId: item.assetId,
+              productId: item.productId,
+              description: item.description,
+              quantity: item.quantity,
+              unitPrice: new Decimal(item.unitPrice),
+              total: new Decimal(
+                item.quantity * (item.unitPrice + item.operatorCost),
+              ),
+              calculatedUnitPrice:
+                item.calculatedUnitPrice > 0
+                  ? new Decimal(item.calculatedUnitPrice)
+                  : null,
+              priceOverridden: item.priceOverridden,
+              operatorIncluded: item.operatorIncluded,
+              operatorCost:
+                item.operatorCost > 0 ? new Decimal(item.operatorCost) : null,
+              calculatedOperatorCost:
+                item.calculatedOperatorCost > 0
+                  ? new Decimal(item.calculatedOperatorCost)
+                  : null,
+              rentalDays: item.rentalDays,
+              rentalStartDate: item.rentalStartDate
+                ? new Date(item.rentalStartDate)
+                : null,
+              rentalEndDate: item.rentalEndDate
+                ? new Date(item.rentalEndDate)
+                : null,
+              rentalPeriodType: item.rentalPeriodType,
+              standbyHours: item.standbyHours
+                ? new Decimal(item.standbyHours)
+                : null,
+              operatorCostType: item.operatorCostType,
+              basePrice: item.basePrice ? new Decimal(item.basePrice) : null,
+              operatorCostAmount: item.operatorCostAmount
+                ? new Decimal(item.operatorCostAmount)
+                : null,
+              maintenanceCost: item.maintenanceCost
+                ? new Decimal(item.maintenanceCost)
+                : null,
+              discount: item.discount ? new Decimal(item.discount) : null,
+              discountReason: item.discountReason,
+              sortOrder: index,
+            })),
+          },
+        },
+        include: {
+          items: { include: { asset: true } },
+          client: true,
+          assignedUser: true,
+        },
+      });
+    });
+
+    return updated;
   }
 
   /**
@@ -466,20 +624,31 @@ export class QuotationService {
       throw new Error(`Quotation ${quotationId} not found`);
     }
 
-    // Obtener plantilla activa
-    const template = await templateService.getActiveTemplateByType(
-      quotation.businessUnitId,
-      "quotation",
-    );
+    // Detectar tipo de cotización
+    const quotationType = quotation.quotationType || "time_based";
+
+    // Obtener plantilla activa: primero busca el tipo específico, luego el legado "quotation"
+    const preferredType =
+      quotationType === "service_based"
+        ? "quotation_service"
+        : "quotation_rental";
+
+    let template =
+      (await templateService.getActiveTemplateByType(
+        quotation.businessUnitId,
+        preferredType,
+      )) ??
+      (await templateService.getActiveTemplateByType(
+        quotation.businessUnitId,
+        "quotation",
+      ));
 
     if (!template) {
       throw new Error(
-        `No active quotation template found for BU ${quotation.businessUnitId}`,
+        `No hay una plantilla activa de cotización para esta unidad de negocio. ` +
+          `Crea una plantilla de tipo "${preferredType}" o "quotation" en Configuración → Plantillas PDF.`,
       );
     }
-
-    // Detectar tipo de cotización
-    const quotationType = quotation.quotationType || "time_based";
     const isTimeBased = quotationType === "time_based";
     const isServiceBased = quotationType === "service_based";
 
@@ -1008,6 +1177,324 @@ export class QuotationService {
         },
       },
     });
+  }
+
+  // ============================================
+  // WORKFLOW: SEND / APPROVE / REJECT / CONFIRM-PAYMENT
+  // ============================================
+
+  /**
+   * Enviar cotización al cliente (o solicitar aprobación si no tiene permiso).
+   * Llamado por el empleado que creó la cotización.
+   *
+   * - Si userPermissions incluye "quotations:send" → genera PDF + envía email → status = "sent"
+   * - Si no tiene permiso → status = "pending_approval" + notifica a los aprobadores
+   */
+  async sendOrRequestApproval(
+    quotationId: string,
+    actorId: string,
+    userPermissions: string[],
+  ): Promise<{ sent: boolean; status: string }> {
+    const quotation = await prisma.quotation.findUnique({
+      where: { id: quotationId },
+      include: {
+        client: true,
+        businessUnit: true,
+        creator: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+      },
+    });
+
+    if (!quotation) throw new Error("Cotización no encontrada");
+    if (!["draft", "rejected"].includes(quotation.status)) {
+      throw new Error(
+        `No se puede enviar una cotización en estado "${quotation.status}"`,
+      );
+    }
+
+    const canSendDirect =
+      userPermissions.includes("quotations:send") ||
+      userPermissions.includes("OWNER") ||
+      userPermissions.includes("SUPER_ADMIN");
+
+    if (canSendDirect) {
+      // Generar PDF si no existe
+      if (!quotation.pdfUrl) {
+        await this.generateQuotationPDF(quotationId);
+      }
+
+      // Enviar email al cliente
+      const { quotationEmailService } =
+        await import("./quotation-email.service");
+      await quotationEmailService.sendQuotationEmail(quotationId);
+
+      // Actualizar status
+      await prisma.quotation.update({
+        where: { id: quotationId },
+        data: { status: "sent" },
+      });
+
+      return { sent: true, status: "sent" };
+    } else {
+      // Sin permiso → solicitar aprobación
+      await prisma.quotation.update({
+        where: { id: quotationId },
+        data: { status: "pending_approval" },
+      });
+
+      // Notificar a aprobadores
+      await this.notifyApprovers(quotation);
+
+      return { sent: false, status: "pending_approval" };
+    }
+  }
+
+  /**
+   * Aprobar cotización (requiere quotations:approve).
+   * Genera PDF si no existe y envía al cliente.
+   */
+  async approveAndSend(quotationId: string, approverId: string): Promise<void> {
+    const quotation = await prisma.quotation.findUnique({
+      where: { id: quotationId },
+    });
+
+    if (!quotation) throw new Error("Cotización no encontrada");
+    if (quotation.status !== "pending_approval") {
+      throw new Error(
+        `Solo se pueden aprobar cotizaciones en estado "pending_approval"`,
+      );
+    }
+
+    // Generar PDF si no existe
+    if (!quotation.pdfUrl) {
+      await this.generateQuotationPDF(quotationId);
+    }
+
+    // Enviar email al cliente
+    const { quotationEmailService } = await import("./quotation-email.service");
+    await quotationEmailService.sendQuotationEmail(quotationId);
+
+    // Actualizar status
+    await prisma.quotation.update({
+      where: { id: quotationId },
+      data: {
+        status: "sent",
+        metadata: {
+          ...((quotation.metadata as any) || {}),
+          approvedBy: approverId,
+          approvedAt: new Date().toISOString(),
+        },
+      },
+    });
+  }
+
+  /**
+   * Rechazar cotización (requiere quotations:approve).
+   * Vuelve a "draft" con motivo de rechazo.
+   */
+  async rejectQuotation(
+    quotationId: string,
+    approverId: string,
+    reason: string,
+  ): Promise<void> {
+    const quotation = await prisma.quotation.findUnique({
+      where: { id: quotationId },
+      include: {
+        creator: { select: { email: true, firstName: true } },
+      },
+    });
+
+    if (!quotation) throw new Error("Cotización no encontrada");
+    if (quotation.status !== "pending_approval") {
+      throw new Error(
+        `Solo se pueden rechazar cotizaciones en estado "pending_approval"`,
+      );
+    }
+
+    await prisma.quotation.update({
+      where: { id: quotationId },
+      data: {
+        status: "draft",
+        metadata: {
+          ...((quotation.metadata as any) || {}),
+          rejectedBy: approverId,
+          rejectedAt: new Date().toISOString(),
+          rejectionReason: reason,
+        },
+      },
+    });
+
+    // Notificar al creador del rechazo
+    if (quotation.creator?.email) {
+      try {
+        const { emailService } = await import("@core/services/email.service");
+        await emailService.sendGenericEmail(quotation.businessUnitId, {
+          to: quotation.creator.email,
+          subject: `Cotización ${quotation.code} rechazada`,
+          html: `
+            <p>Hola ${quotation.creator.firstName},</p>
+            <p>Tu cotización <strong>${quotation.code}</strong> ha sido rechazada.</p>
+            <p><strong>Motivo:</strong> ${reason}</p>
+            <p>Puedes editarla y volver a enviarla para aprobación.</p>
+          `,
+        });
+      } catch (e) {
+        console.error("[QuotationService] Error notificando rechazo:", e);
+      }
+    }
+  }
+
+  /**
+   * Confirmar pago recibido por transferencia bancaria (requiere quotations:confirm-payment).
+   * - Actualiza paymentStatus = "paid" y status = "paid"
+   * - Crea QuotationContract automáticamente
+   * - Acredita el monto en la ClientAccount del cliente
+   */
+  async confirmPayment(
+    quotationId: string,
+    actorId: string,
+    paymentReference: string,
+    notes?: string,
+  ): Promise<{ contractId: string; accountMovementId: string }> {
+    const quotation = await prisma.quotation.findUnique({
+      where: { id: quotationId },
+      include: {
+        client: true,
+        items: { include: { asset: true } },
+      },
+    });
+
+    if (!quotation) throw new Error("Cotización no encontrada");
+    if (!["sent", "viewed"].includes(quotation.status)) {
+      throw new Error(
+        `Solo se pueden confirmar pagos en cotizaciones enviadas al cliente`,
+      );
+    }
+    if (quotation.paymentStatus === "paid") {
+      throw new Error("El pago ya fue confirmado anteriormente");
+    }
+
+    // 1. Marcar cotización como pagada
+    await prisma.quotation.update({
+      where: { id: quotationId },
+      data: {
+        paymentStatus: "paid",
+        paidAt: new Date(),
+        status: "paid",
+        metadata: {
+          ...((quotation.metadata as any) || {}),
+          paymentReference,
+          paymentConfirmedBy: actorId,
+          paymentNotes: notes,
+        },
+      },
+    });
+
+    // 2. Crear contrato desde la cotización
+    const contractResult = await this.createContractFromQuotation(quotationId);
+    const contractId = contractResult.quotationContract.id;
+
+    // 3. Acreditar en la ClientAccount del cliente
+    let movementId = "";
+    try {
+      // Obtener o crear cuenta de alquiler del cliente
+      let account = await prisma.clientAccount.findFirst({
+        where: { clientId: quotation.clientId, tenantId: quotation.tenantId },
+      });
+
+      if (!account) {
+        account = await prisma.clientAccount.create({
+          data: {
+            tenantId: quotation.tenantId,
+            clientId: quotation.clientId,
+            balance: new Decimal(0),
+            totalConsumed: new Decimal(0),
+            totalReloaded: new Decimal(0),
+            alertAmount: new Decimal(0),
+          },
+        });
+      }
+
+      const amount = Number(quotation.totalAmount);
+      const balanceBefore = new Decimal(Number(account.balance));
+      const balanceAfter = new Decimal(Number(account.balance) + amount);
+
+      // Crear movimiento de crédito en la cuenta de alquiler
+      const movement = await prisma.rentalAccountMovement.create({
+        data: {
+          clientAccountId: account.id,
+          movementType: "PAYMENT_RECEIVED",
+          amount: new Decimal(amount),
+          balanceBefore,
+          balanceAfter,
+          description: `Pago cotización ${quotation.code} — Ref: ${paymentReference}${notes ? ` — ${notes}` : ""}`,
+          createdBy: actorId,
+        },
+      });
+
+      movementId = movement.id;
+
+      // Actualizar balance de la cuenta
+      await prisma.clientAccount.update({
+        where: { id: account.id },
+        data: {
+          balance: balanceAfter,
+          totalReloaded: new Decimal(Number(account.totalReloaded) + amount),
+        },
+      });
+    } catch (e) {
+      console.error("[QuotationService] Error acreditando en cuenta:", e);
+    }
+
+    return { contractId, accountMovementId: movementId };
+  }
+
+  /**
+   * Notificar a usuarios con permiso quotations:approve
+   */
+  private async notifyApprovers(quotation: any): Promise<void> {
+    try {
+      // Buscar usuarios con permiso de aprobar en la misma BU
+      const approvers = await prisma.userBusinessUnit.findMany({
+        where: {
+          businessUnitId: quotation.businessUnitId,
+          role: {
+            permissions: {
+              some: {
+                permission: {
+                  resource: "quotations",
+                  action: "approve",
+                },
+              },
+            },
+          },
+        },
+        include: {
+          user: { select: { email: true, firstName: true } },
+        },
+      });
+
+      const { emailService } = await import("@core/services/email.service");
+
+      for (const ub of approvers) {
+        if (!ub.user.email) continue;
+        await emailService
+          .sendGenericEmail(quotation.businessUnitId, {
+            to: ub.user.email,
+            subject: `Cotización ${quotation.code} pendiente de aprobación`,
+            html: `
+            <p>Hola ${ub.user.firstName},</p>
+            <p>La cotización <strong>${quotation.code}</strong> para el cliente 
+            <strong>${quotation.client?.name || ""}</strong> está pendiente de tu aprobación.</p>
+            <p>Por favor ingresa al sistema para aprobarla o rechazarla.</p>
+          `,
+          })
+          .catch(() => {});
+      }
+    } catch (e) {
+      console.error("[QuotationService] Error notificando aprobadores:", e);
+    }
   }
 
   // ============================================

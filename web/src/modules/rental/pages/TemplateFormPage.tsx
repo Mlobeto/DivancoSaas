@@ -21,7 +21,7 @@ export function TemplateFormPage() {
 
   // Form state
   const [name, setName] = useState("");
-  const [type, setType] = useState<TemplateType>("quotation");
+  const [type, setType] = useState<TemplateType>("quotation_rental");
   const [content, setContent] = useState("");
 
   // Load template if editing
@@ -162,14 +162,22 @@ export function TemplateFormPage() {
                     className="form-input text-gray-900"
                     required
                   >
-                    <option value="quotation">Cotización</option>
+                    <option value="quotation_rental">
+                      Cotización Alquiler
+                    </option>
+                    <option value="quotation_service">
+                      Cotización Trabajo / Servicio
+                    </option>
                     <option value="contract">Contrato</option>
                     <option value="contract_report">Informe de Contrato</option>
                     <option value="attachment">Adjunto Personalizable</option>
                   </select>
                   <p className="text-xs text-gray-500 mt-1">
-                    {type === "quotation" &&
-                      "📋 Plantilla para generar cotizaciones con precios y condiciones"}
+                    {type === "quotation_rental" &&
+                      "🚜 Cotización de alquiler de implementos/maquinaria con período (día/semana/mes) y detalle de precios"}
+                    {type === "quotation_service" &&
+                      "🔨 Cotización de trabajo o servicio: descripción del trabajo, hitos de pago y precio total"}
+                    {type === "quotation" && "📋 Cotización genérica (legado)"}
                     {type === "contract" &&
                       "📄 Plantilla para contratos de arrendamiento con cláusulas legales"}
                     {type === "contract_report" &&

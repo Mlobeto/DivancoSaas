@@ -24,21 +24,66 @@ export class EmailService {
       },
     });
 
-    // Si no hay integración, usar SendGrid global como fallback
+    // Si no hay integración en DB, usar fallbacks globales: Azure → SendGrid → consola dev
     if (!integration) {
-      if (!config.sendgrid.apiKey) {
-        throw new Error(
-          "No email integration configured for BusinessUnit and SendGrid fallback not available",
+      // Fallback 1: Azure Communication Services (var de entorno global)
+      const azureConnStr = process.env.AZURE_COMMUNICATION_CONNECTION_STRING;
+      const azureFrom = process.env.AZURE_EMAIL_FROM;
+      if (azureConnStr && azureFrom) {
+        return emailProviderResolver(
+          "azure-communication-services",
+          { connectionString: azureConnStr },
+          { defaultFrom: azureFrom },
         );
       }
 
-      return emailProviderResolver(
-        "sendgrid",
-        { apiKey: config.sendgrid.apiKey },
-        {
-          defaultFrom: config.sendgrid.fromEmail,
-          defaultFromName: config.sendgrid.fromName,
-        },
+      // Fallback 2: SendGrid global
+      if (config.sendgrid?.apiKey) {
+        return emailProviderResolver(
+          "sendgrid",
+          { apiKey: config.sendgrid.apiKey },
+          {
+            defaultFrom: config.sendgrid.fromEmail,
+            defaultFromName: config.sendgrid.fromName,
+          },
+        );
+      }
+
+      // Fallback 3: solo en desarrollo → imprime en consola
+      if (config.nodeEnv === "development") {
+        const consoleProvider: EmailProvider = {
+          name: "console-dev",
+          sendEmail: async (params) => {
+            console.log("\n📧 ===== EMAIL (DEV CONSOLE PROVIDER) =====");
+            console.log(
+              `To:      ${Array.isArray(params.to) ? params.to.join(", ") : params.to}`,
+            );
+            console.log(`Subject: ${params.subject}`);
+            if (params.attachments?.length) {
+              console.log(
+                `Attachments: ${params.attachments.map((a) => a.filename).join(", ")}`,
+              );
+            }
+            console.log("==========================================\n");
+            return { success: true };
+          },
+          sendTemplateEmail: async (params) => {
+            console.log(
+              "\n📧 ===== TEMPLATE EMAIL (DEV CONSOLE PROVIDER) =====",
+            );
+            console.log(`To:       ${params.to}`);
+            console.log(`Template: ${params.templateId}`);
+            console.log(
+              "===================================================\n",
+            );
+            return { success: true };
+          },
+        };
+        return consoleProvider;
+      }
+
+      throw new Error(
+        "No email integration configured. Set AZURE_COMMUNICATION_CONNECTION_STRING + AZURE_EMAIL_FROM or SENDGRID_API_KEY.",
       );
     }
 
@@ -186,6 +231,76 @@ export class EmailService {
     } catch (error: any) {
       console.warn("Welcome email error:", error.message);
       // No lanzar error, el welcome email es no-crítico
+    }
+  }
+
+  /**
+   * Envía un email genérico con HTML libre.
+   * Soporta attachments opcionales (ej. PDFs adjuntos).
+   * Útil para notificaciones internas y emails de cotizaciones.
+   */
+  async sendGenericEmail(
+    businessUnitId: string,
+    params: {
+      to: string;
+      cc?: string[];
+      subject: string;
+      html: string;
+      text?: string;
+      attachments?: Array<{
+        filename: string;
+        content: Buffer;
+        contentType: string;
+      }>;
+    },
+  ): Promise<void> {
+    const sendViaProvider = async () => {
+      const provider = await this.getEmailProvider(businessUnitId);
+      const result = await provider.sendEmail({
+        to: params.to,
+        cc: params.cc,
+        from: (provider as any).defaultFrom,
+        subject: params.subject,
+        html: params.html,
+        text: params.text,
+        attachments: params.attachments,
+      });
+      if (!result.success) throw new Error(result.error);
+      console.log(`📧 Generic email sent to ${params.to}`);
+    };
+
+    const logToConsole = () => {
+      console.log("\n📧 ===== GENERIC EMAIL (DEV MODE - FALLBACK) =====");
+      console.log(`To:      ${params.to}`);
+      console.log(`Subject: ${params.subject}`);
+      if (params.attachments?.length) {
+        console.log(
+          `Attachments: ${params.attachments.map((a) => a.filename).join(", ")}`,
+        );
+      }
+      console.log("Body (HTML):", params.html.substring(0, 300), "...");
+      console.log("===================================\n");
+    };
+
+    if (config.nodeEnv === "development") {
+      try {
+        await sendViaProvider();
+      } catch (error: any) {
+        console.warn(
+          `[EmailService] Dev provider failed (${error.message}), logging to console.`,
+        );
+        logToConsole();
+      }
+      return;
+    }
+
+    // Producción: intentar enviar; si falla, loguear pero no lanzar error (no crítico)
+    try {
+      await sendViaProvider();
+    } catch (error: any) {
+      console.error("[EmailService] sendGenericEmail error:", error.message);
+      // Re-lanzar para que el caller pueda decidir cómo manejarlo
+      throw error;
     }
   }
 }

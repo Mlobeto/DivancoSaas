@@ -85,8 +85,15 @@ function App() {
   // Create module context - memoized to prevent unnecessary recalculations
   // Note: context is created even without auth (public routes like /login exist)
   const context = useMemo(() => {
+    const authState = useAuthStore.getState();
     // Use permissions from auth store (comes from backend)
-    const permissions = useAuthStore.getState().permissions || [];
+    // Also inject the role as a pseudo-permission so guards using "OWNER", "ADMIN", etc. work
+    const basePermissions = authState.permissions || [];
+    const role = authState.role;
+    const permissions =
+      role && !basePermissions.includes(role)
+        ? [...basePermissions, role]
+        : basePermissions;
 
     // Include tenant config (enabledModules, vertical) in context
     const config = tenant

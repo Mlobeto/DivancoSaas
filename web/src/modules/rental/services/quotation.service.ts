@@ -135,4 +135,63 @@ export const quotationService = {
       options || {},
     );
   },
+
+  /**
+   * Actualizar cotización completa (campos + items). Vuelve a draft si estaba enviada.
+   */
+  async update(
+    id: string,
+    data: Partial<CreateQuotationDTO>,
+  ): Promise<Quotation> {
+    const response = await apiClient.patch(
+      `${BASE_URL}/quotations/${id}`,
+      data,
+    );
+    return response.data.data;
+  },
+
+  /**
+   * Enviar cotización al cliente (o solicitar aprobación interna si no tiene permiso directo).
+   */
+  async send(quotationId: string): Promise<Quotation> {
+    const response = await apiClient.post(
+      `${BASE_URL}/quotations/${quotationId}/send`,
+    );
+    return response.data.data;
+  },
+
+  /**
+   * Aprobar cotización pendiente de aprobación interna.
+   */
+  async approve(quotationId: string): Promise<Quotation> {
+    const response = await apiClient.post(
+      `${BASE_URL}/quotations/${quotationId}/approve`,
+    );
+    return response.data.data;
+  },
+
+  /**
+   * Rechazar cotización pendiente de aprobación interna.
+   */
+  async reject(quotationId: string, reason?: string): Promise<Quotation> {
+    const response = await apiClient.post(
+      `${BASE_URL}/quotations/${quotationId}/reject`,
+      { reason },
+    );
+    return response.data.data;
+  },
+
+  /**
+   * Confirmar pago recibido (transferencia / comprobante subido).
+   */
+  async confirmPayment(
+    quotationId: string,
+    notes?: string,
+  ): Promise<Quotation> {
+    const response = await apiClient.post(
+      `${BASE_URL}/quotations/${quotationId}/confirm-payment`,
+      { notes },
+    );
+    return response.data.data;
+  },
 };

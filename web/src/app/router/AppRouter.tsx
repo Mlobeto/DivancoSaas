@@ -9,17 +9,11 @@
  * IMPORTANT: Router is created ONCE after login, not on every render.
  */
 
-import {
-  createBrowserRouter,
-  Navigate,
-  RouteObject,
-  Outlet,
-} from "react-router-dom";
-import { Suspense } from "react";
+import { createBrowserRouter, Navigate, RouteObject } from "react-router-dom";
 import { verticalRegistry, type ModuleContext } from "@/product";
+import { RouteBuilder } from "@/product/route-builder";
 
 // Import core components
-import { Layout } from "@/core/components/Layout";
 import { ProtectedRoute } from "@/core/components/ProtectedRoute";
 import { LoginPage } from "@/core/pages/LoginPage";
 import { RegisterPage } from "@/core/pages/RegisterPage";
@@ -32,8 +26,14 @@ import { ModuleAssignmentManager } from "@/core/pages/ModuleAssignmentManager";
  * @param context - Module context with tenant, businessUnit, permissions
  */
 export function buildRoutes(context: ModuleContext): RouteObject[] {
-  // Get routes from active vertical (includes required core module routes)
-  const platformRoutes = verticalRegistry.getRoutes(context);
+  // Get route config from active vertical
+  const verticalRouteConfig = verticalRegistry.getRouteConfig(context);
+
+  // Build routes using RouteBuilder
+  const builder = new RouteBuilder({ debug: import.meta.env.DEV });
+  const platformRoutes = verticalRouteConfig
+    ? (builder.buildFromVertical(verticalRouteConfig) as RouteObject[])
+    : [];
 
   console.log(
     `[AppRouter] Building routes: ${platformRoutes.length} total (core + vertical)`,

@@ -7,6 +7,7 @@ import { emailService } from "@core/services/email.service";
 import { quotationService } from "./quotation.service";
 import { azureBlobStorageService } from "@shared/storage/azure-blob-storage.service";
 import prisma from "@config/database";
+import { v4 as uuidv4 } from "uuid";
 
 export class QuotationEmailService {
   /**
@@ -40,6 +41,28 @@ export class QuotationEmailService {
     if (!quotation.pdfUrl) {
       throw new Error("PDF must be generated before sending email");
     }
+
+    // Generar token único para que el cliente pueda subir su comprobante de pago
+    const existingMeta = (quotation.metadata as any) || {};
+    let paymentReceiptToken = existingMeta.paymentReceiptToken as
+      | string
+      | undefined;
+    if (!paymentReceiptToken) {
+      paymentReceiptToken = uuidv4();
+      await prisma.quotation.update({
+        where: { id: quotationId },
+        data: {
+          metadata: { ...existingMeta, paymentReceiptToken },
+        },
+      });
+    }
+
+    const backendUrl =
+      process.env.BACKEND_URL ||
+      (process.env.RAILWAY_PUBLIC_DOMAIN
+        ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+        : "http://localhost:3001");
+    const receiptUploadUrl = `${backendUrl}/api/v1/public/quotations/${paymentReceiptToken}/upload`;
 
     // 2. Extraer containerName y blobName de la URL
     // URL format: https://[account].blob.core.windows.net/[container]/[blobPath]
@@ -198,6 +221,27 @@ export class QuotationEmailService {
                   📎 <strong>Adjunto encontrará el PDF con los detalles completos de la cotización.</strong>
                 </p>
               </div>
+
+              <div style="background: #f0fff4; border: 2px solid #9ae6b4; padding: 20px; border-radius: 10px; margin: 24px 0; text-align: center;">
+                <p style="margin: 0 0 8px 0; color: #276749; font-weight: bold; font-size: 15px;">
+                  💳 ¿Ya realizó el pago por transferencia?
+                </p>
+                <p style="margin: 0 0 16px 0; color: #4a5568; font-size: 13px;">
+                  Suba su comprobante de pago haciendo clic en el botón de abajo.<br>
+                  Nuestro equipo lo verificará y activará su servicio.<br><br>
+                  <strong>⏰ Este enlace es válido únicamente para esta cotización.</strong>
+                </p>
+                <a href="${receiptUploadUrl}"
+                   style="display: inline-block; background: #38a169; color: white; padding: 14px 32px;
+                          border-radius: 8px; text-decoration: none; font-size: 16px; font-weight: bold;
+                          letter-spacing: 0.3px;">
+                  📤 Subir comprobante de pago
+                </a>
+                <p style="margin: 12px 0 0 0; color: #a0aec0; font-size: 11px;">
+                  Si el botón no funciona, copie y pegue este enlace:<br>
+                  <span style="word-break: break-all; color: #4a5568;">${receiptUploadUrl}</span>
+                </p>
+              </div>
               
               ${
                 quotation.notes
@@ -229,12 +273,8 @@ export class QuotationEmailService {
       </html>
     `;
 
-    // 4. Enviar email con PDF adjunto
-    const provider = await (emailService as any).getEmailProvider(
-      quotation.businessUnitId,
-    );
-
-    const result = await provider.sendEmail({
+    // 4. Enviar email con PDF adjunto via EmailService (con fallback a consola en dev)
+    await emailService.sendGenericEmail(quotation.businessUnitId, {
       to: quotation.client.email,
       cc: options?.cc,
       subject: subject,
@@ -248,10 +288,6 @@ export class QuotationEmailService {
         },
       ],
     });
-
-    if (!result.success) {
-      throw new Error(`Failed to send email: ${result.error}`);
-    }
 
     // 5. Actualizar status de la cotización
     await prisma.quotation.update({

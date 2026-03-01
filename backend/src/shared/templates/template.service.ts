@@ -37,7 +37,9 @@ export interface Template {
 }
 
 export type TemplateType =
-  | "quotation" // Plantilla de cotización
+  | "quotation_rental" // Plantilla de cotización por alquiler (time_based)
+  | "quotation_service" // Plantilla de cotización por trabajo/servicio (service_based)
+  | "quotation" // Legado: plantilla de cotización genérica
   | "contract" // Plantilla de contrato
   | "contract_report" // Informe de estado de cuenta del contrato
   | "attachment"; // Adjunto personalizable
@@ -408,31 +410,36 @@ export class TemplateService {
     // Helper para formatear moneda
     this.handlebars.registerHelper(
       "formatCurrency",
-      (value: number, symbol = "$") => {
-        return `${symbol}${value.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, "$&,")}`;
+      (value: any, symbol: any) => {
+        const num = Number(value);
+        if (isNaN(num)) return "$0.00";
+        // When called as {{formatCurrency value}} Handlebars passes the options
+        // object as the second arg — treat anything non-string as default.
+        const sym = typeof symbol === "string" ? symbol : "$";
+        return `${sym}${num.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, "$&,")}`;
       },
     );
 
     // Helper para formatear fecha
-    this.handlebars.registerHelper(
-      "formatDate",
-      (date: Date, format = "long") => {
-        if (!date) return "";
-        const d = new Date(date);
-        if (format === "short") {
-          return d.toLocaleDateString();
-        }
-        return d.toLocaleDateString("es-ES", {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        });
-      },
-    );
+    this.handlebars.registerHelper("formatDate", (date: any, format: any) => {
+      if (!date) return "";
+      const d = new Date(date);
+      if (isNaN(d.getTime())) return "";
+      const fmt = typeof format === "string" ? format : "long";
+      if (fmt === "short") {
+        return d.toLocaleDateString();
+      }
+      return d.toLocaleDateString("es-ES", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+    });
 
     // Helper para formatear número
-    this.handlebars.registerHelper("formatNumber", (value: number) => {
-      return value.toLocaleString();
+    this.handlebars.registerHelper("formatNumber", (value: any) => {
+      const num = Number(value);
+      return isNaN(num) ? "0" : num.toLocaleString();
     });
 
     // Helper condicional (block helper)

@@ -1,14 +1,19 @@
 import { useState, useEffect, useCallback } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { quotationService } from "../services/quotation.service.ts";
 import apiClient from "@/lib/api";
+import { useAuthStore } from "@/store/auth.store";
 import type {
   QuotationType,
   RentalPeriodType,
   OperatorCostType,
 } from "../types/quotation.types.ts";
 import type { AssetRentalProfile } from "@/modules/inventory/services/assets.service";
+
+export interface UseQuotationFormOptions {
+  quotationId?: string;
+}
 
 export interface AssetSearchResult {
   id: string;
@@ -57,8 +62,10 @@ export interface QuotationItem {
   calculatedOperatorCost?: number;
 }
 
-export function useQuotationForm() {
+export function useQuotationForm(options?: UseQuotationFormOptions) {
   const navigate = useNavigate();
+  const { businessUnit } = useAuthStore();
+  const quotationId = options?.quotationId;
 
   // Form state
   const [selectedClientId, setSelectedClientId] = useState("");
@@ -79,6 +86,70 @@ export function useQuotationForm() {
     "• Los precios incluyen IVA\n• El pago se realizará 50% adelanto, 50% contra entrega\n• Los equipos deben ser devueltos en las mismas condiciones",
   );
   const [templateId, setTemplateId] = useState<string | undefined>(undefined);
+
+  // ── EDIT MODE: cargar cotización existente ──────────────────────────────
+  const { data: existingQuotation, isLoading: loadingExisting } = useQuery({
+    queryKey: ["quotation", quotationId],
+    queryFn: () => quotationService.getById(quotationId!),
+    enabled: !!quotationId,
+  });
+
+  // Pre-poblar estado cuando tenemos los datos
+  useEffect(() => {
+    if (!existingQuotation) return;
+    setSelectedClientId(existingQuotation.clientId ?? "");
+    setQuotationType((existingQuotation.quotationType as QuotationType) ?? "time_based");
+    setEstimatedStartDate(
+      existingQuotation.estimatedStartDate
+        ? String(existingQuotation.estimatedStartDate).slice(0, 10)
+        : "",
+    );
+    setEstimatedEndDate(
+      existingQuotation.estimatedEndDate
+        ? String(existingQuotation.estimatedEndDate).slice(0, 10)
+        : "",
+    );
+    setServiceDescription((existingQuotation as any).serviceDescription ?? "");
+    setNotes(existingQuotation.notes ?? "");
+    setTerms((existingQuotation as any).termsAndConditions ?? terms);
+    setTaxRate(Number(existingQuotation.taxRate) || 19);
+    // Calcular validityDays desde validUntil
+    if (existingQuotation.validUntil) {
+      const days = Math.max(
+        1,
+        Math.ceil(
+          (new Date(existingQuotation.validUntil).getTime() - Date.now()) /
+            (1000 * 60 * 60 * 24),
+        ),
+      );
+      setValidityDays(days);
+    }
+    // Mapear items del backend al formato del form
+    const mappedItems: QuotationItem[] =
+      (existingQuotation.items ?? []).map((item: any) => ({
+        assetId: item.assetId ?? "",
+        assetName: item.description ?? "",
+        assetCode: item.asset?.code ?? "",
+        trackingType: item.asset?.trackingType ?? null,
+        quantity: item.quantity ?? 1,
+        rentalDays: item.rentalDays ?? 0,
+        startDate: item.rentalStartDate ? String(item.rentalStartDate).slice(0, 10) : "",
+        endDate: item.rentalEndDate ? String(item.rentalEndDate).slice(0, 10) : "",
+        rentalPeriodType: (item.rentalPeriodType as RentalPeriodType) ?? "daily",
+        standbyHours: Number(item.standbyHours) || 0,
+        operatorIncluded: item.operatorIncluded ?? false,
+        operatorCostType: (item.operatorCostType as OperatorCostType) ?? "PER_DAY",
+        customUnitPrice: item.priceOverridden ? Number(item.unitPrice) : undefined,
+        customOperatorCost:
+          item.operatorCost && Number(item.operatorCost) > 0
+            ? Number(item.operatorCost)
+            : undefined,
+        calculatedUnitPrice: Number(item.calculatedUnitPrice) || 0,
+        calculatedOperatorCost: Number(item.calculatedOperatorCost) || 0,
+      }));
+    setItems(mappedItems);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [existingQuotation]);
 
   // Asset search state
   const [assetSearch, setAssetSearch] = useState("");
@@ -199,6 +270,13 @@ export function useQuotationForm() {
     [],
   );
 
+  // Add a fully-built QuotationItem directly (used by modal flow)
+  const addItem = useCallback((item: QuotationItem) => {
+    setItems((prev) => [...prev, item]);
+    setAssetSearch("");
+    setAssetSearchResults([]);
+  }, []);
+
   // Add asset to items
   const handleAddAsset = useCallback(
     (asset: AssetSearchResult) => {
@@ -282,12 +360,15 @@ export function useQuotationForm() {
 
   // Submit mutation
   const mutation = useMutation({
-    mutationFn: (data: any) => quotationService.create(data),
+    mutationFn: (data: any) =>
+      quotationId
+        ? quotationService.update(quotationId, data)
+        : quotationService.create(data),
     onSuccess: () => {
-      navigate(`/quotations`);
+      navigate(`/rental/quotations`);
     },
     onError: (error: any) => {
-      console.error("Error creating quotation:", error);
+      console.error("Error saving quotation:", error);
     },
   });
 
@@ -323,13 +404,18 @@ export function useQuotationForm() {
         }
       }
 
+      // Calcular validUntil a partir de validityDays
+      const validUntilDate = new Date();
+      validUntilDate.setDate(validUntilDate.getDate() + validityDays);
+
       const payload = {
+        businessUnitId: businessUnit?.id,
         clientId: selectedClientId,
-        validityDays,
+        validUntil: validUntilDate.toISOString(),
         taxRate,
         notes,
-        terms,
-        templateId, // v4.0: Plantilla para generar PDF
+        termsAndConditions: terms,
+        templateId,
 
         // v4.0: Tipo de cotización
         quotationType,
@@ -343,11 +429,12 @@ export function useQuotationForm() {
           quotationType === "service_based" ? serviceDescription : undefined,
 
         items: items.map((item) => ({
-          assetId: item.assetId,
+          assetId: item.assetId || undefined,
+          description: item.assetName || "Servicio",
           quantity: item.quantity,
           rentalDays: item.rentalDays,
-          startDate: item.startDate,
-          endDate: item.endDate,
+          rentalStartDate: item.startDate || undefined,
+          rentalEndDate: item.endDate || undefined,
 
           // v4.0: Nuevos campos
           rentalPeriodType: item.rentalPeriodType,
@@ -358,6 +445,9 @@ export function useQuotationForm() {
           // Override manual
           customUnitPrice: item.customUnitPrice,
           customOperatorCost: item.customOperatorCost,
+
+          // Precio ya calculado en el modal (evita recálculo en backend si hay override)
+          unitPrice: item.customUnitPrice ?? item.calculatedUnitPrice,
         })),
       };
 
@@ -365,6 +455,7 @@ export function useQuotationForm() {
     },
     [
       selectedClientId,
+      businessUnit,
       items,
       quotationType,
       estimatedStartDate,
@@ -375,12 +466,17 @@ export function useQuotationForm() {
       taxRate,
       notes,
       terms,
+      templateId,
       mutation,
     ],
   );
 
   return {
-    // State
+    // Meta
+    quotationId,
+    isEditMode: !!quotationId,
+    loadingExisting,
+    existingQuotation,
     selectedClientId,
     setSelectedClientId,
     quotationType,
@@ -412,6 +508,7 @@ export function useQuotationForm() {
 
     // Handlers
     handleAddAsset,
+    addItem,
     updateItem,
     removeItem,
     calculateTotals,

@@ -7,6 +7,7 @@ import { Request, Response } from "express";
 import { quotationService } from "../services/quotation.service";
 import { quotationEmailService } from "../services/quotation-email.service";
 import { azureBlobStorageService } from "@shared/storage/azure-blob-storage.service";
+import { permissionService } from "@core/services/permission.service";
 
 /**
  * Helper: Generar SAS URL para pdfUrl si existe
@@ -127,14 +128,29 @@ export class QuotationController {
    */
   async create(req: Request, res: Response): Promise<void> {
     try {
-      const { businessUnitId, clientId, validUntil, items, ...rest } = req.body;
-      const userId = (req as any).user.id;
+      const {
+        businessUnitId,
+        clientId,
+        validUntil,
+        items,
+        estimatedStartDate,
+        estimatedEndDate,
+        ...rest
+      } = req.body;
+
+      const { userId, tenantId } = req.context!;
 
       const quotation = await quotationService.createQuotation({
-        tenantId: (req as any).user.tenantId,
+        tenantId,
         businessUnitId,
         clientId,
         validUntil: new Date(validUntil),
+        estimatedStartDate: estimatedStartDate
+          ? new Date(estimatedStartDate)
+          : undefined,
+        estimatedEndDate: estimatedEndDate
+          ? new Date(estimatedEndDate)
+          : undefined,
         items,
         createdBy: userId,
         ...rest,
@@ -149,6 +165,42 @@ export class QuotationController {
         success: false,
         error: error.message,
       });
+    }
+  }
+
+  /**
+   * Actualizar cotización completa (cabecera + items)
+   * PATCH /api/v1/rental/quotations/:id
+   */
+  async update(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const quotationId = Array.isArray(id) ? id[0] : id;
+      const { userId } = req.context!;
+
+      const { validUntil, estimatedStartDate, estimatedEndDate, ...rest } =
+        req.body;
+
+      const quotation = await quotationService.updateQuotation(quotationId, {
+        ...rest,
+        validUntil: validUntil ? new Date(validUntil) : undefined,
+        estimatedStartDate: estimatedStartDate
+          ? new Date(estimatedStartDate)
+          : undefined,
+        estimatedEndDate: estimatedEndDate
+          ? new Date(estimatedEndDate)
+          : undefined,
+        updatedBy: userId,
+      });
+
+      res.json({ success: true, data: quotation });
+    } catch (error: any) {
+      const status = error.message?.includes("no encontrada")
+        ? 404
+        : error.message?.includes("No se puede")
+          ? 409
+          : 400;
+      res.status(status).json({ success: false, error: error.message });
     }
   }
 
@@ -327,6 +379,143 @@ export class QuotationController {
         success: false,
         error: error.message,
       });
+    }
+  }
+
+  /**
+   * Enviar cotización al cliente (o solicitar aprobación si no tiene permiso)
+   * POST /api/v1/rental/quotations/:id/send
+   */
+  async send(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const quotationId = Array.isArray(id) ? id[0] : id;
+      const { userId, tenantId, businessUnitId } = req.context!;
+
+      // Obtener permisos reales del usuario
+      const userPermissions = await permissionService.getUserPermissions(
+        userId,
+        businessUnitId!,
+      );
+
+      // Agregar el rol global (req.user) y el rol de BU (req.context) como pseudo-permisos
+      // para que sendOrRequestApproval pueda evaluar OWNER / SUPER_ADMIN / ADMIN correctamente
+      const globalRole = (req as any).user?.role; // "OWNER" | "SUPER_ADMIN" | "USER"
+      const buRole = req.context!.role; // nombre del rol en la BU (ej. "Administrador")
+
+      for (const r of [globalRole, buRole]) {
+        if (r && !userPermissions.includes(r)) {
+          userPermissions.push(r);
+        }
+      }
+
+      console.log(
+        "[QuotationController.send] userPermissions:",
+        userPermissions,
+      );
+
+      const result = await quotationService.sendOrRequestApproval(
+        quotationId,
+        userId,
+        userPermissions,
+      );
+
+      res.json({
+        success: true,
+        data: result,
+        message: result.sent
+          ? "Cotización enviada al cliente exitosamente"
+          : "Cotización enviada a aprobación. Se notificó a los aprobadores.",
+      });
+    } catch (error: any) {
+      console.error("[QuotationController.send] Error:", error);
+      res.status(400).json({ success: false, error: error.message });
+    }
+  }
+
+  /**
+   * Aprobar cotización pendiente y enviarla al cliente
+   * POST /api/v1/rental/quotations/:id/approve
+   */
+  async approve(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const quotationId = Array.isArray(id) ? id[0] : id;
+      const { userId } = req.context!;
+
+      await quotationService.approveAndSend(quotationId, userId);
+
+      res.json({
+        success: true,
+        message: "Cotización aprobada y enviada al cliente exitosamente",
+      });
+    } catch (error: any) {
+      res.status(400).json({ success: false, error: error.message });
+    }
+  }
+
+  /**
+   * Rechazar cotización pendiente (vuelve a borrador)
+   * POST /api/v1/rental/quotations/:id/reject
+   */
+  async reject(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const quotationId = Array.isArray(id) ? id[0] : id;
+      const { userId } = req.context!;
+      const { reason } = req.body;
+
+      if (!reason) {
+        res
+          .status(400)
+          .json({ success: false, error: "Se requiere un motivo de rechazo" });
+        return;
+      }
+
+      await quotationService.rejectQuotation(quotationId, userId, reason);
+
+      res.json({
+        success: true,
+        message: "Cotización rechazada. El creador fue notificado.",
+      });
+    } catch (error: any) {
+      res.status(400).json({ success: false, error: error.message });
+    }
+  }
+
+  /**
+   * Confirmar pago recibido por transferencia bancaria
+   * POST /api/v1/rental/quotations/:id/confirm-payment
+   */
+  async confirmPayment(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const quotationId = Array.isArray(id) ? id[0] : id;
+      const { userId } = req.context!;
+      const { paymentReference, notes } = req.body;
+
+      if (!paymentReference) {
+        res.status(400).json({
+          success: false,
+          error: "Se requiere la referencia del pago",
+        });
+        return;
+      }
+
+      const result = await quotationService.confirmPayment(
+        quotationId,
+        userId,
+        paymentReference,
+        notes,
+      );
+
+      res.json({
+        success: true,
+        message: "Pago confirmado. Contrato creado y cuenta acreditada.",
+        data: result,
+      });
+    } catch (error: any) {
+      res.status(400).json({ success: false, error: error.message });
     }
   }
 

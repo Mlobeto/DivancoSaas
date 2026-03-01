@@ -74,7 +74,7 @@ api.interceptors.response.use(
       error.config?.responseType === "blob" &&
       error.response?.data instanceof Blob
     ) {
-      return error.response.data.text().then((text) => {
+      return error.response.data.text().then((text: string) => {
         try {
           const errorData = JSON.parse(text);
           console.error("[API] Blob request failed:", errorData);

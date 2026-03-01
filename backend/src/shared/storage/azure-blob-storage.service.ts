@@ -13,6 +13,23 @@ import {
 } from "@azure/storage-blob";
 import { v4 as uuidv4 } from "uuid";
 
+/**
+ * Azure Blob metadata values must be pure ASCII (no accents, no emojis, etc.).
+ * This function normalizes a string by:
+ *   1. Decomposing Unicode (NFD) so accented chars become base + combining mark
+ *   2. Stripping the combining marks (diacritics)
+ *   3. Removing any remaining non-ASCII characters
+ *   4. Truncating to 256 chars (Azure header limit)
+ */
+function sanitizeAzureMetadata(value: string): string {
+  return value
+    .normalize("NFD") // é → e + ́
+    .replace(/[\u0300-\u036f]/g, "") // strip combining diacritics
+    .replace(/[^\x00-\x7F]/g, "_") // replace remaining non-ASCII with _
+    .replace(/[^\w.\-_ ]/g, "_") // keep only safe chars
+    .slice(0, 256);
+}
+
 export interface UploadFileParams {
   file: Buffer;
   fileName: string;
@@ -102,9 +119,11 @@ export class AzureBlobStorageService {
         blobContentType: params.contentType || "application/octet-stream",
       },
       metadata: {
-        originalFileName: params.fileName,
-        tenantId: params.tenantId,
-        businessUnitId: params.businessUnitId || "",
+        // Azure metadata only accepts ASCII (no accents, no special chars).
+        // Normalize: remove diacritics then strip remaining non-ASCII.
+        originalFileName: sanitizeAzureMetadata(params.fileName),
+        tenantId: sanitizeAzureMetadata(params.tenantId),
+        businessUnitId: sanitizeAzureMetadata(params.businessUnitId || ""),
         uploadedAt: new Date().toISOString(),
       },
     });

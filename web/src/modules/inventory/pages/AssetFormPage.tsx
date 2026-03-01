@@ -43,6 +43,7 @@ export function AssetFormPage() {
   const [createdAssetId, setCreatedAssetId] = useState<string | null>(null);
   const [suggestedCode, setSuggestedCode] = useState<string>("");
   const [manuallyEditedCode, setManuallyEditedCode] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<CreateAssetData>({
     code: "",
@@ -205,23 +206,38 @@ export function AssetFormPage() {
   }, [selectedTemplate, isEditMode]);
 
   // Fetch suggested code when assetType changes
+  // Uses a "stale check" to avoid race conditions: if assetType changed while
+  // the request was in-flight, the old response is discarded.
   useEffect(() => {
     if (!isEditMode && formData.assetType && !manuallyEditedCode) {
+      let cancelled = false;
+      const requestedType = formData.assetType;
+
       assetsService
-        .getNextCode(formData.assetType)
+        .getNextCode(requestedType)
         .then((code) => {
+          if (cancelled) return; // assetType changed before this resolved
           setSuggestedCode(code);
-          setFormData((prev) => ({ ...prev, code }));
+          setFormData((prev) => {
+            // Extra guard: only apply if assetType hasn't changed again
+            if (prev.assetType !== requestedType) return prev;
+            return { ...prev, code };
+          });
         })
         .catch((error) => {
-          console.error("Failed to fetch next code:", error);
+          if (!cancelled) console.error("Failed to fetch next code:", error);
         });
+
+      return () => {
+        cancelled = true;
+      };
     }
   }, [formData.assetType, isEditMode, manuallyEditedCode]);
 
   const createMutation = useMutation({
     mutationFn: assetsService.create,
     onSuccess: async (newAsset) => {
+      setSubmitError(null);
       setCreatedAssetId(newAsset.id);
       queryClient.invalidateQueries({ queryKey: ["assets"] });
 
@@ -256,12 +272,16 @@ export function AssetFormPage() {
         navigate("/inventory");
       }
     },
+    onError: (error: any) => {
+      setSubmitError(error?.message || "Error al crear el activo");
+    },
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: CreateAssetData }) =>
       assetsService.update(id, data),
     onSuccess: async () => {
+      setSubmitError(null);
       queryClient.invalidateQueries({ queryKey: ["assets"] });
       queryClient.invalidateQueries({ queryKey: ["asset", id] });
 
@@ -276,6 +296,9 @@ export function AssetFormPage() {
       }
 
       navigate("/inventory");
+    },
+    onError: (error: any) => {
+      setSubmitError(error?.message || "Error al actualizar el activo");
     },
   });
 
@@ -1607,6 +1630,14 @@ export function AssetFormPage() {
                   </table>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Error de submit */}
+          {submitError && (
+            <div className="p-4 rounded-lg bg-red-900/30 border border-red-700 text-red-300 text-sm flex items-start gap-3">
+              <span className="text-red-400 mt-0.5">&#9888;</span>
+              <span>{submitError}</span>
             </div>
           )}
 

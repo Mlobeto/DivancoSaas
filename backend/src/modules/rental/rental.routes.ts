@@ -285,6 +285,13 @@ router.post(
   quotationController.create.bind(quotationController),
 );
 
+// Actualizar cotización completa (solo en status no paid/cancelled)
+router.patch(
+  "/quotations/:id",
+  authorize("quotations:update"),
+  quotationController.update.bind(quotationController),
+);
+
 // Actualizar precios de items (override manual)
 router.patch(
   "/quotations/:id/update-prices",
@@ -318,6 +325,34 @@ router.post(
   "/quotations/:id/create-contract",
   authorize("quotations:approve"),
   quotationController.createContract.bind(quotationController),
+);
+
+// Enviar cotización al cliente (o solicitar aprobación si no tiene permiso)
+router.post(
+  "/quotations/:id/send",
+  authorize("quotations:create"), // cualquier creador puede intentar enviar
+  quotationController.send.bind(quotationController),
+);
+
+// Aprobar cotización pendiente (requiere quotations:approve)
+router.post(
+  "/quotations/:id/approve",
+  authorize("quotations:approve"),
+  quotationController.approve.bind(quotationController),
+);
+
+// Rechazar cotización pendiente (requiere quotations:approve)
+router.post(
+  "/quotations/:id/reject",
+  authorize("quotations:approve"),
+  quotationController.reject.bind(quotationController),
+);
+
+// Confirmar pago recibido por transferencia (requiere quotations:confirm-payment)
+router.post(
+  "/quotations/:id/confirm-payment",
+  authorize("quotations:confirm-payment"),
+  quotationController.confirmPayment.bind(quotationController),
 );
 
 // ============================================

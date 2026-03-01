@@ -195,8 +195,15 @@ class VerticalRegistry {
         continue;
       }
 
-      // Check permissions
-      if (vertical.permissions && vertical.permissions.length > 0) {
+      // Check permissions (OWNER/ADMIN/SUPER_ADMIN bypass all permission gates)
+      const isPrivileged = ["OWNER", "ADMIN", "SUPER_ADMIN"].some((r) =>
+        context.permissions.includes(r),
+      );
+      if (
+        !isPrivileged &&
+        vertical.permissions &&
+        vertical.permissions.length > 0
+      ) {
         const hasPermission = vertical.permissions.some((permission) =>
           context.permissions.includes(permission),
         );

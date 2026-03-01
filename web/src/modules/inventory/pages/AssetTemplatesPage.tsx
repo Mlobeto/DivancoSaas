@@ -137,6 +137,17 @@ export function AssetTemplatesPage() {
     [AssetCategory.VEHICLE]:
       "bg-purple-900/30 text-purple-400 border-purple-800",
     [AssetCategory.TOOL]: "bg-yellow-900/30 text-yellow-400 border-yellow-800",
+    [AssetCategory.SUPPLY_FUEL]:
+      "bg-orange-900/30 text-orange-400 border-orange-800",
+    [AssetCategory.SUPPLY_OIL]:
+      "bg-amber-900/30 text-amber-400 border-amber-800",
+    [AssetCategory.SUPPLY_PAINT]:
+      "bg-pink-900/30 text-pink-400 border-pink-800",
+    [AssetCategory.SUPPLY_SPARE_PART]:
+      "bg-cyan-900/30 text-cyan-400 border-cyan-800",
+    [AssetCategory.SUPPLY_CONSUMABLE]:
+      "bg-teal-900/30 text-teal-400 border-teal-800",
+    [AssetCategory.SUPPLY_SAFETY]: "bg-red-900/30 text-red-400 border-red-800",
   };
 
   // Validar contexto

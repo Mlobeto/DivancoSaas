@@ -31,8 +31,18 @@ const PERMISSIONS = [
   },
   {
     resource: "quotations",
+    action: "send",
+    description: "Enviar cotizaciones al cliente sin necesitar aprobación",
+  },
+  {
+    resource: "quotations",
     action: "approve",
-    description: "Aprobar cotizaciones",
+    description: "Aprobar cotizaciones enviadas por otros empleados",
+  },
+  {
+    resource: "quotations",
+    action: "confirm-payment",
+    description: "Confirmar pago recibido por transferencia bancaria",
   },
   {
     resource: "quotations",
@@ -212,13 +222,28 @@ const BUSINESS_ROLES: Array<{
     ],
   },
   {
-    id: "role-comercial",
-    name: "Comercial",
-    description: "Cotizaciones, contratos y gestión de clientes",
+    id: "role-vendedor",
+    name: "Vendedor",
+    description:
+      "Crea cotizaciones — requiere aprobación para enviarlas al cliente",
     permissions: [
       "quotations:create",
       "quotations:read",
       "quotations:update",
+      "clients:read",
+      "inventory:read",
+    ],
+  },
+  {
+    id: "role-comercial",
+    name: "Comercial",
+    description:
+      "Cotizaciones, contratos y gestión de clientes — envía directamente sin aprobación",
+    permissions: [
+      "quotations:create",
+      "quotations:read",
+      "quotations:update",
+      "quotations:send",
       "contracts:create",
       "contracts:read",
       "clients:create",
@@ -235,6 +260,7 @@ const BUSINESS_ROLES: Array<{
     permissions: [
       "quotations:read",
       "quotations:approve",
+      "quotations:confirm-payment",
       "contracts:read",
       "contracts:approve",
       "billing:read",

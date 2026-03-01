@@ -2,88 +2,83 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "@/store/auth.store";
 import { templateService } from "../services/template.service";
 import { FileText } from "lucide-react";
+import type { QuotationType } from "../types/quotation.types";
 
 interface TemplateSelectorProps {
   templateId: string | undefined;
   onTemplateChange: (templateId: string | undefined) => void;
+  quotationType?: QuotationType;
 }
+
+/** Map quotation type to the matching template document type */
+const toTemplateType = (qt: QuotationType) =>
+  qt === "service_based" ? "quotation_service" : "quotation_rental";
 
 export function TemplateSelector({
   templateId,
   onTemplateChange,
+  quotationType,
 }: TemplateSelectorProps) {
   const { businessUnit } = useAuthStore();
 
+  const templateType = quotationType
+    ? toTemplateType(quotationType)
+    : "quotation_rental";
+
   const { data: templates, isLoading } = useQuery({
-    queryKey: ["templates", businessUnit?.id, "quotation"],
-    queryFn: () => templateService.list({ type: "quotation" }),
+    queryKey: ["templates", businessUnit?.id, templateType],
+    queryFn: () => templateService.list({ type: templateType }),
     enabled: !!businessUnit?.id,
   });
 
-  // Filter only active templates
   const activeTemplates = templates?.filter((t) => t.isActive) || [];
 
+  const typeLabel =
+    quotationType === "service_based"
+      ? "Cotización Trabajo/Servicio"
+      : "Cotización Alquiler";
+
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200/50 p-6">
-      <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-        <FileText className="w-5 h-5 text-blue-600" />
+    <div className="card space-y-3">
+      <h2 className="font-semibold text-dark-100 flex items-center gap-2">
+        <FileText className="w-5 h-5 text-primary-400" />
         Plantilla PDF
+        <span className="text-xs font-normal text-dark-400">({typeLabel})</span>
       </h2>
 
-      <div className="space-y-3">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Seleccione plantilla para generar PDF
-          </label>
-          <select
-            value={templateId || ""}
-            onChange={(e) => onTemplateChange(e.target.value || undefined)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-            disabled={isLoading}
-          >
-            <option value="">Sin plantilla (no generará PDF automático)</option>
-            {activeTemplates.map((template) => (
-              <option key={template.id} value={template.id}>
-                {template.name}
-              </option>
-            ))}
-          </select>
+      <select
+        value={templateId || ""}
+        onChange={(e) => onTemplateChange(e.target.value || undefined)}
+        className="input"
+        disabled={isLoading}
+      >
+        <option value="">Sin plantilla (no generará PDF automático)</option>
+        {activeTemplates.map((template) => (
+          <option key={template.id} value={template.id}>
+            {template.name}
+          </option>
+        ))}
+      </select>
+
+      {activeTemplates.length === 0 && !isLoading && (
+        <div className="bg-amber-900/20 border border-amber-700/40 rounded-lg p-3">
+          <p className="text-sm text-amber-400">
+            No hay plantillas activas para este tipo.{" "}
+            <a
+              href="/rental/templates"
+              className="underline hover:text-amber-300"
+            >
+              Crear plantilla
+            </a>
+          </p>
         </div>
+      )}
 
-        {/* Info box */}
-        {activeTemplates.length === 0 && !isLoading && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-            <p className="text-sm text-yellow-800">
-              No hay plantillas activas. Puedes crear una desde{" "}
-              <a
-                href="/rental/templates"
-                className="text-blue-600 underline hover:text-blue-700"
-              >
-                Gestión de Plantillas
-              </a>
-              .
-            </p>
-          </div>
-        )}
-
-        {templateId && (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-            <p className="text-sm text-green-800">
-              ✅ Se generará un PDF automáticamente usando esta plantilla
-            </p>
-          </div>
-        )}
-
-        {!templateId && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-            <p className="text-sm text-blue-800">
-              ℹ️ Sin plantilla seleccionada, la cotización se guardará pero no
-              se generará PDF. Podrás generar el PDF después si configuras una
-              plantilla.
-            </p>
-          </div>
-        )}
-      </div>
+      {templateId && (
+        <p className="text-xs text-green-400">
+          ✓ Se generará PDF automáticamente con esta plantilla
+        </p>
+      )}
     </div>
   );
 }

@@ -76,18 +76,40 @@ export class PermissionService {
         );
       });
 
+      // Permisos especiales de cotizaciones (flujo completo)
+      ownerPermissions.push(
+        "quotations:create",
+        "quotations:read",
+        "quotations:update",
+        "quotations:delete",
+        "quotations:send",
+        "quotations:approve",
+        "quotations:confirm-payment",
+        "contracts:create",
+        "contracts:read",
+        "contracts:update",
+        "contracts:approve",
+        "contracts:close",
+        "billing:read",
+        "billing:manage",
+        "billing:discount",
+      );
+
       // Add general permissions
       ownerPermissions.push(
         "settings:read",
         "settings:update",
+        "settings:manage",
         "users:create",
         "users:read",
         "users:update",
         "users:delete",
         "dashboard:read",
+        "reports:read",
+        "OWNER", // pseudo-permiso para chequeos en frontend
       );
 
-      return ownerPermissions;
+      return [...new Set(ownerPermissions)];
     }
 
     // Extract permissions from role as "resource:action" strings

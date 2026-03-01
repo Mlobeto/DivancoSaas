@@ -8,11 +8,7 @@
 export { loadModules, reloadModules } from "./module-loader/loadModules";
 
 // Router
-export {
-  createAppRouter,
-  buildRoutes,
-  rebuildRouter,
-} from "./router/AppRouter";
+export { createAppRouter, buildRoutes } from "./router/AppRouter";
 
 // Navigation
 export { default as DynamicNavigation } from "./navigation/DynamicNavigation";

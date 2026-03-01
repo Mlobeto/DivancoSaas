@@ -33,7 +33,18 @@ class PDFGeneratorService {
           "--no-sandbox",
           "--disable-setuid-sandbox",
           "--disable-dev-shm-usage",
+          "--disable-gpu",
+          "--disable-web-security",
+          "--disable-features=IsolateOrigins,site-per-process",
         ],
+      });
+
+      // Auto-clear on unexpected disconnect so the next call relaunches
+      this.browserInstance.on("disconnected", () => {
+        console.warn(
+          "[PDFGenerator] Browser disconnected — will relaunch on next request",
+        );
+        this.browserInstance = null;
       });
 
       console.log("[PDFGenerator] Browser launched successfully");
@@ -50,16 +61,30 @@ class PDFGeneratorService {
       html.length,
     );
 
-    const browser = await this.getBrowser();
+    let browser: Browser;
+    try {
+      browser = await this.getBrowser();
+    } catch (launchError: any) {
+      console.error("[PDFGenerator] Failed to launch browser:", launchError);
+      throw new Error(
+        `No se pudo iniciar el motor de PDF (Chromium). Detalles: ${launchError.message}`,
+      );
+    }
+
     const page = await browser.newPage();
 
     try {
       console.log("[PDFGenerator] Setting page content...");
 
-      // Set content (Playwright uses 'networkidle' instead of 'networkidle0')
+      // Use domcontentloaded instead of networkidle to avoid blocking on
+      // external resources (Google Fonts, CDN images, etc.)
       await page.setContent(html, {
-        waitUntil: "networkidle",
+        waitUntil: "domcontentloaded",
+        timeout: 15_000,
       });
+
+      // Give inline scripts / web fonts a brief moment to settle
+      await page.waitForTimeout(300);
 
       console.log("[PDFGenerator] Content set, generating PDF...");
 

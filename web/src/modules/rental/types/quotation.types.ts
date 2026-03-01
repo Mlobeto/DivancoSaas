@@ -41,6 +41,7 @@ export interface Quotation {
   signedBy?: string;
   notes?: string;
   termsAndConditions?: string;
+  metadata?: Record<string, any>;
   createdAt: Date;
   updatedAt: Date;
   createdBy: string;
@@ -89,6 +90,7 @@ export type QuotationStatus =
   | "draft"
   | "sent"
   | "viewed"
+  | "pending_approval"
   | "signature_pending"
   | "signed"
   | "paid"
@@ -165,7 +167,9 @@ export interface Template {
 }
 
 export type TemplateType =
-  | "quotation" // Plantilla de cotización
+  | "quotation_rental" // Cotización de alquiler de implementos/maquinaria (time_based)
+  | "quotation_service" // Cotización de trabajo o servicio (service_based)
+  | "quotation" // Legado: genérico
   | "contract" // Plantilla de contrato
   | "contract_report" // Informe de estado de cuenta del contrato
   | "attachment"; // Adjunto personalizable
