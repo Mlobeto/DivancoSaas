@@ -61,7 +61,9 @@ export class QuotationEmailService {
       process.env.BACKEND_URL ||
       (process.env.RAILWAY_PUBLIC_DOMAIN
         ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
-        : "http://localhost:3001");
+        : process.env.WEBSITE_HOSTNAME
+          ? `https://${process.env.WEBSITE_HOSTNAME}`
+          : "http://localhost:3001");
     const receiptUploadUrl = `${backendUrl}/api/v1/public/quotations/${paymentReceiptToken}/upload`;
 
     // 2. Extraer containerName y blobName de la URL
