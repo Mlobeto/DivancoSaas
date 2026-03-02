@@ -8,3 +8,8 @@ coverage
 .vscode
 .idea
 backend/deploy.zip
+
+# Debug scripts con credenciales
+debug-*.ts
+investigate-*.ts
+reset-*.ts
