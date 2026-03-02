@@ -76,6 +76,10 @@ import {
   publicQuotationController,
   receiptUpload,
 } from "./modules/rental/controllers/public-quotation.controller";
+import {
+  publicContractController,
+  contractReceiptUpload,
+} from "./modules/rental/controllers/public-contract.controller";
 
 export function createApp(): Application {
   const app = express();
@@ -231,12 +235,39 @@ export function createApp(): Application {
   // PUBLIC ROUTES (sin autenticación)
   // Para flujos orientados al cliente final
   // ────────────────────────────────────────
-  // Formulario HTML para subir comprobante de pago
+
+  // ── NUEVO FLUJO: Revisión de cotización por el cliente ──
+  app.get(
+    "/api/v1/public/quotations/:token/review",
+    publicQuotationController.reviewPage.bind(publicQuotationController),
+  );
+  app.post(
+    "/api/v1/public/quotations/:token/approve",
+    publicQuotationController.approveAction.bind(publicQuotationController),
+  );
+  app.post(
+    "/api/v1/public/quotations/:token/request-changes",
+    publicQuotationController.requestChangesAction.bind(
+      publicQuotationController,
+    ),
+  );
+
+  // ── NUEVO FLUJO: Subida de comprobante en contrato ──
+  app.get(
+    "/api/v1/public/contracts/:token/upload",
+    publicContractController.uploadForm.bind(publicContractController),
+  );
+  app.post(
+    "/api/v1/public/contracts/:token/upload",
+    contractReceiptUpload.single("receipt"),
+    publicContractController.uploadReceipt.bind(publicContractController),
+  );
+
+  // ── LEGACY: Subida de comprobante en cotización (links previos) ──
   app.get(
     "/api/v1/public/quotations/:token/upload",
     publicQuotationController.uploadForm.bind(publicQuotationController),
   );
-  // POST para recibir el archivo
   app.post(
     "/api/v1/public/quotations/:token/upload",
     receiptUpload.single("receipt"),

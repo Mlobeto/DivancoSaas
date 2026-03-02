@@ -2048,9 +2048,11 @@ model RentalContract {
   pdfUrl       String?
   signedPdfUrl String?
 
-  // Montos estimados
-  estimatedTotal Decimal? @db.Decimal(12, 2)
-  currency       String   @default("USD")
+  // Token público para que el cliente suba el comprobante de pago
+  receiptToken      String?   @unique
+  receiptUploadedAt DateTime?
+  estimatedTotal    Decimal?  @db.Decimal(12, 2)
+  currency          String    @default("USD")
 
   // Metadata
   notes    String? @db.Text
@@ -2376,6 +2378,17 @@ model Quotation {
   notes              String? @db.Text
   termsAndConditions String? @db.Text
   metadata           Json?
+
+  // ═══════════════════════════════════════
+  // REVISIÓN POR EL CLIENTE (nuevo flujo)
+  // ═══════════════════════════════════════
+  // Token único para el link de revisión enviado al cliente
+  clientReviewToken String?   @unique
+  // "pending_review" | "approved" | "changes_requested"
+  clientResponse    String?
+  // Mensaje del cliente cuando pide cambios
+  clientMessage     String?   @db.Text
+  clientRespondedAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -6,8 +6,8 @@
 import { emailService } from "@core/services/email.service";
 import { quotationService } from "./quotation.service";
 import { azureBlobStorageService } from "@shared/storage/azure-blob-storage.service";
+import { ensureClientReviewToken } from "./quotation-approval.service";
 import prisma from "@config/database";
-import { v4 as uuidv4 } from "uuid";
 
 export class QuotationEmailService {
   /**
@@ -42,20 +42,8 @@ export class QuotationEmailService {
       throw new Error("PDF must be generated before sending email");
     }
 
-    // Generar token único para que el cliente pueda subir su comprobante de pago
-    const existingMeta = (quotation.metadata as any) || {};
-    let paymentReceiptToken = existingMeta.paymentReceiptToken as
-      | string
-      | undefined;
-    if (!paymentReceiptToken) {
-      paymentReceiptToken = uuidv4();
-      await prisma.quotation.update({
-        where: { id: quotationId },
-        data: {
-          metadata: { ...existingMeta, paymentReceiptToken },
-        },
-      });
-    }
+    // Generar token único de revisión para el cliente (approve/request-changes)
+    const clientReviewToken = await ensureClientReviewToken(quotationId);
 
     const backendUrl =
       process.env.BACKEND_URL ||
@@ -64,7 +52,7 @@ export class QuotationEmailService {
         : process.env.WEBSITE_HOSTNAME
           ? `https://${process.env.WEBSITE_HOSTNAME}`
           : "http://localhost:3001");
-    const receiptUploadUrl = `${backendUrl}/api/v1/public/quotations/${paymentReceiptToken}/upload`;
+    const reviewUrl = `${backendUrl}/api/v1/public/quotations/${clientReviewToken}/review`;
 
     // 2. Extraer containerName y blobName de la URL
     // URL format: https://[account].blob.core.windows.net/[container]/[blobPath]
@@ -224,24 +212,23 @@ export class QuotationEmailService {
                 </p>
               </div>
 
-              <div style="background: #f0fff4; border: 2px solid #9ae6b4; padding: 20px; border-radius: 10px; margin: 24px 0; text-align: center;">
-                <p style="margin: 0 0 8px 0; color: #276749; font-weight: bold; font-size: 15px;">
-                  💳 ¿Ya realizó el pago por transferencia?
+              <div style="background: #f0fff4; border: 2px solid #9ae6b4; padding: 24px; border-radius: 10px; margin: 24px 0; text-align: center;">
+                <p style="margin: 0 0 8px 0; color: #276749; font-weight: bold; font-size: 16px;">
+                  ✅ Revise y responda su cotización
                 </p>
-                <p style="margin: 0 0 16px 0; color: #4a5568; font-size: 13px;">
-                  Suba su comprobante de pago haciendo clic en el botón de abajo.<br>
-                  Nuestro equipo lo verificará y activará su servicio.<br><br>
-                  <strong>⏰ Este enlace es válido únicamente para esta cotización.</strong>
+                <p style="margin: 0 0 20px 0; color: #4a5568; font-size: 13px;">
+                  Puede aprobar la cotización o solicitar modificaciones usando el enlace de abajo.<br>
+                  Una vez aprobada, generaremos su contrato automáticamente.
                 </p>
-                <a href="${receiptUploadUrl}"
+                <a href="${reviewUrl}"
                    style="display: inline-block; background: #38a169; color: white; padding: 14px 32px;
                           border-radius: 8px; text-decoration: none; font-size: 16px; font-weight: bold;
-                          letter-spacing: 0.3px;">
-                  📤 Subir comprobante de pago
+                          letter-spacing: 0.3px; margin-bottom: 8px;">
+                  📋 Ver y responder cotización
                 </a>
                 <p style="margin: 12px 0 0 0; color: #a0aec0; font-size: 11px;">
                   Si el botón no funciona, copie y pegue este enlace:<br>
-                  <span style="word-break: break-all; color: #4a5568;">${receiptUploadUrl}</span>
+                  <span style="word-break: break-all; color: #4a5568;">${reviewUrl}</span>
                 </p>
               </div>
               

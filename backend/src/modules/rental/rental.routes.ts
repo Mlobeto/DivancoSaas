@@ -313,6 +313,13 @@ router.post(
   quotationController.sendEmail.bind(quotationController),
 );
 
+// Enviar link de revisión al cliente (nuevo flujo: approve/request-changes)
+router.post(
+  "/quotations/:id/send-review",
+  authorize("quotations:read"),
+  quotationController.sendForReview.bind(quotationController),
+);
+
 // Solicitar firma digital
 router.post(
   "/quotations/:id/request-signature",

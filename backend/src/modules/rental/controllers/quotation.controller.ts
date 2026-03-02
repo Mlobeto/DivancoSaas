@@ -8,6 +8,10 @@ import { quotationService } from "../services/quotation.service";
 import { quotationEmailService } from "../services/quotation-email.service";
 import { azureBlobStorageService } from "@shared/storage/azure-blob-storage.service";
 import { permissionService } from "@core/services/permission.service";
+import {
+  approveQuotationAsAdmin,
+  ensureClientReviewToken,
+} from "../services/quotation-approval.service";
 
 /**
  * Helper: Generar SAS URL para pdfUrl si existe
@@ -436,8 +440,9 @@ export class QuotationController {
   /**
    * Aprobar cotización pendiente y enviarla al cliente
    * POST /api/v1/rental/quotations/:id/approve
+   * @deprecated Usar approve() que crea contrato automáticamente
    */
-  async approve(req: Request, res: Response): Promise<void> {
+  async approveAndSendLegacy(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const quotationId = Array.isArray(id) ? id[0] : id;
@@ -546,6 +551,44 @@ export class QuotationController {
         success: false,
         error: error.message,
       });
+    }
+  }
+  /**
+   * POST /api/v1/rental/quotations/:id/approve
+   * Aprobar cotización desde el panel admin → crea contrato automáticamente
+   */
+  async approve(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const userId = (req as any).user?.userId;
+      const result = await approveQuotationAsAdmin(id, userId);
+      res.json({ success: true, ...result });
+    } catch (error: any) {
+      res.status(400).json({ success: false, error: error.message });
+    }
+  }
+
+  /**
+   * POST /api/v1/rental/quotations/:id/send-review
+   * Enviar link de revisión al cliente (genera token + envía email)
+   */
+  async sendForReview(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const { customMessage, cc } = req.body;
+
+      // Asegura que existe el clientReviewToken
+      await ensureClientReviewToken(id);
+
+      // Envía el email con el link de revisión
+      await quotationEmailService.sendQuotationEmail(id, { customMessage, cc });
+
+      res.json({
+        success: true,
+        message: "Enlace de revisión enviado al cliente",
+      });
+    } catch (error: any) {
+      res.status(400).json({ success: false, error: error.message });
     }
   }
 }
