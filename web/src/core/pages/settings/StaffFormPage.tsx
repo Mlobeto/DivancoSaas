@@ -172,7 +172,9 @@ export function StaffFormPage() {
   const [lastName, setLastName] = useState("");
   const [businessUnitId, setBusinessUnitId] = useState("");
   const [roleId, setRoleId] = useState("");
-  const [status, setStatus] = useState<"ACTIVE" | "INACTIVE" | "SUSPENDED">("ACTIVE");
+  const [status, setStatus] = useState<"ACTIVE" | "INACTIVE" | "SUSPENDED">(
+    "ACTIVE",
+  );
 
   // Options loaded from API
   const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
@@ -180,8 +182,12 @@ export function StaffFormPage() {
 
   // Operator section
   const [isOperario, setIsOperario] = useState(false);
-  const [operatorData, setOperatorData] = useState<OperatorData>(makeDefaultOperatorData());
-  const [operatorDocs, setOperatorDocs] = useState<OperatorDoc[]>(makeDefaultOperatorDocs());
+  const [operatorData, setOperatorData] = useState<OperatorData>(
+    makeDefaultOperatorData(),
+  );
+  const [operatorDocs, setOperatorDocs] = useState<OperatorDoc[]>(
+    makeDefaultOperatorDocs(),
+  );
 
   // Load options
   useEffect(() => {
@@ -194,6 +200,18 @@ export function StaffFormPage() {
         ]);
         setDynamicRoles(rolesRes.data.data || []);
         setBusinessUnits(busRes.data.data || []);
+
+        // Validar que existan roles y BUs
+        if ((rolesRes.data.data || []).length === 0) {
+          setError(
+            "⚠️ No hay roles del sistema. Ejecuta 'npx prisma db seed' en el backend.",
+          );
+        }
+        if ((busRes.data.data || []).length === 0) {
+          setError(
+            "⚠️ No hay unidades de negocio. Crea una en Configuración → Unidades de Negocio o ejecuta 'npx prisma db seed'.",
+          );
+        }
       } catch (err) {
         setError(
           "Error al cargar opciones: " +
@@ -250,22 +268,17 @@ export function StaffFormPage() {
     setLoading(true);
     setError(null);
 
-    if (!isEditing) {
-      if (!email || !firstName || !lastName) {
-        setError("Por favor completa todos los campos obligatorios");
-        setLoading(false);
-        return;
-      }
-      if (!businessUnitId) {
-        setError("Por favor selecciona una unidad de negocio");
-        setLoading(false);
-        return;
-      }
-      if (!roleId) {
-        setError("Por favor selecciona un rol para el usuario");
-        setLoading(false);
-        return;
-      }
+    if (!isEditing && (!businessUnitId || businessUnitId.trim() === "")) {
+      setError(
+        "❌ Debes seleccionar una unidad de negocio. Si no hay ninguna disponible, créala primero en Configuración → Unidades de Negocio.",
+      );
+      setLoading(false);
+      return;
+    }
+    if (!roleId || roleId.trim() === "") {
+      setError("❌ Debes seleccionar un rol para el usuario.");
+      setLoading(false);
+      return;
     }
 
     try {
@@ -437,17 +450,28 @@ export function StaffFormPage() {
                   <select
                     value={businessUnitId}
                     onChange={(e) => setBusinessUnitId(e.target.value)}
-                    disabled={isEditing || loadingOptions}
+                    disabled={isEditing || businessUnits.length === 0}
                     required
                     className="input"
                   >
-                    <option value="">Selecciona una unidad</option>
+                    <option value="">
+                      {loadingOptions
+                        ? "Cargando..."
+                        : businessUnits.length === 0
+                        ? "No hay unidades disponibles"
+                        : "Selecciona una unidad"}
+                    </option>
                     {businessUnits.map((bu) => (
                       <option key={bu.id} value={bu.id}>
                         {bu.name} ({bu.code})
                       </option>
                     ))}
                   </select>
+                  {!isEditing && businessUnits.length === 0 && !loadingOptions && (
+                    <p className="mt-1 text-xs text-red-400">
+                      ⚠️ No hay unidades de negocio. Crea una primero en Configuración.
+                    </p>
+                  )}
                   {isEditing && (
                     <p className="mt-1 text-xs text-dark-400">
                       La unidad de negocio no se puede cambiar desde aquí
@@ -654,7 +678,8 @@ export function StaffFormPage() {
                             onChange={(e) =>
                               setOperatorData((p) => ({
                                 ...p,
-                                operatorType: e.target.value as OperatorData["operatorType"],
+                                operatorType: e.target
+                                  .value as OperatorData["operatorType"],
                               }))
                             }
                             className="input"
