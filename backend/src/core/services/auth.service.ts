@@ -267,10 +267,13 @@ export class AuthService {
   async login(input: LoginInput): Promise<AuthResponse> {
     const { email, password, tenantSlug } = input;
 
+    console.log("[AuthService.login] Starting login for:", { email, tenantSlug: tenantSlug || "(none)" });
+
     // 1. Buscar usuario
     let user;
     if (tenantSlug) {
       // Login con tenant específico
+      console.log("[AuthService.login] Searching by email + tenantSlug");
       user = await prisma.user.findFirst({
         where: {
           email,
@@ -286,8 +289,10 @@ export class AuthService {
           },
         },
       });
+      console.log("[AuthService.login] User found by tenantSlug:", !!user);
     } else {
       // Buscar por email (puede tener múltiples tenants)
+      console.log("[AuthService.login] Searching by email only");
       const users = await prisma.user.findMany({
         where: { email },
         include: {
@@ -301,11 +306,15 @@ export class AuthService {
         },
       });
 
+      console.log("[AuthService.login] Users found:", users.length);
+
       if (users.length === 0) {
+        console.log("[AuthService.login] ❌ No user found with email:", email);
         throw new AppError(401, "INVALID_CREDENTIALS", "Invalid credentials");
       }
 
       if (users.length > 1) {
+        console.log("[AuthService.login] ❌ Multiple tenants found, need tenantSlug");
         // Usuario existe en múltiples tenants, debe especificar
         throw new AppError(
           400,
@@ -324,19 +333,27 @@ export class AuthService {
       }
 
       user = users[0]!;
+      console.log("[AuthService.login] Single user found, proceeding");
     }
 
     if (!user) {
+      console.log("[AuthService.login] ❌ User null after search");
       throw new AppError(401, "INVALID_CREDENTIALS", "Invalid credentials");
     }
 
+    console.log("[AuthService.login] User found:", { id: user.id, email: user.email, status: user.status });
+
     // 2. Verificar status
     if (user.status !== "ACTIVE") {
+      console.log("[AuthService.login] ❌ User is not ACTIVE:", user.status);
       throw new AppError(403, "ACCOUNT_INACTIVE", "Account is not active");
     }
 
+    console.log("[AuthService.login] User status OK");
+
     // SUPER_ADMIN no tiene tenant, skip validación
     if (user.tenant && user.tenant.status !== "ACTIVE") {
+      console.log("[AuthService.login] ❌ Tenant is not ACTIVE:", user.tenant.status);
       throw new AppError(
         403,
         "TENANT_SUSPENDED",
@@ -344,11 +361,17 @@ export class AuthService {
       );
     }
 
+    console.log("[AuthService.login] Tenant status OK (or SUPER_ADMIN)");
+
     // 3. Verificar password
+    console.log("[AuthService.login] Verifying password...");
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
+      console.log("[AuthService.login] ❌ Invalid password");
       throw new AppError(401, "INVALID_CREDENTIALS", "Invalid credentials");
     }
+
+    console.log("[AuthService.login] ✅ Password valid, proceeding with token generation");
 
     // 4. Actualizar lastLoginAt
     await prisma.user.update({
