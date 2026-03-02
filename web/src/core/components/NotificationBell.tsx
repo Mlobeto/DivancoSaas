@@ -1,12 +1,5 @@
 import React from "react";
-import {
-  Bell,
-  Check,
-  CheckCheck,
-  FileText,
-  Info,
-  AlertCircle,
-} from "lucide-react";
+import { Bell, Check, CheckCheck, FileText, Info } from "lucide-react";
 import { useNotifications } from "@/core/hooks/useNotifications";
 import type { Notification } from "@/core/services/notification.service";
 
@@ -66,10 +59,10 @@ function NotificationItem({ notif, onRead }: NotificationItemProps) {
 }
 
 interface NotificationPanelProps {
-  onClose: () => void;
+  onClose?: () => void;
 }
 
-export function NotificationPanel({ onClose }: NotificationPanelProps) {
+export function NotificationPanel(_props: NotificationPanelProps) {
   const { notifications, unreadCount, markRead, markAllRead } =
     useNotifications();
 

@@ -47,9 +47,9 @@ class NotificationService {
       });
       userIds = members.map((m) => m.userId);
 
-      // También los OWNER globales del tenant
+      // También los SUPER_ADMIN globales del tenant
       const owners = await prisma.user.findMany({
-        where: { tenantId, role: { in: ["OWNER", "SUPER_ADMIN"] } },
+        where: { tenantId, role: "SUPER_ADMIN" },
         select: { id: true },
       });
       const ownerIds = owners.map((o) => o.id);

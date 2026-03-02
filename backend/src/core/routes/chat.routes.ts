@@ -35,7 +35,12 @@ router.post("/rooms", async (req: Request, res: Response) => {
     return;
   }
   const allMembers = Array.from(new Set([userId, ...memberIds]));
-  const room = await chatService.createRoom(tenantId, name, allMembers);
+  const room = await chatService.createRoom({
+    tenantId,
+    name,
+    createdBy: userId,
+    memberIds: allMembers,
+  });
   res.status(201).json({ success: true, data: room });
 });
 
@@ -58,9 +63,9 @@ router.post("/rooms/dm", async (req: Request, res: Response) => {
 router.get("/rooms/:id/messages", async (req: Request, res: Response) => {
   const userId = (req as any).user.userId;
   const { id } = req.params;
-  const cursor = req.query.cursor as string | undefined;
+  const page = Number(req.query.page) || 1;
   const limit = Number(req.query.limit) || 50;
-  const messages = await chatService.getMessages(id, userId, { cursor, limit });
+  const messages = await chatService.getMessages(id, userId, { page, limit });
   res.json({ success: true, data: messages });
 });
 
@@ -73,12 +78,11 @@ router.post("/rooms/:id/messages", async (req: Request, res: Response) => {
     res.status(400).json({ success: false, error: "content es requerido" });
     return;
   }
-  const message = await chatService.sendMessage(
-    id,
-    userId,
-    content,
-    type || "text",
-  );
+  const message = await chatService.sendMessage({
+    roomId: id,
+    senderId: userId,
+    body: content,
+  });
   res.status(201).json({ success: true, data: message });
 });
 
