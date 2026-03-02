@@ -78,7 +78,7 @@ async function main() {
     where: { slug: "construcciones-demo" },
     update: {},
     create: {
-      id: "tenant-demo-001",
+      id: "10000000-0000-4000-8000-000000000001", // UUID válido para testing
       name: "Construcciones Demo S.A.",
       slug: "construcciones-demo",
       plan: "free",
@@ -97,7 +97,7 @@ async function main() {
     where: { tenantId_slug: { tenantId: tenant.id, slug: "alquiler" } },
     update: {},
     create: {
-      id: "bu-demo-001",
+      id: "20000000-0000-4000-8000-000000000002", // UUID válido para testing
       name: "División Alquiler de Implementos",
       slug: "alquiler",
       description: "División de alquiler de maquinaria y equipos",
@@ -119,10 +119,10 @@ async function main() {
   const platformOwnerPassword = await bcrypt.hash("PlatformOwner123!", 10);
 
   const platformOwner = await prisma.user.upsert({
-    where: { id: "user-platform-owner" },
+    where: { id: "30000000-0000-4000-8000-000000000003" },
     update: {},
     create: {
-      id: "user-platform-owner",
+      id: "30000000-0000-4000-8000-000000000003", // UUID válido para testing
       email: "owner@divancosaas.com",
       password: platformOwnerPassword,
       firstName: "Platform",
@@ -144,10 +144,10 @@ async function main() {
   const tenantAdminPassword = await bcrypt.hash("Admin123!", 10);
 
   const tenantAdmin = await prisma.user.upsert({
-    where: { id: "user-tenant-admin" },
+    where: { id: "40000000-0000-4000-8000-000000000004" },
     update: {},
     create: {
-      id: "user-tenant-admin",
+      id: "40000000-0000-4000-8000-000000000004", // UUID válido para testing
       email: "admin@construcciones-demo.com",
       password: tenantAdminPassword,
       firstName: "Carlos",
