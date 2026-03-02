@@ -55,9 +55,8 @@ export class PublicQuotationController {
       return;
     }
 
-    const baseUrl = `${req.protocol}://${req.get("host")}`;
-    const approveUrl = `${baseUrl}/api/v1/public/quotations/${token}/approve`;
-    const changesUrl = `${baseUrl}/api/v1/public/quotations/${token}/request-changes`;
+    const approveUrl = `/api/v1/public/quotations/${token}/approve`;
+    const changesUrl = `/api/v1/public/quotations/${token}/request-changes`;
     const total = Number(quotation.totalAmount).toLocaleString("es-MX", {
       minimumFractionDigits: 2,
     });
@@ -159,27 +158,49 @@ export class PublicQuotationController {
 
   <script>
     async function doApprove() {
+      const btn = document.querySelector('.btn-approve');
       const msg = document.getElementById('msg');
+      msg.style.display = 'none';
+      btn.disabled = true;
+      btn.textContent = '⏳ Procesando...';
       try {
         const r = await fetch('${approveUrl}', { method: 'POST', headers: {'Content-Type':'application/json'} });
-        const d = await r.json();
+        let d;
+        try { d = await r.json(); } catch(_) { throw new Error('El servidor devolvió una respuesta inesperada (código ' + r.status + ')'); }
         if (d.success) {
           document.querySelector('.card').innerHTML =
             '<div style="text-align:center;padding:40px 20px"><div style="font-size:64px;margin-bottom:16px">🎉</div><h2 style="color:#38a169;margin-bottom:12px">¡Cotización aprobada!</h2><p style="color:#4a5568">Hemos generado su contrato <strong>' + d.contractCode + '</strong>.<br>Recibirá un email con los detalles y el enlace para subir su comprobante de pago.</p></div>';
-        } else { throw new Error(d.error || 'Error'); }
-      } catch(e) { msg.style.display='block'; msg.className='error'; msg.textContent='❌ ' + e.message; }
+        } else { throw new Error(d.error || 'Error al aprobar'); }
+      } catch(e) {
+        msg.style.display = 'block';
+        msg.className = 'error';
+        msg.textContent = '❌ ' + e.message;
+        btn.disabled = false;
+        btn.textContent = '✅ Aprobar Cotización';
+      }
     }
     async function doChanges() {
       const text = document.getElementById('changeMsg').value.trim();
       if (!text) { alert('Por favor escriba su solicitud'); return; }
+      const btn = document.querySelector('.btn-send');
       const msg = document.getElementById('msg');
+      msg.style.display = 'none';
+      btn.disabled = true;
+      btn.textContent = '⏳ Enviando...';
       try {
         const r = await fetch('${changesUrl}', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ message: text }) });
-        const d = await r.json();
+        let d;
+        try { d = await r.json(); } catch(_) { throw new Error('El servidor devolvió una respuesta inesperada (código ' + r.status + ')'); }
         if (d.success) {
           document.getElementById('changesForm').innerHTML = '<div class="success" style="display:block;margin-top:8px">✅ Su solicitud fue enviada. Nuestro equipo la revisará y le responderá a la brevedad.</div>';
-        } else { throw new Error(d.error || 'Error'); }
-      } catch(e) { msg.style.display='block'; msg.className='error'; msg.textContent='❌ ' + e.message; }
+        } else { throw new Error(d.error || 'Error al enviar'); }
+      } catch(e) {
+        msg.style.display = 'block';
+        msg.className = 'error';
+        msg.textContent = '❌ ' + e.message;
+        btn.disabled = false;
+        btn.textContent = '📩 Enviar solicitud de cambios';
+      }
     }
   </script>
 </body></html>`);
@@ -191,8 +212,14 @@ export class PublicQuotationController {
    */
   async approveAction(req: Request, res: Response): Promise<void> {
     const { token } = req.params;
-    const result = await approveQuotationAsClient(token);
-    res.json({ success: true, ...result });
+    try {
+      const result = await approveQuotationAsClient(token);
+      res.json({ success: true, ...result });
+    } catch (err: any) {
+      res
+        .status(400)
+        .json({ success: false, error: err.message || "Error al aprobar" });
+    }
   }
 
   /**
@@ -208,8 +235,14 @@ export class PublicQuotationController {
         .json({ success: false, error: "El mensaje es requerido" });
       return;
     }
-    await requestChangesAsClient(token, message.trim());
-    res.json({ success: true });
+    try {
+      await requestChangesAsClient(token, message.trim());
+      res.json({ success: true });
+    } catch (err: any) {
+      res
+        .status(400)
+        .json({ success: false, error: err.message || "Error al guardar" });
+    }
   }
 
   // ─── LEGACY: Subida de comprobante en cotización (links ya enviados) ────────

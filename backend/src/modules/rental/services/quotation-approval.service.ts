@@ -13,11 +13,9 @@ import { azureBlobStorageService } from "@shared/storage/azure-blob-storage.serv
 
 const backendUrl =
   process.env.BACKEND_URL ||
-  (process.env.RAILWAY_PUBLIC_DOMAIN
-    ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
-    : process.env.WEBSITE_HOSTNAME
-      ? `https://${process.env.WEBSITE_HOSTNAME}`
-      : "http://localhost:3001");
+  (process.env.WEBSITE_HOSTNAME
+    ? `https://${process.env.WEBSITE_HOSTNAME}`
+    : "http://localhost:3001");
 
 // ─── APROBACIÓN ADMIN (o VIP sin revisión de cliente) ─────────────────────────
 

@@ -140,7 +140,7 @@ export function createApp(): Application {
     shippingProviderResolver(provider, config),
   );
 
-  // Trust proxy - CRÍTICO para Railway/Vercel/cualquier proxy
+  // Trust proxy - necesario detrás de Azure/Vercel y cualquier reverse proxy
   // Permite confiar en X-Forwarded-For para rate limiting y IPs correctas
   app.set("trust proxy", 1);
 

@@ -47,11 +47,9 @@ export class QuotationEmailService {
 
     const backendUrl =
       process.env.BACKEND_URL ||
-      (process.env.RAILWAY_PUBLIC_DOMAIN
-        ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
-        : process.env.WEBSITE_HOSTNAME
-          ? `https://${process.env.WEBSITE_HOSTNAME}`
-          : "http://localhost:3001");
+      (process.env.WEBSITE_HOSTNAME
+        ? `https://${process.env.WEBSITE_HOSTNAME}`
+        : "http://localhost:3001");
     const reviewUrl = `${backendUrl}/api/v1/public/quotations/${clientReviewToken}/review`;
 
     // 2. Extraer containerName y blobName de la URL
