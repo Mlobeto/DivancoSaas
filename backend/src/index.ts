@@ -1,7 +1,9 @@
+import { createServer } from "http";
 import { createApp } from "./app";
 import { config } from "@config/index";
 import prisma from "@config/database";
 import { execSync } from "child_process";
+import { initializeSocketServer } from "./bootstrap/socket.bootstrap";
 
 // Estado del servidor para health checks
 export const serverState = {
@@ -41,7 +43,9 @@ async function main() {
     console.log(`[Startup] App created in ${Date.now() - startTime}ms`);
 
     // Iniciar servidor ANTES de cualquier operación lenta
-    const server = app.listen(config.port, () => {
+    const server = createServer(app);
+    initializeSocketServer(server);
+    server.listen(config.port, () => {
       console.log(
         `🚀 Server running on port ${config.port} (took ${Date.now() - startTime}ms)`,
       );

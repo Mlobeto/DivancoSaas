@@ -5,6 +5,7 @@ import { useAuthStore } from "@/store/auth.store";
 import { businessUnitService } from "@/core/services/businessUnit.service";
 import type { BusinessUnit } from "@/core/types/api.types";
 import DynamicNavigation from "@/app/navigation/DynamicNavigation";
+import { NotificationBell } from "@/core/components/NotificationBell";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -86,11 +87,11 @@ export function Layout({ children, title, subtitle, actions }: LayoutProps) {
 
               {/* Logo/Brand */}
               <Link to="/dashboard" className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg flex items-center justify-center text-white text-sm font-bold shadow-lg">
+                <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg flex items-center justify-center text-white text-sm font-bold shadow-lg flex-shrink-0">
                   {tenant?.name?.substring(0, 2).toUpperCase() || "DV"}
                 </div>
                 <div className="hidden sm:block">
-                  <div className="font-bold text-white text-sm leading-tight">
+                  <div className="font-bold text-white text-sm leading-tight max-w-[160px] truncate">
                     {tenant?.name || "DivancoSaaS"}
                   </div>
                   <div className="text-dark-400 text-xs leading-tight">
@@ -107,19 +108,20 @@ export function Layout({ children, title, subtitle, actions }: LayoutProps) {
 
             {/* Right side: BU Selector + User Menu */}
             <div className="flex items-center gap-2 sm:gap-4">
+              {/* Notification Bell */}
+              <NotificationBell />
+
               {/* Business Unit Selector */}
               {businessUnit && (
                 <div className="relative">
                   <button
                     onClick={() => setShowBuSelector(!showBuSelector)}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-dark-700 transition-colors"
+                    title={businessUnit.name}
+                    className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-dark-700 transition-colors"
                   >
-                    <div className="w-6 h-6 bg-dark-700 rounded flex items-center justify-center text-primary-400 text-xs font-bold">
+                    <div className="w-7 h-7 bg-dark-700 rounded flex items-center justify-center text-primary-400 text-xs font-bold flex-shrink-0">
                       {businessUnit.name?.substring(0, 2).toUpperCase()}
                     </div>
-                    <span className="hidden sm:block text-white font-medium text-sm">
-                      {businessUnit.name}
-                    </span>
                     {userBusinessUnits.length > 1 && (
                       <svg
                         className="w-4 h-4 text-dark-400"

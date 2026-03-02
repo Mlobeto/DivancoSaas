@@ -8,6 +8,7 @@ import { Request, Response } from "express";
 import multer from "multer";
 import prisma from "@config/database";
 import { azureBlobStorageService } from "@shared/storage/azure-blob-storage.service";
+import { notificationService } from "@core/services/notification.service";
 
 // Multer en memoria (max 10MB)
 export const receiptUpload = multer({
@@ -190,7 +191,7 @@ export class PublicQuotationController {
               <p>Haz clic o arrastra tu comprobante aquí</p>
               <span class="hint">JPG, PNG, WEBP o PDF – Máx. 10 MB</span>
             </div>
-            <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp,application/pdf">
+            <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp,application/pdf" style="display:none; position:absolute; pointer-events:none;">
 
             <div id="fileName">📎 <span id="fileNameText"></span></div>
 
@@ -354,6 +355,25 @@ export class PublicQuotationController {
     console.log(
       `✅ [PublicQuotation] Comprobante recibido: ${quotation.code} → ${uploaded.url}`,
     );
+
+    // Notificar a los admins de la BU que llegó un comprobante
+    try {
+      await notificationService.create({
+        tenantId: quotation.tenantId,
+        businessUnitId: quotation.businessUnitId,
+        type: "payment_receipt_received",
+        title: "🧯 Comprobante de pago recibido",
+        body: `Se recibió el comprobante para la cotización ${quotation.code}`,
+        data: {
+          quotationId: quotation.id,
+          quotationCode: quotation.code,
+          receiptUrl: uploaded.url,
+        },
+      });
+    } catch (notifErr) {
+      // No fallamos el request si la notificación falla
+      console.warn("[PublicQuotation] Error enviando notificación:", notifErr);
+    }
 
     res.json({
       success: true,
