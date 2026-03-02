@@ -145,7 +145,22 @@ export function createApp(): Application {
   app.set("trust proxy", 1);
 
   // Security
-  app.use(helmet());
+  // CSP configurado para permitir scripts/estilos inline en páginas públicas HTML
+  // (revisión de cotización, subida de comprobantes, etc.)
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          imgSrc: ["'self'", "data:", "https:"],
+          connectSrc: ["'self'", "https:"],
+          fontSrc: ["'self'", "https:", "data:"],
+        },
+      },
+    }),
+  );
   app.use(cors(config.cors));
 
   // Request logging with correlation ID
