@@ -65,6 +65,7 @@ model Tenant {
   assetRentalProfiles AssetRentalProfile[]
   notifications       Notification[]
   chatRooms           ChatRoom[]
+  contractClauses     ContractClause[]
 
   @@index([slug])
   @@index([country])
@@ -124,6 +125,7 @@ model BusinessUnit {
   emailTemplates         EmailTemplate[]
   operatorProfiles       OperatorProfile[]
   assetRentalProfiles    AssetRentalProfile[]
+  contractClauses        ContractClause[]
 
   @@unique([tenantId, slug])
   @@index([tenantId])
@@ -2054,6 +2056,13 @@ model RentalContract {
   estimatedTotal    Decimal?  @db.Decimal(12, 2)
   currency          String    @default("USD")
 
+  // Firma y Activación (v5.0)
+  signatureToken       String?   @unique // URL pública: /public/contracts/:token/sign
+  signatureStatus      String? // "pending", "signed", "declined"
+  signatureRequestedAt DateTime?
+  signatureCompletedAt DateTime?
+  activationMethod     String? // "payment", "account_balance", "manual"
+
   // Metadata
   notes    String? @db.Text
   metadata Json?
@@ -2317,6 +2326,48 @@ model Template {
   @@index([tenantId, businessUnitId, type])
   @@index([businessUnitId, isActive])
   @@map("templates")
+}
+
+// ============================================
+// CONTRACT CLAUSES - Sistema Modular
+// ============================================
+
+model ContractClause {
+  id             String  @id @default(uuid())
+  tenantId       String
+  businessUnitId String?
+
+  // Identificación
+  code     String // "CLAUSE_HEAVY_MACHINERY", "CLAUSE_SCAFFOLDING", "CLAUSE_EXTENSION_RIGHTS"
+  name     String // "Responsabilidades Maquinaria Pesada"
+  category String // "safety", "liability", "maintenance", "insurance", "extension", "general"
+
+  // Contenido HTML con Handlebars
+  content String @db.Text // HTML con {{variables}} para interpolación
+
+  // Orden de aparición en el contrato
+  order Int @default(0)
+
+  // Aplicabilidad automática
+  applicableAssetTypes String[] // ["excavadora", "bulldozer", "retroexcavadora"] - tipos de Asset
+  requiresOperator     Boolean  @default(false) // Solo si hay assets con requiresOperator=true
+  minimumValue         Decimal? @db.Decimal(12, 2) // Solo si estimatedTotal >= X
+
+  // Estado
+  isActive Boolean @default(true)
+
+  // Metadata adicional
+  metadata  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  businessUnit BusinessUnit? @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, code])
+  @@index([tenantId, businessUnitId, isActive])
+  @@index([tenantId, category])
+  @@map("contract_clauses")
 }
 
 // ============================================

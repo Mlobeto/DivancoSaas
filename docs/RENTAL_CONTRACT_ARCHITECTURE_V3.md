@@ -1,7 +1,9 @@
 # ARQUITECTURA DE CONTRATOS DE ALQUILER - DivancoSaaS
 
-**Fecha:** 2026-02-13  
-**Versión:** 4.0 (Modelo con ClientAccount - Saldo Compartido)
+**Fecha:** 2026-03-02  
+**Versión:** 5.0 (Activación con Firma + Pago / Saldo)
+
+> **Changelog v5.0:** Se agrega el flujo de pre-activación del contrato: el contrato no puede activarse sin la firma del cliente Y sin pago (o saldo suficiente en cuenta corriente). Se documenta el ciclo de vida completo y la lógica de verificación de saldo disponible real.
 
 ---
 
@@ -41,6 +43,194 @@ Client (Cliente corporativo)
                └─ AssetRental, AssetRental...
 
 TODOS los cargos afectan ClientAccount.balance
+```
+
+---
+
+## 🔐 PRE-ACTIVACIÓN: FIRMA + PAGO (v5.0)
+
+### **Ciclo de Vida del Contrato**
+
+```
+draft  ──►  pending_signature  ──►  signed  ──►  active
+  ↑                ↑                  ↑              ↑
+Creado      Email de firma      Cliente firmó    Activado
+interno      enviado al          en la web      (ver regla
+             cliente             pública)        abajo ↓)
+
+
+REGLA DE ACTIVACIÓN:
+  Si saldo disponible ≥ estimatedTotal  → se activa automáticamente al firmar
+  Si saldo insuficiente                 → pasa a "signed", espera comprobante
+  Al recibir comprobante (signed)       → se activa
+
+Otros estados:
+  suspended   → Contrato pausado (sin cargos diarios)
+  completed   → Contrato finalizado
+  cancelled   → Cancelado antes de activarse
+```
+
+### **Nuevos campos en `RentalContract`**
+
+```prisma
+// Firma del cliente
+signatureToken        String?   @unique  // Token UUID para URL pública
+signatureStatus       String?            // "pending" | "signed" | "declined"
+signatureRequestedAt  DateTime?          // Cuándo se envió el email
+signatureCompletedAt  DateTime?          // Cuándo firmó el cliente
+
+// Activación
+activationMethod      String?            // "payment" | "account_balance" | "manual"
+```
+
+---
+
+### **Flujo Completo Pre-Activación**
+
+#### **Paso 1 — Crear contrato (status: `draft`)**
+
+```
+POST /api/v1/rental/contracts
+
+El contrato se crea con status = "draft".
+NO se activa ni se descuenta nada aún.
+Se genera el PDF del contrato.
+```
+
+#### **Paso 2 — Enviar email de firma**
+
+```
+POST /api/v1/rental/contracts/:id/send-signature-email
+
+Sistema:
+1. Genera signatureToken (UUID único)
+2. Guarda signatureToken + signatureStatus = "pending"
+3. Guarda signatureRequestedAt = now()
+4. Envía email al cliente con:
+   - PDF del contrato en adjunto
+   - Botón: "FIRMAR CONTRATO"
+   - URL: https://app.divanco.com/public/contracts/{signatureToken}/sign
+5. Cambia status = "pending_signature"
+
+Email contiene:
+  Para: cliente@email.com
+  Asunto: "Contrato CON-2026-001 listo para su firma"
+  Cuerpo: Resumen del contrato + botón de firma
+```
+
+#### **Paso 3 — Página pública de firma**
+
+```
+GET /public/contracts/:signatureToken/sign
+
+Retorna página HTML (sin JS inline, respeta CSP Azure) con:
+  - Datos del contrato (cliente, fechas, total estimado)
+  - PDF embebido para lectura
+  - Casilla: "He leído y acepto los términos"
+  - Botón: Formulario POST (sin JavaScript)
+
+POST /public/contracts/:signatureToken/sign
+  Body: { accepted: true, fullName, ipAddress }
+
+Sistema:
+1. Registra firma:   signatureStatus = "signed"
+                     signatureCompletedAt = now()
+                     metadata.signedIp, metadata.signedName
+2. Llama checkActivationConditions()
+3. Retorna HTML de confirmación
+```
+
+#### **Paso 4 — checkActivationConditions()**
+
+```typescript
+async function checkActivationConditions(contractId: string) {
+  const contract = await getContractWithAccount(contractId);
+
+  // Condición 1: Cliente firmó
+  const signed = contract.signatureStatus === "signed";
+  if (!signed) return { canActivate: false, reason: "Falta firma" };
+
+  // Condición 2: Pago OR saldo disponible suficiente
+  const hasPaid = !!contract.receiptUploadedAt;
+
+  // Saldo REAL disponible (balance compartido menos lo ya comprometido
+  // en otros contratos activos del mismo cliente)
+  const committed = await prisma.rentalContract.aggregate({
+    where: {
+      clientAccountId: contract.clientAccountId,
+      status: { in: ["active"] },
+      id: { not: contractId }, // excluir este contrato
+    },
+    _sum: { estimatedTotal: true },
+  });
+  const committed$ = Number(committed._sum.estimatedTotal ?? 0);
+  const balance    = Number(contract.clientAccount.balance);
+  const needed     = Number(contract.estimatedTotal ?? 0);
+  const available  = balance - committed$;
+  const coveredByBalance = available >= needed;
+
+  if (!hasPaid && !coveredByBalance) {
+    return {
+      canActivate: false,
+      reason: `Saldo disponible $${available} < requerido $${needed}`,
+      needsPayment: true,
+    };
+  }
+
+  const method = hasPaid ? "payment" : "account_balance";
+  return { canActivate: true, method };
+}
+```
+
+**Importante:** el saldo disponible se calcula descontando lo comprometido
+en otros contratos `active` del MISMO cliente. Esto evita activar un contrato
+con saldo que ya está siendo consumido por otro contrato activo.
+
+#### **Paso 5 — Activación**
+
+```
+Cuando canActivate = true:
+  1. status = "active"
+  2. activationMethod = method ("payment" | "account_balance")
+  3. Si method = "account_balance":
+       Crea RentalAccountMovement tipo "INITIAL_CREDIT" = 0
+       (El balance ya existía, no se mueve dinero)
+  4. Email al cliente: "¡Contrato activado!"
+  5. Email a usuarios internos: "Contrato CON-2026-001 activo"
+
+Cuando signed pero canActivate = false (necesita pago):
+  1. status = "signed"
+  2. Email al cliente:
+     "Su firma fue registrada. Para activar el contrato,
+      cargue su comprobante de pago en el siguiente enlace:"
+     URL: /public/contracts/:receiptToken/upload
+  3. El link de subir comprobante YA EXISTÍA, ahora también
+     llama checkActivationConditions() al recibir el comprobante
+```
+
+#### **Emails por etapa**
+
+| Trigger | Para | Asunto |
+|---|---|---|
+| send-signature-email | Cliente | "Contrato CON-xxxx listo para firmar" |
+| Cliente firmó + saldo cubre | Cliente | "Contrato activado — listo para iniciar" |
+| Cliente firmó + sin saldo | Cliente | "Firma recibida — pendiente comprobante de pago" |
+| Comprobante subido + todo OK | Cliente + interno | "Contrato activado" |
+| Saldo bajo (post-activación) | Interno | "Alerta: saldo bajo en cuenta de {cliente}" |
+
+---
+
+### **Nuevos Endpoints Pre-Activación**
+
+```
+# Backend autenticado
+POST  /api/v1/rental/contracts/:id/send-signature-email
+
+# Páginas públicas (sin auth, token en URL)
+GET   /public/contracts/:signatureToken/sign      ← HTML de firma
+POST  /public/contracts/:signatureToken/sign      ← Submit firma
+GET   /public/contracts/:receiptToken/upload      ← HTML subir comprobante (ya existe)
+POST  /public/contracts/:receiptToken/upload      ← Submit comprobante (llama checkActivation)
 ```
 
 ---
@@ -1337,35 +1527,87 @@ WHERE ar.actual_return_date IS NULL
 
 ## ✅ VALIDACIONES CRÍTICAS
 
+### **Al crear contrato:**
+
+- [ ] Quotation con status `approved` (cliente aprobó)
+- [ ] clientId y clientAccountId resueltos correctamente
+- [ ] estimatedTotal > 0
+- [ ] status inicial = `draft`
+
+### **Al enviar email de firma:**
+
+- [ ] Contrato en status `draft` o `pending_signature`
+- [ ] Cliente tiene email válido
+- [ ] signatureToken generado y guardado
+- [ ] PDF del contrato existe (pdfUrl)
+- [ ] status → `pending_signature`
+
+### **Al registrar firma del cliente:**
+
+- [ ] signatureToken válido y no expirado
+- [ ] signatureStatus = `pending` (no firmado previamente)
+- [ ] accepted = true
+- [ ] IP y nombre guardados en metadata
+- [ ] signatureCompletedAt = now()
+- [ ] Llamar checkActivationConditions() inmediatamente
+
+### **checkActivationConditions:**
+
+- [ ] signatureStatus = `signed`
+- [ ] hasPaid (receiptUploadedAt) OR saldo disponible ≥ estimatedTotal
+- [ ] Saldo disponible = balance - SUM(estimatedTotal de contratos `active` del mismo cliente)
+- [ ] Si ambas condiciones: status → `active`, activationMethod registrado
+- [ ] Si solo firma (sin fondos): status → `signed`, email al cliente para pago
+
 ### **Al retirar asset:**
 
-- [ ] Contrato está activo
+- [ ] Contrato en status `active`
 - [ ] Asset disponible
-- [ ] Si MACHINERY: Operario certificado asignado
-- [ ] currentCredit > 0
+- [ ] Si MACHINERY: operario certificado asignado
+- [ ] ClientAccount.balance > 0
 
-### **Al procesar reporte:**
+### **Al procesar reporte de operario:**
 
-- [ ] Reporte del día (no duplicados)
-- [ ] Fotos obligatorias
+- [ ] Reporte del día (no duplicados por rental+fecha)
+- [ ] Fotos obligatorias (evidenceUrls no vacío)
 - [ ] Horómetro/Odómetro coherente (no retrocede)
-- [ ] Asset rental activo
-
-### **Cargo automático:**
-
-- [ ] Solo herramientas (trackingType = "TOOL")
 - [ ] Asset rental activo (actualReturnDate IS NULL)
 - [ ] Contrato activo
-- [ ] No procesar dos veces el mismo día
+
+### **Cargo automático (TOOL - cron job):**
+
+- [ ] Solo herramientas (trackingType = `TOOL`)
+- [ ] Asset rental activo (actualReturnDate IS NULL)
+- [ ] Contrato activo
+- [ ] No procesar dos veces el mismo día (lastChargeDate < today)
+
+### **Al devolver asset:**
+
+- [ ] Existe AssetRental activo (actualReturnDate IS NULL)
+- [ ] Fotos de devolución registradas
+- [ ] Si TOOL: cron job detiene cargos (actualReturnDate set)
+- [ ] Si MACHINERY: el reporte del último día debe estar procesado
+- [ ] NOTA: la devolución NO genera movimiento de dinero (ya se descontó día a día)
 
 ---
 
-**Versión:** 3.0  
-**Estado:** ✅ Arquitectura correcta con descuento continuo día a día  
-**Próximos pasos:**
+**Versión:** 5.0  
+**Estado:** ✅ Arquitectura completa con pre-activación, firma, descuento diario y evidencia de operario  
 
-1. Validar con usuario
-2. Crear migración de Prisma
-3. Implementar servicios backend
-4. Desarrollar app móvil para operarios
-5. Implementar cron jobs
+### Próximos pasos de implementación:
+
+#### Fase 1 — Pre-activación (firma + pago)
+1. Migración Prisma: campos `signatureToken`, `signatureStatus`, `signatureRequestedAt`, `signatureCompletedAt`, `activationMethod`; agregar `draft` y `pending_signature` a status enum (o validación en servicio)
+2. `contract.service.ts`: modificar `createContract` (status `draft`), agregar `sendSignatureEmail()`, `processSignature()`, `checkActivationConditions()`, `activateContract()`
+3. `public-contract.controller.ts`: páginas HTML de firma (`GET/POST /public/contracts/:token/sign`), conectar recepción de comprobante con `checkActivationConditions()`
+4. Email template para firma del contrato
+
+#### Fase 2 — Descuento diario y reportes (ya parcialmente implementado)
+5. CRON job TOOL: descuento automático diario por herramientas en uso
+6. App móvil: flujo de reporte de operario con fotos de horómetro
+7. Procesamiento de `AssetUsage`: calcular costo con standby y viáticos, crear `RentalAccountMovement`
+
+#### Fase 3 — Frontend y estados de cuenta
+8. `ContractsListPage`: badges para `draft`/`pending_signature`/`signed`/`active`
+9. Botón "Enviar para firma" en lista de contratos
+10. Estado de cuenta unificado (PDF con movimientos de ClientAccount)

@@ -565,6 +565,244 @@ export class TemplateService {
       </html>
     `;
   }
+
+  /**
+   * Generar PDF de contrato con cláusulas dinámicas
+   * Este método construye el contrato ensamblando:
+   * - Template base (intro, términos generales, cierre)
+   * - Cláusulas modulares según los assets incluidos
+   */
+  async generateContractPDF(
+    contractId: string,
+    options?: PDFGenerationOptions,
+  ): Promise<{ pdfUrl: string; pdfBuffer: Buffer }> {
+    // Dinámicamente importar el servicio de cláusulas para evitar dependencia circular
+    const { contractClauseService } = await import(
+      "@modules/rental/services/contract-clause.service"
+    );
+
+    // 1. Obtener contrato completo
+    const contract = await prisma.rentalContract.findUnique({
+      where: { id: contractId },
+      include: {
+        client: true,
+        clientAccount: true,
+        tenant: true,
+        businessUnit: true,
+        quotation: {
+          include: {
+            items: {
+              include: { asset: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!contract) {
+      throw new Error(`Contract ${contractId} not found`);
+    }
+
+    // 2. Obtener template base
+    const template = await this.getTemplateById(
+      contract.templateId || "default-contract",
+    );
+
+    if (!template) {
+      throw new Error("Contract template not found");
+    }
+
+    // 3. Construir contexto de aplicabilidad
+    const context =
+      await contractClauseService.buildContextFromContract(contractId);
+
+    // 4. Obtener cláusulas aplicables
+    const clauses = await contractClauseService.getApplicableClauses(
+      contract.tenantId,
+      context,
+    );
+
+    // 5. Preparar datos para Handlebars
+    const data = {
+      contract: {
+        ...contract,
+        code: contract.code,
+        startDate: contract.startDate,
+        estimatedEndDate: contract.estimatedEndDate,
+        estimatedTotal: Number(contract.estimatedTotal || 0),
+        currency: contract.currency,
+      },
+      client: contract.client,
+      tenant: contract.tenant,
+      businessUnit: contract.businessUnit,
+      items: contract.quotation?.items || [],
+      today: new Date(),
+      // Variables para cláusulas
+      operatorCostType: "PER_DAY", // Esto debería venir del contrato/items
+      operatorCostRate: "$3,000",
+      operatorCostUnit: "día",
+      contractTotal: new Intl.NumberFormat("es-CO", {
+        style: "currency",
+        currency: "USD",
+      }).format(Number(contract.estimatedTotal || 0)),
+      maxLoad: "250", // Ejemplo, debería venir de metadata del asset
+    };
+
+    // 6. Renderizar template base (intro)
+    const compiledIntro = this.handlebars.compile(
+      template.content || "<h1>CONTRATO DE ARRENDAMIENTO</h1>",
+    );
+    const introHtml = compiledIntro(data);
+
+    // 7. Renderizar tabla de items
+    const itemsTableHtml = this.renderAssetTable(data.items);
+
+    // 8. Renderizar cláusulas aplicables
+    const clausesHtml = clauses
+      .map((clause, index) => {
+        const compiledClause = this.handlebars.compile(clause.content);
+        return `
+          <section class="clause" id="clause-${clause.code}">
+            <h3>${index + 1}. ${clause.name}</h3>
+            ${compiledClause(data)}
+          </section>
+        `;
+      })
+      .join("\n");
+
+    // 9. Ensamblar documento completo
+    const fullHtml = `
+      <div class="contract-document">
+        <section class="contract-intro">
+          ${introHtml}
+        </section>
+
+        <section class="contract-object">
+          <h2>1. OBJETO DEL CONTRATO</h2>
+          <p>
+            El <strong>ARRENDADOR</strong> se compromete a arrendar al <strong>ARRENDATARIO</strong>
+            los siguientes bienes bajo el sistema de <strong>cuenta corriente</strong>, con
+            descuentos automáticos diarios según el uso reportado:
+          </p>
+          ${itemsTableHtml}
+        </section>
+
+        <section class="contract-clauses">
+          <h2>2. CLÁUSULAS ESPECÍFICAS</h2>
+          ${clausesHtml}
+        </section>
+
+        <section class="contract-closing">
+          <p>
+            En constancia de lo anterior, las partes firman el presente contrato en dos
+            ejemplares del mismo tenor y valor, en {{businessUnit.city}}, a los
+            {{today}}.
+          </p>
+          <div class="signatures">
+            <div class="signature-block">
+              <p>_________________________</p>
+              <p><strong>ARRENDADOR</strong></p>
+              <p>{{tenant.name}}</p>
+            </div>
+            <div class="signature-block">
+              <p>_________________________</p>
+              <p><strong>ARRENDATARIO</strong></p>
+              <p>{{client.name}}</p>
+            </div>
+          </div>
+        </section>
+      </div>
+    `;
+
+    // 10. Agregar estilos
+    const styles = `
+      ${template.styles || ""}
+      
+      .contract-document { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; }
+      .contract-intro { margin-bottom: 2rem; }
+      .contract-object { margin-bottom: 2rem; }
+      .contract-clauses { margin-bottom: 2rem; }
+      .clause { margin-bottom: 1.5rem; padding: 1rem; border-left: 3px solid #333; }
+      .clause h3 { margin-top: 0; color: #333; }
+      .clause h4 { color: #666; margin-bottom: 0.5rem; }
+      .signatures { display: flex; justify-content: space-around; margin-top: 3rem; }
+      .signature-block { text-align: center; }
+      table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+      th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+      th { background-color: #f4f4f4; }
+    `;
+
+    // 11. Obtener branding
+    const branding = await brandingService.get(contract.businessUnitId);
+
+    // 12. Construir documento completo con branding
+    const documentHtml = buildDocument(
+      branding as BrandingConfig,
+      contract.businessUnit as BusinessUnitInfo,
+      fullHtml,
+      "contract" as DocumentType,
+      `Contrato ${contract.code}`,
+    );
+
+    // 13. Generar PDF
+    const pdfBuffer = await pdfGeneratorService.generatePDF(
+      documentHtml,
+      options || {},
+    );
+
+    // 14. Subir a Azure Blob Storage
+    const fileName = `contracts/${contract.code}_${Date.now()}.pdf`;
+    const uploadResult = await azureBlobStorageService.uploadFile({
+      file: pdfBuffer,
+      fileName,
+      contentType: "application/pdf",
+      folder: "contracts",
+      tenantId: contract.tenantId,
+      businessUnitId: contract.businessUnitId,
+    });
+
+    return { pdfUrl: uploadResult.url, pdfBuffer };
+  }
+
+  /**
+   * Renderizar tabla de assets para el contrato
+   */
+  private renderAssetTable(items: any[]): string {
+    if (!items || items.length === 0) {
+      return "<p>No hay items en la cotización.</p>";
+    }
+
+    const rows = items
+      .map(
+        (item) => `
+      <tr>
+        <td>${item.asset?.name || item.description}</td>
+        <td>${item.asset?.assetType || "-"}</td>
+        <td>${item.quantity}</td>
+        <td>$${Number(item.unitPrice || 0).toLocaleString()}</td>
+        <td>$${Number(item.total || 0).toLocaleString()}</td>
+      </tr>
+    `,
+      )
+      .join("");
+
+    return `
+      <table class="items-table">
+        <thead>
+          <tr>
+            <th>Descripción</th>
+            <th>Tipo</th>
+            <th>Cantidad</th>
+            <th>Precio Unitario</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+        </tbody>
+      </table>
+    `;
+  }
 }
 
 // Export singleton

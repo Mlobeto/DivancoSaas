@@ -7,6 +7,7 @@ import { Router } from "express";
 import multer from "multer";
 import { quotationController } from "./controllers/quotation.controller";
 import { contractController } from "./controllers/contract.controller";
+import { contractClauseController } from "./controllers/contract-clause.controller";
 import { templateController } from "./controllers/template.controller";
 import { accountController } from "./controllers/account.controller";
 import { usageReportController } from "./controllers/usage-report.controller";
@@ -95,6 +96,52 @@ router.get(
   "/accounts/:id/statement",
   authorize("accounts:read"),
   accountController.getStatement.bind(accountController),
+);
+
+// ============================================
+// CONTRACT CLAUSES (Cláusulas Modulares)
+// ============================================
+
+// Listar cláusulas
+router.get(
+  "/clauses",
+  authorize("contracts:read"),
+  contractClauseController.list.bind(contractClauseController),
+);
+
+// Obtener cláusula por ID
+router.get(
+  "/clauses/:id",
+  authorize("contracts:read"),
+  contractClauseController.getById.bind(contractClauseController),
+);
+
+// Crear cláusula
+router.post(
+  "/clauses",
+  authorize("contracts:create"),
+  contractClauseController.create.bind(contractClauseController),
+);
+
+// Actualizar cláusula
+router.patch(
+  "/clauses/:id",
+  authorize("contracts:update"),
+  contractClauseController.update.bind(contractClauseController),
+);
+
+// Eliminar cláusula
+router.delete(
+  "/clauses/:id",
+  authorize("contracts:delete"),
+  contractClauseController.delete.bind(contractClauseController),
+);
+
+// Preview de cláusulas aplicables
+router.post(
+  "/clauses/preview",
+  authorize("contracts:read"),
+  contractClauseController.preview.bind(contractClauseController),
 );
 
 // ============================================

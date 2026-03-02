@@ -1,7 +1,15 @@
+# ⚠️ DOCUMENTO OBSOLETO — Ver RENTAL_CONTRACT_ARCHITECTURE_V3.md
+
+> **Este documento (v2.0) está supersedido por `RENTAL_CONTRACT_ARCHITECTURE_V3.md` (v5.0).**  
+> No implementar desde aquí. El modelo de ClientAccount compartido, descuento diario,  
+> flujo de firma y activación de contratos están documentados en el V3.
+
+---
+
 # ARQUITECTURA DE CONTRATOS DE ALQUILER - DivancoSaaS
 
 **Fecha:** 2026-02-12  
-**Versión:** 2.0 (Corregida con modelo real de negocio)
+**Versión:** 2.0 (Obsoleta — ver V3)
 
 ---
 
