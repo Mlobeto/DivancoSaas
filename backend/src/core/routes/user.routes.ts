@@ -368,6 +368,7 @@ const updateUserSchema = z.object({
   lastName: z.string().min(2).optional(),
   avatar: z.string().url().optional(),
   status: z.enum(["ACTIVE", "INACTIVE", "SUSPENDED"]).optional(),
+  roleId: z.string().min(1).optional(), // Permite actualizar el rol
 });
 
 router.put("/:id", authorize("users:update"), async (req, res, next) => {

@@ -283,7 +283,7 @@ export function StaffFormPage() {
 
     try {
       if (isEditing) {
-        await api.put(`/users/${id}`, { firstName, lastName, status });
+        await api.put(`/users/${id}`, { firstName, lastName, status, roleId });
       } else {
         // Step 1: create user
         const res = await api.post("/users", {
@@ -507,18 +507,36 @@ export function StaffFormPage() {
                 </h2>
 
                 {isEditing ? (
-                  <div className="bg-dark-800 rounded-lg p-4 flex items-center gap-3">
-                    <Shield className="w-5 h-5 text-primary-400" />
-                    <div>
-                      <p className="text-sm font-medium text-dark-100">
-                        {editingRoleName || "Sin rol asignado"}
-                      </p>
-                      <p className="text-xs text-dark-400">
-                        Para cambiar el rol, usa la gestión de permisos del
-                        usuario
-                      </p>
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {ROLE_CARDS.map((card) => {
+                        const isSelected = roleId === card.id;
+                        return (
+                          <button
+                            key={card.id}
+                            type="button"
+                            onClick={() => setRoleId(card.id)}
+                            className={`text-left p-4 rounded-lg border-2 transition-all ${card.colorClasses} ${
+                              isSelected
+                                ? "ring-2 ring-primary-500 ring-offset-1 ring-offset-dark-900"
+                                : ""
+                            }`}
+                          >
+                            <div className="text-2xl mb-2">{card.icon}</div>
+                            <p className="font-semibold text-sm text-dark-100">
+                              {card.label}
+                            </p>
+                            <p className="text-xs text-dark-400 mt-1 leading-snug">
+                              {card.description}
+                            </p>
+                          </button>
+                        );
+                      })}
                     </div>
-                  </div>
+                    <p className="text-xs text-dark-400 bg-dark-800 p-3 rounded">
+                      💡 Cambiar el rol aquí actualizará el rol principal del usuario.
+                    </p>
+                  </>
                 ) : loadingOptions ? (
                   <p className="text-sm text-dark-400">Cargando roles...</p>
                 ) : (

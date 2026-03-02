@@ -338,9 +338,13 @@ export class UserService {
       throw new AppError(404, "USER_NOT_FOUND", "User not found");
     }
 
+    // Separar roleId del resto de los datos
+    const { roleId, ...userData } = data as any;
+
+    // Actualizar datos básicos del usuario
     const user = await prisma.user.update({
       where: { id: userId },
-      data,
+      data: userData,
       select: {
         id: true,
         email: true,
@@ -351,6 +355,17 @@ export class UserService {
         updatedAt: true,
       },
     });
+
+    // Si se proporcionó roleId, actualizar el rol en UserBusinessUnit
+    if (roleId) {
+      await prisma.userBusinessUnit.updateMany({
+        where: {
+          userId,
+          user: { tenantId },
+        },
+        data: { roleId },
+      });
+    }
 
     return user;
   }
