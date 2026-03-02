@@ -323,7 +323,7 @@ async function _sendContractEmail(contractId: string, quotation: any) {
     }
   }
 
-  await emailService.sendGenericEmail({
+  await emailService.sendGenericEmail(contract.businessUnitId, {
     to: clientEmail,
     subject: `Contrato ${contract.code} - ${contract.businessUnit.name}`,
     html,
