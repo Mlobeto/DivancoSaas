@@ -6,6 +6,8 @@
 import prisma from "@config/database";
 import { Decimal } from "@prisma/client/runtime/library";
 import { accountService } from "./account.service";
+import { digitalSignatureResolver } from "@integrations/adapters/digital-signature/digital-signature.resolver";
+import type { SignerInfo } from "@core/contracts/digital-signature.provider";
 
 export interface CreateContractParams {
   tenantId: string;
@@ -436,6 +438,273 @@ export class ContractService {
     }
 
     return `CON-${year}-${sequence.toString().padStart(3, "0")}`;
+  }
+
+  /**
+   * Subir o registrar comprobante de pago
+   */
+  async uploadPaymentProof(
+    contractId: string,
+    data: {
+      paymentType: string | null;
+      paymentProofUrl: string | null;
+      paymentDetails: any;
+    },
+  ) {
+    return prisma.rentalContract.update({
+      where: { id: contractId },
+      data: {
+        paymentType: data.paymentType,
+        paymentProofUrl: data.paymentProofUrl,
+        paymentDetails: data.paymentDetails,
+      },
+      include: {
+        client: true,
+        quotation: true,
+      },
+    });
+  }
+
+  /**
+   * Verificar comprobante de pago (admin)
+   */
+  async verifyPaymentProof(
+    contractId: string,
+    verifiedBy: string,
+    notes?: string,
+  ) {
+    const contract = await prisma.rentalContract.findUnique({
+      where: { id: contractId },
+    });
+
+    if (!contract) {
+      throw new Error("Contract not found");
+    }
+
+    if (!contract.paymentProofUrl && !contract.paymentType) {
+      throw new Error("No payment proof to verify");
+    }
+
+    // Agregar nota de verificación a paymentDetails
+    const updatedDetails = {
+      ...(contract.paymentDetails as any),
+      verificationNotes: notes,
+      verifiedAt: new Date(),
+    };
+
+    return prisma.rentalContract.update({
+      where: { id: contractId },
+      data: {
+        paymentVerifiedBy: verifiedBy,
+        paymentVerifiedAt: new Date(),
+        paymentDetails: updatedDetails,
+      },
+      include: {
+        client: true,
+        quotation: true,
+      },
+    });
+  }
+
+  /**
+   * Solicitar firma digital del contrato (SignNow)
+   */
+  async requestSignature(contractId: string, signers: SignerInfo[]) {
+    const contract = await prisma.rentalContract.findUnique({
+      where: { id: contractId },
+      include: {
+        client: true,
+        businessUnit: true,
+        tenant: true,
+      },
+    });
+
+    if (!contract) {
+      throw new Error(`Contract ${contractId} not found`);
+    }
+
+    if (!contract.pdfUrl) {
+      throw new Error("PDF must be generated before requesting signature");
+    }
+
+    // Verificar que el pago esté verificado si es requerido
+    if (contract.paymentType && !contract.paymentVerifiedBy) {
+      throw new Error(
+        "Payment proof must be verified before requesting signature",
+      );
+    }
+
+    // Resolver proveedor de firma digital
+    const signatureProvider = await digitalSignatureResolver.resolveProvider(
+      contract.businessUnitId,
+    );
+
+    // Crear solicitud de firma
+    const request = await signatureProvider.createSignatureRequest({
+      tenantId: contract.tenantId,
+      businessUnitId: contract.businessUnitId,
+      documentName: `Contrato ${contract.code}`,
+      documentUrl: contract.pdfUrl,
+      signers,
+      message: `Por favor firme el contrato ${contract.code}`,
+      expiresInDays: 30,
+      metadata: {
+        contractId: contract.id,
+        clientId: contract.clientId,
+      },
+    });
+
+    // Actualizar contrato
+    await prisma.rentalContract.update({
+      where: { id: contractId },
+      data: {
+        signatureRequestId: request.id,
+        signatureStatus: "pending",
+        signatureProvider: signatureProvider.name,
+      },
+    });
+
+    return request;
+  }
+
+  /**
+   * Obtener estado de firma digital
+   */
+  async getSignatureStatus(contractId: string) {
+    const contract = await prisma.rentalContract.findUnique({
+      where: { id: contractId },
+      select: {
+        signatureRequestId: true,
+        signatureStatus: true,
+        signatureProvider: true,
+        businessUnitId: true,
+      },
+    });
+
+    if (!contract) {
+      throw new Error(`Contract ${contractId} not found`);
+    }
+
+    if (!contract.signatureRequestId) {
+      return {
+        status: "none",
+        signers: [],
+      };
+    }
+
+    // Resolver proveedor
+    const signatureProvider = await digitalSignatureResolver.resolveProvider(
+      contract.businessUnitId,
+    );
+
+    // Obtener estado desde el proveedor
+    const statusInfo = await signatureProvider.getSignatureStatus(
+      contract.signatureRequestId,
+    );
+
+    return {
+      status: statusInfo.status,
+      signers: statusInfo.signers,
+      signedAt: statusInfo.signedAt,
+      signedDocumentUrl: statusInfo.signedDocumentUrl,
+    };
+  }
+
+  /**
+   * Procesar webhook de firma completada
+   */
+  async handleSignatureCompleted(
+    signatureRequestId: string,
+    signedDocumentBuffer: Buffer,
+  ): Promise<void> {
+    const contract = await prisma.rentalContract.findFirst({
+      where: { signatureRequestId },
+    });
+
+    if (!contract) {
+      throw new Error(
+        `Contract with signature request ${signatureRequestId} not found`,
+      );
+    }
+
+    // Subir documento firmado a Azure Blob Storage
+    const { azureBlobStorageService } =
+      await import("@shared/storage/azure-blob-storage.service");
+
+    const fileName = `contracts/${contract.code}-signed-${Date.now()}.pdf`;
+    const uploadResult = await azureBlobStorageService.uploadFile({
+      file: signedDocumentBuffer,
+      fileName,
+      contentType: "application/pdf",
+      folder: "contracts",
+      tenantId: contract.tenantId,
+      businessUnitId: contract.businessUnitId,
+    });
+
+    // Actualizar contrato
+    await prisma.rentalContract.update({
+      where: { id: contract.id },
+      data: {
+        signatureStatus: "signed",
+        signedPdfUrl: uploadResult.url,
+      },
+    });
+  }
+
+  /**
+   * Obtener PDF del contrato (usando template v2.0 si está disponible)
+   */
+  async getContractPdf(contractId: string): Promise<Buffer> {
+    const contract = await prisma.rentalContract.findUnique({
+      where: { id: contractId },
+      include: {
+        client: true,
+        tenant: true,
+        businessUnit: true,
+        quotation: {
+          include: {
+            items: {
+              include: { asset: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!contract) {
+      throw new Error(`Contract ${contractId} not found`);
+    }
+
+    // Si tiene templateId, intentar usar contract-template.service
+    if (contract.templateId) {
+      try {
+        const { contractTemplateService } =
+          await import("./contract-template.service");
+
+        // Renderizar y generar PDF desde template v2.0
+        const html = await contractTemplateService.renderContract(
+          contract.templateId,
+          contractId,
+        );
+
+        // Generar PDF
+        const { pdfGeneratorService } =
+          await import("@core/services/pdf-generator.service");
+        return pdfGeneratorService.generatePDF(html, { format: "A4" });
+      } catch (error) {
+        console.warn(
+          "Failed to use contract template service, falling back to legacy:",
+          error,
+        );
+      }
+    }
+
+    // Fallback: usar templateService legacy
+    const { templateService } =
+      await import("@shared/templates/template.service");
+    return templateService
+      .generateContractPDF(contractId)
+      .then((result) => result.pdfBuffer);
   }
 }
 

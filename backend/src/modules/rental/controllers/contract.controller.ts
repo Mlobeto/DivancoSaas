@@ -4,6 +4,7 @@
  */
 
 import { Request, Response } from "express";
+import prisma from "@config/database";
 import { quotationService } from "../services/quotation.service";
 import { contractService } from "../services/contract.service";
 import { autoChargeService } from "../services/auto-charge.service";
@@ -570,6 +571,571 @@ export class ContractController {
         success: false,
         error: {
           code: "PROJECTION_ERROR",
+          message: error.message,
+        },
+      });
+    }
+  }
+
+  /**
+   * @swagger
+   * /api/v1/rental/contracts/{id}/payment-proof:
+   *   post:
+   *     tags: [Contracts]
+   *     summary: Subir comprobante de pago (multipart/form-data)
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *     requestBody:
+   *       content:
+   *         multipart/form-data:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               file:
+   *                 type: string
+   *                 format: binary
+   *               transactionRef:
+   *                 type: string
+   *               paymentDate:
+   *                 type: string
+   *                 format: date
+   *               notes:
+   *                 type: string
+   *     responses:
+   *       200:
+   *         description: Comprobante subido correctamente
+   */
+  async uploadPaymentProof(req: Request, res: Response): Promise<void> {
+    try {
+      const { tenantId, userId } = req.context || {};
+      const { id } = req.params;
+      const { transactionRef, paymentDate, notes } = req.body;
+      const file = (req as any).file; // Multer middleware adds this
+
+      if (!tenantId) {
+        res.status(401).json({
+          success: false,
+          error: { code: "UNAUTHORIZED", message: "Missing tenant context" },
+        });
+        return;
+      }
+
+      if (!file) {
+        res.status(400).json({
+          success: false,
+          error: {
+            code: "MISSING_FILE",
+            message: "Payment proof file is required",
+          },
+        });
+        return;
+      }
+
+      // TODO: Upload to Azure Blob Storage
+      // const blobUrl = await uploadToAzureBlob(file, tenantId, 'payment-proofs');
+      const blobUrl = `https://placeholder.blob.core.windows.net/payment-proofs/${file.filename}`;
+
+      const updatedContract = await contractService.uploadPaymentProof(id, {
+        paymentType: "online",
+        paymentProofUrl: blobUrl,
+        paymentDetails: {
+          transactionRef,
+          paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
+          uploadedBy: userId,
+          uploadedAt: new Date(),
+          notes,
+          originalFilename: file.originalname,
+          fileSize: file.size,
+        },
+      });
+
+      res.json({
+        success: true,
+        data: updatedContract,
+        message: "Payment proof uploaded successfully",
+      });
+    } catch (error: any) {
+      console.error("Error uploading payment proof:", error);
+      res.status(400).json({
+        success: false,
+        error: {
+          code: "UPLOAD_ERROR",
+          message: error.message,
+        },
+      });
+    }
+  }
+
+  /**
+   * @swagger
+   * /api/v1/rental/contracts/{id}/payment-proof/local:
+   *   post:
+   *     tags: [Contracts]
+   *     summary: Marcar pago como "local" (efectivo/presencial)
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *     requestBody:
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               receivedBy:
+   *                 type: string
+   *                 description: User ID que recibió el pago
+   *               paymentDate:
+   *                 type: string
+   *                 format: date
+   *               notes:
+   *                 type: string
+   *     responses:
+   *       200:
+   *         description: Pago marcado como local
+   */
+  async markLocalPayment(req: Request, res: Response): Promise<void> {
+    try {
+      const { tenantId, userId } = req.context || {};
+      const { id } = req.params;
+      const { receivedBy, paymentDate, notes } = req.body;
+
+      if (!tenantId) {
+        res.status(401).json({
+          success: false,
+          error: { code: "UNAUTHORIZED", message: "Missing tenant context" },
+        });
+        return;
+      }
+
+      const updatedContract = await contractService.uploadPaymentProof(id, {
+        paymentType: "local",
+        paymentProofUrl: null,
+        paymentDetails: {
+          paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
+          receivedBy: receivedBy || userId,
+          markedBy: userId,
+          markedAt: new Date(),
+          notes,
+          method: "cash/local",
+        },
+      });
+
+      res.json({
+        success: true,
+        data: updatedContract,
+        message: "Payment marked as local successfully",
+      });
+    } catch (error: any) {
+      console.error("Error marking local payment:", error);
+      res.status(400).json({
+        success: false,
+        error: {
+          code: "LOCAL_PAYMENT_ERROR",
+          message: error.message,
+        },
+      });
+    }
+  }
+
+  /**
+   * @swagger
+   * /api/v1/rental/contracts/{id}/payment-proof:
+   *   get:
+   *     tags: [Contracts]
+   *     summary: Obtener información del comprobante de pago
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *     responses:
+   *       200:
+   *         description: Información del comprobante
+   */
+  async getPaymentProof(req: Request, res: Response): Promise<void> {
+    try {
+      const { tenantId } = req.context || {};
+      const { id } = req.params;
+
+      if (!tenantId) {
+        res.status(401).json({
+          success: false,
+          error: { code: "UNAUTHORIZED", message: "Missing tenant context" },
+        });
+        return;
+      }
+
+      const contract = await contractService.getContractById(id, tenantId);
+
+      if (!contract) {
+        res.status(404).json({
+          success: false,
+          error: { code: "NOT_FOUND", message: "Contract not found" },
+        });
+        return;
+      }
+
+      const paymentProof = {
+        hasProof: !!contract.paymentProofUrl || !!contract.paymentType,
+        type: contract.paymentType,
+        url: contract.paymentProofUrl,
+        details: contract.paymentDetails,
+        verifiedBy: contract.paymentVerifiedBy,
+        verifiedAt: contract.paymentVerifiedAt,
+        isVerified: !!contract.paymentVerifiedAt,
+      };
+
+      res.json({
+        success: true,
+        data: paymentProof,
+      });
+    } catch (error: any) {
+      console.error("Error getting payment proof:", error);
+      res.status(400).json({
+        success: false,
+        error: {
+          code: "GET_PROOF_ERROR",
+          message: error.message,
+        },
+      });
+    }
+  }
+
+  /**
+   * @swagger
+   * /api/v1/rental/contracts/{id}/payment-proof/verify:
+   *   post:
+   *     tags: [Contracts]
+   *     summary: Verificar comprobante de pago (admin)
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *     requestBody:
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               notes:
+   *                 type: string
+   *     responses:
+   *       200:
+   *         description: Comprobante verificado
+   */
+  async verifyPaymentProof(req: Request, res: Response): Promise<void> {
+    try {
+      const { tenantId, userId } = req.context || {};
+      const { id } = req.params;
+      const { notes } = req.body;
+
+      if (!tenantId) {
+        res.status(401).json({
+          success: false,
+          error: { code: "UNAUTHORIZED", message: "Missing tenant context" },
+        });
+        return;
+      }
+
+      // TODO: Check if user has permission to verify payments
+
+      const updatedContract = await contractService.verifyPaymentProof(
+        id,
+        userId!,
+        notes,
+      );
+
+      res.json({
+        success: true,
+        data: updatedContract,
+        message: "Payment proof verified successfully",
+      });
+    } catch (error: any) {
+      console.error("Error verifying payment proof:", error);
+      res.status(400).json({
+        success: false,
+        error: {
+          code: "VERIFY_ERROR",
+          message: error.message,
+        },
+      });
+    }
+  }
+
+  /**
+   * @swagger
+   * /api/v1/rental/contracts/{id}/request-signature:
+   *   post:
+   *     tags: [Contracts]
+   *     summary: Enviar contrato a firma digital (SignNow)
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               signers:
+   *                 type: array
+   *                 items:
+   *                   type: object
+   *                   properties:
+   *                     email:
+   *                       type: string
+   *                     name:
+   *                       type: string
+   *                     role:
+   *                       type: string
+   *     responses:
+   *       200:
+   *         description: Solicitud de firma enviada
+   */
+  async requestSignature(req: Request, res: Response): Promise<void> {
+    try {
+      const { tenantId } = req.context || {};
+      const { id } = req.params;
+      const { signers } = req.body;
+
+      if (!tenantId) {
+        res.status(401).json({
+          success: false,
+          error: { code: "UNAUTHORIZED", message: "Missing tenant context" },
+        });
+        return;
+      }
+
+      if (!signers || !Array.isArray(signers) || signers.length === 0) {
+        res.status(400).json({
+          success: false,
+          error: {
+            code: "INVALID_INPUT",
+            message: "Signers array is required",
+          },
+        });
+        return;
+      }
+
+      const signatureRequest = await contractService.requestSignature(
+        id,
+        signers,
+      );
+
+      res.json({
+        success: true,
+        data: signatureRequest,
+        message: "Signature request sent successfully",
+      });
+    } catch (error: any) {
+      console.error("Error requesting signature:", error);
+      res.status(400).json({
+        success: false,
+        error: {
+          code: "SIGNATURE_REQUEST_ERROR",
+          message: error.message,
+        },
+      });
+    }
+  }
+
+  /**
+   * @swagger
+   * /api/v1/rental/contracts/{id}/signature-status:
+   *   get:
+   *     tags: [Contracts]
+   *     summary: Obtener estado de firma digital
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *     responses:
+   *       200:
+   *         description: Estado de firma
+   */
+  async getSignatureStatus(req: Request, res: Response): Promise<void> {
+    try {
+      const { tenantId } = req.context || {};
+      const { id } = req.params;
+
+      if (!tenantId) {
+        res.status(401).json({
+          success: false,
+          error: { code: "UNAUTHORIZED", message: "Missing tenant context" },
+        });
+        return;
+      }
+
+      const status = await contractService.getSignatureStatus(id);
+
+      res.json({
+        success: true,
+        data: status,
+      });
+    } catch (error: any) {
+      console.error("Error getting signature status:", error);
+      res.status(400).json({
+        success: false,
+        error: {
+          code: "GET_STATUS_ERROR",
+          message: error.message,
+        },
+      });
+    }
+  }
+
+  /**
+   * @swagger
+   * /api/v1/rental/contracts/{id}/pdf:
+   *   get:
+   *     tags: [Contracts]
+   *     summary: Descargar PDF del contrato
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *     responses:
+   *       200:
+   *         description: PDF del contrato
+   *         content:
+   *           application/pdf:
+   *             schema:
+   *               type: string
+   *               format: binary
+   */
+  async downloadPdf(req: Request, res: Response): Promise<void> {
+    try {
+      const { tenantId } = req.context || {};
+      const { id } = req.params;
+
+      if (!tenantId) {
+        res.status(401).json({
+          success: false,
+          error: { code: "UNAUTHORIZED", message: "Missing tenant context" },
+        });
+        return;
+      }
+
+      const pdfBuffer = await contractService.getContractPdf(id);
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="contrato-${id}.pdf"`,
+      );
+      res.send(pdfBuffer);
+    } catch (error: any) {
+      console.error("Error downloading PDF:", error);
+      res.status(400).json({
+        success: false,
+        error: {
+          code: "PDF_DOWNLOAD_ERROR",
+          message: error.message,
+        },
+      });
+    }
+  }
+
+  /**
+   * @swagger
+   * /api/v1/rental/contracts/{id}/signed-pdf:
+   *   get:
+   *     tags: [Contracts]
+   *     summary: Descargar PDF firmado del contrato
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *     responses:
+   *       200:
+   *         description: PDF firmado del contrato
+   *         content:
+   *           application/pdf:
+   *             schema:
+   *               type: string
+   *               format: binary
+   */
+  async downloadSignedPdf(req: Request, res: Response): Promise<void> {
+    try {
+      const { tenantId } = req.context || {};
+      const { id } = req.params;
+
+      if (!tenantId) {
+        res.status(401).json({
+          success: false,
+          error: { code: "UNAUTHORIZED", message: "Missing tenant context" },
+        });
+        return;
+      }
+
+      const contract = await prisma.rentalContract.findUnique({
+        where: { id },
+        select: {
+          signedPdfUrl: true,
+          signatureStatus: true,
+        },
+      });
+
+      if (!contract) {
+        res.status(404).json({
+          success: false,
+          error: {
+            code: "NOT_FOUND",
+            message: "Contract not found",
+          },
+        });
+        return;
+      }
+
+      if (!contract.signedPdfUrl || contract.signatureStatus !== "signed") {
+        res.status(400).json({
+          success: false,
+          error: {
+            code: "NOT_SIGNED",
+            message: "Contract has not been signed yet",
+          },
+        });
+        return;
+      }
+
+      // Descargar desde Azure Blob Storage
+      const axios = (await import("axios")).default;
+      const response = await axios.get(contract.signedPdfUrl, {
+        responseType: "arraybuffer",
+      });
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="contrato-${id}-firmado.pdf"`,
+      );
+      res.send(Buffer.from(response.data));
+    } catch (error: any) {
+      console.error("Error downloading signed PDF:", error);
+      res.status(400).json({
+        success: false,
+        error: {
+          code: "PDF_DOWNLOAD_ERROR",
           message: error.message,
         },
       });

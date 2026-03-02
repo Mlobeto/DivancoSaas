@@ -8,6 +8,7 @@ import multer from "multer";
 import { quotationController } from "./controllers/quotation.controller";
 import { contractController } from "./controllers/contract.controller";
 import { contractClauseController } from "./controllers/contract-clause.controller";
+import { contractTemplateController } from "./controllers/contract-template.controller";
 import { templateController } from "./controllers/template.controller";
 import { accountController } from "./controllers/account.controller";
 import { usageReportController } from "./controllers/usage-report.controller";
@@ -209,6 +210,67 @@ router.get(
   "/contracts/:id/projection",
   authorize("contracts:read"),
   contractController.getProjection.bind(contractController),
+);
+
+// Payment Proof - Subir comprobante (multipart)
+router.post(
+  "/contracts/:id/payment-proof",
+  authorize("contracts:update"),
+  upload.single("file"),
+  contractController.uploadPaymentProof.bind(contractController),
+);
+
+// Payment Proof - Marcar como pago local/efectivo
+router.post(
+  "/contracts/:id/payment-proof/local",
+  authorize("contracts:update"),
+  contractController.markLocalPayment.bind(contractController),
+);
+
+// Payment Proof - Obtener información
+router.get(
+  "/contracts/:id/payment-proof",
+  authorize("contracts:read"),
+  contractController.getPaymentProof.bind(contractController),
+);
+
+// Payment Proof - Verificar (admin)
+router.post(
+  "/contracts/:id/payment-proof/verify",
+  authorize("contracts:update"),
+  contractController.verifyPaymentProof.bind(contractController),
+);
+
+// ============================================
+// DIGITAL SIGNATURE (SignNow)
+// ============================================
+
+// Solicitar firma digital
+router.post(
+  "/contracts/:id/request-signature",
+  authorize("contracts:update"),
+  contractController.requestSignature.bind(contractController),
+);
+
+// Obtener estado de firma
+router.get(
+  "/contracts/:id/signature-status",
+  authorize("contracts:read"),
+  contractController.getSignatureStatus.bind(contractController),
+);
+
+// Descargar PDF del contrato
+router.get(
+  "/contracts/:id/pdf",
+  authorize("contracts:read"),
+  contractController.downloadPdf.bind(contractController),
+);
+
+// Descargar PDF firmado del contrato
+router.get(
+  "/contracts/:id/signed-pdf",
+  authorize("contracts:read"),
+  contractController.downloadSignedPdf.bind(contractController),
 );
 
 // ============================================
@@ -465,6 +527,49 @@ router.post(
   authorize("templates:update"),
   upload.single("logo"),
   templateController.uploadLogo.bind(templateController),
+);
+
+// ============================================
+// CONTRACT TEMPLATES V2.0 (Sistema Modular)
+// ============================================
+
+// Renderizar contrato desde template v2.0
+router.post(
+  "/contracts/templates/render",
+  authorize("contracts:read"),
+  contractTemplateController.renderContract.bind(contractTemplateController),
+);
+
+// Crear template v2.0
+router.post(
+  "/contracts/templates",
+  authorize("templates:create"),
+  contractTemplateController.createTemplate.bind(contractTemplateController),
+);
+
+// Migrar template legacy a v2.0
+router.post(
+  "/contracts/templates/:id/migrate-v2",
+  authorize("templates:update"),
+  contractTemplateController.migrateToV2.bind(contractTemplateController),
+);
+
+// Preview de sección
+router.post(
+  "/contracts/templates/preview-section",
+  authorize("contracts:read"),
+  contractTemplateController.previewSection.bind(
+    contractTemplateController,
+  ),
+);
+
+// Obtener metadata del template
+router.get(
+  "/contracts/templates/:id/metadata",
+  authorize("templates:read"),
+  contractTemplateController.getTemplateMetadata.bind(
+    contractTemplateController,
+  ),
 );
 
 // ============================================

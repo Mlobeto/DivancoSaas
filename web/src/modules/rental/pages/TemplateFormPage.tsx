@@ -5,9 +5,12 @@ import { Layout } from "@/core/components/Layout";
 import { useAuthStore } from "@/store/auth.store";
 import { useBranding } from "@/core/hooks/useBranding";
 import { templateService } from "../services/template.service";
+import { contractTemplateService } from "../services/contract-template.service";
+import type { TemplateV2 } from "../services/contract-template.service";
 import { CreateTemplateDTO, TemplateType } from "../types/quotation.types";
 import { SimpleTemplateEditor } from "../components/SimpleTemplateEditor";
-import { Save, X, Info } from "lucide-react";
+import { ContractTemplateEditorV2 } from "../components/ContractTemplateEditorV2";
+import { Save, X, Info, FileText } from "lucide-react";
 
 export function TemplateFormPage() {
   const { id } = useParams();
@@ -22,7 +25,17 @@ export function TemplateFormPage() {
   // Form state
   const [name, setName] = useState("");
   const [type, setType] = useState<TemplateType>("quotation_rental");
-  const [content, setContent] = useState("");
+  const [content, setContent] = useState(""); // For legacy templates (HTML string)
+  const [contentV2, setContentV2] = useState<TemplateV2>({
+    version: "2.0",
+    sections: [],
+  }); // For contract templates v2.0
+  const [requiresSignature, setRequiresSignature] = useState(false);
+  const [requiresPaymentProof, setRequiresPaymentProof] = useState(false);
+  const [allowLocalPayment, setAllowLocalPayment] = useState(true);
+
+  // Check if current type uses v2.0 system
+  const isV2Template = type === "contract";
 
   // Load template if editing
   const { data: template, isLoading } = useQuery({
@@ -37,16 +50,54 @@ export function TemplateFormPage() {
     if (template) {
       setName(template.name);
       setType(template.type);
-      setContent(template.content);
+      
+      // Check if it's a v2.0 template (contract with JSON content)
+      if (template.type === "contract" && typeof template.content === "object") {
+        // V2.0 template
+        setContentV2(template.content as unknown as TemplateV2);
+        setRequiresSignature(
+          (template as any).requiresSignature ?? false
+        );
+        setRequiresPaymentProof(
+          (template as any).requiresPaymentProof ?? false
+        );
+        setAllowLocalPayment(
+          (template as any).allowLocalPayment ?? true
+        );
+      } else {
+        // Legacy template (HTML string)
+        setContent(
+          typeof template.content === "string"
+            ? template.content
+            : JSON.stringify(template.content)
+        );
+      }
     } else {
-      // Contenido vacío para nuevas plantillas
+      // Reset for new templates
       setContent("");
+      setContentV2({ version: "2.0", sections: [] });
     }
   }, [template, tenant]);
 
   // Create mutation
   const createMutation = useMutation({
     mutationFn: (data: CreateTemplateDTO) => templateService.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["templates"] });
+      navigate("/rental/templates");
+    },
+  });
+
+  // Create v2.0 mutation (for contracts)
+  const createV2Mutation = useMutation({
+    mutationFn: (data: {
+      name: string;
+      businessUnitId?: string;
+      template: TemplateV2;
+      requiresSignature?: boolean;
+      requiresPaymentProof?: boolean;
+      allowLocalPayment?: boolean;
+    }) => contractTemplateService.createTemplate(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["templates"] });
       navigate("/rental/templates");
@@ -72,18 +123,47 @@ export function TemplateFormPage() {
       return;
     }
 
-    const data: CreateTemplateDTO = {
-      businessUnitId: businessUnit.id,
-      name,
-      type,
-      content,
-      variables: [], // Auto-extracted from content in backend
-    };
+    // Check if it's a v2.0 template (contract)
+    if (isV2Template) {
+      // Validate v2.0 content
+      if (contentV2.sections.length === 0) {
+        alert("Debes agregar al menos una sección al template");
+        return;
+      }
 
-    if (isEditing) {
-      updateMutation.mutate(data);
+      const dataV2 = {
+        name,
+        businessUnitId: businessUnit.id,
+        template: contentV2,
+        requiresSignature,
+        requiresPaymentProof,
+        allowLocalPayment,
+      };
+
+      if (isEditing) {
+        // For updates, use legacy service (it will handle v2.0 content)
+        updateMutation.mutate({
+          name,
+          content: contentV2 as any,
+        });
+      } else {
+        createV2Mutation.mutate(dataV2);
+      }
     } else {
-      createMutation.mutate(data);
+      // Legacy template (HTML string)
+      const data: CreateTemplateDTO = {
+        businessUnitId: businessUnit.id,
+        name,
+        type,
+        content,
+        variables: [], // Auto-extracted from content in backend
+      };
+
+      if (isEditing) {
+        updateMutation.mutate(data);
+      } else {
+        createMutation.mutate(data);
+      }
     }
   };
 
@@ -218,13 +298,129 @@ export function TemplateFormPage() {
               </div>
             </div>
 
-            {/* Simple Editor */}
-            <SimpleTemplateEditor
-              content={content}
-              onChange={setContent}
-              templateType={type}
-              fontFamily={brandingConfig.fontFamily}
-            />
+            {/* Contract Template v2.0 Info Card */}
+            {isV2Template && (
+              <div className="card bg-purple-900/10 border-purple-800">
+                <div className="flex gap-3">
+                  <FileText className="w-5 h-5 text-purple-400 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <h3 className="text-sm font-semibold text-purple-300 mb-2">
+                      🎯 Plantilla de Contrato v2.0 - Sistema Modular
+                    </h3>
+                    <p className="text-sm text-gray-300 mb-2">
+                      Esta plantilla usa el nuevo sistema modular de contratos
+                      que permite:
+                    </p>
+                    <ul className="text-sm text-gray-300 space-y-1 list-disc list-inside">
+                      <li>
+                        <strong>Heredar datos de cotización aprobada</strong>
+                      </li>
+                      <li>
+                        <strong>Cláusulas dinámicas</strong> según tipo de
+                        activo
+                      </li>
+                      <li>
+                        <strong>Comprobantes de pago</strong> (carga o pago
+                        local)
+                      </li>
+                      <li>
+                        <strong>Firmas digitales</strong> integradas
+                      </li>
+                      <li>
+                        <strong>Secciones reutilizables</strong> y ordenables
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Contract Template v2.0 Configuration */}
+            {isV2Template && (
+              <div className="card">
+                <h3 className="text-lg font-semibold text-white mb-4">
+                  ⚙️ Configuración de Contrato
+                </h3>
+                <div className="space-y-3">
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={requiresSignature}
+                      onChange={(e) => setRequiresSignature(e.target.checked)}
+                      className="mt-1"
+                    />
+                    <div>
+                      <span className="text-white font-medium">
+                        Requiere firmas digitales
+                      </span>
+                      <p className="text-sm text-gray-400">
+                        El contrato debe ser firmado digitalmente antes de
+                        activarse
+                      </p>
+                    </div>
+                  </label>
+
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={requiresPaymentProof}
+                      onChange={(e) =>
+                        setRequiresPaymentProof(e.target.checked)
+                      }
+                      className="mt-1"
+                    />
+                    <div>
+                      <span className="text-white font-medium">
+                        Requiere comprobante de pago
+                      </span>
+                      <p className="text-sm text-gray-400">
+                        El cliente debe cargar un comprobante de pago
+                      </p>
+                    </div>
+                  </label>
+
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={allowLocalPayment}
+                      onChange={(e) => setAllowLocalPayment(e.target.checked)}
+                      className="mt-1"
+                      disabled={!requiresPaymentProof}
+                    />
+                    <div>
+                      <span
+                        className={
+                          requiresPaymentProof
+                            ? "text-white font-medium"
+                            : "text-gray-500 font-medium"
+                        }
+                      >
+                        Permitir marcar como "pago local"
+                      </span>
+                      <p className="text-sm text-gray-400">
+                        Permite indicar que el pago se realizó en efectivo/local
+                        sin cargar comprobante
+                      </p>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            )}
+
+            {/* Simple Editor or Contract Template Editor V2 */}
+            {isV2Template ? (
+              <ContractTemplateEditorV2
+                value={contentV2}
+                onChange={setContentV2}
+              />
+            ) : (
+              <SimpleTemplateEditor
+                content={content}
+                onChange={setContent}
+                templateType={type}
+                fontFamily={brandingConfig.fontFamily}
+              />
+            )}
 
             {/* Submit Button */}
             <div className="flex gap-4">
