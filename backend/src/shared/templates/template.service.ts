@@ -12,12 +12,13 @@ import { chromium } from "playwright";
 import prisma from "@config/database";
 import { azureBlobStorageService } from "@shared/storage/azure-blob-storage.service";
 import { brandingService } from "@core/services/branding.service";
-import { pdfGeneratorService } from "@core/services/pdf-generator.service";
+import { pdfGeneratorService, type PDFOptions } from "@core/services/pdf-generator.service";
 import {
   buildDocument,
   type BrandingConfig,
   type BusinessUnitInfo,
 } from "@core/services/document-builder.service";
+import type { DocumentType } from "@core/types/branding.types";
 
 // ============================================
 // TYPES
@@ -574,7 +575,7 @@ export class TemplateService {
    */
   async generateContractPDF(
     contractId: string,
-    options?: PDFGenerationOptions,
+    options?: PDFOptions,
   ): Promise<{ pdfUrl: string; pdfBuffer: Buffer }> {
     // Dinámicamente importar el servicio de cláusulas para evitar dependencia circular
     const { contractClauseService } = await import(
@@ -740,7 +741,7 @@ export class TemplateService {
       branding as BrandingConfig,
       contract.businessUnit as BusinessUnitInfo,
       fullHtml,
-      "contract" as DocumentType,
+      "contract",
       `Contrato ${contract.code}`,
     );
 
