@@ -3,6 +3,19 @@ import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider } from "react-router-dom";
 
+// ── Stale-chunk auto-recovery ────────────────────────────────────────────────
+// When Vercel deploys a new version, old chunk hashes disappear.
+// If the browser has cached index.html from the previous build, lazy imports
+// will 404. We detect this and do a single hard-reload to pick up the new HTML.
+window.addEventListener("vite:preloadError", () => {
+  const reloaded = sessionStorage.getItem("chunk_reload");
+  if (!reloaded) {
+    sessionStorage.setItem("chunk_reload", "1");
+    window.location.reload();
+  }
+});
+// ────────────────────────────────────────────────────────────────────────────
+
 // Module System
 import { loadModules } from "@/app/module-loader/loadModules";
 import { loadPlatformModules } from "@/app/module-loader/loadPlatformModules";
