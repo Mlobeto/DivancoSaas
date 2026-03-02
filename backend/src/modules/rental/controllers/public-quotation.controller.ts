@@ -226,36 +226,28 @@ export class PublicQuotationController {
     res.send(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
       <meta name="viewport" content="width=device-width,initial-scale=1.0">
       <title>Comprobante de Pago – ${quotation.code}</title>
-      <style>body{font-family:Arial,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f0f4f8}
-      .card{background:white;padding:40px;border-radius:16px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.12);max-width:460px;width:90%}
-      h2{color:#1a202c}.btn{background:#3182ce;color:white;padding:14px 32px;border:none;border-radius:8px;font-size:16px;font-weight:bold;cursor:pointer;width:100%;margin-top:12px}
-      input[type=file]{display:none;position:absolute;pointer-events:none}
-      .drop{border:2px dashed #90caf9;border-radius:12px;padding:36px 20px;cursor:pointer;margin:20px 0}
-      #st{margin-top:16px;font-size:14px}</style></head>
+      <style>
+        body{font-family:Arial,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f0f4f8}
+        .card{background:white;padding:40px;border-radius:16px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.12);max-width:460px;width:90%}
+        h2{color:#1a202c}
+        .btn{background:#3182ce;color:white;padding:14px 32px;border:none;border-radius:8px;font-size:16px;font-weight:bold;cursor:pointer;width:100%;margin-top:12px}
+        label.drop{display:block;border:2px dashed #90caf9;border-radius:12px;padding:36px 20px;cursor:pointer;margin:20px 0;background:#f8fbff}
+        label.drop:hover{border-color:#1976d2;background:#e3f2fd}
+        input[type=file]{display:block;width:100%;margin:0 auto 8px;font-size:14px;box-sizing:border-box}
+      </style></head>
       <body><div class="card"><h2>💳 Comprobante de Pago</h2>
         <p>Cotización: <strong>${quotation.code}</strong></p>
         <p>Total: <strong>${quotation.currency} $${total}</strong></p>
-        <form id="f" method="POST" enctype="multipart/form-data" action="${uploadUrl}">
-          <input type="file" id="fi" name="receipt" accept="image/jpeg,image/png,image/webp,application/pdf">
-          <div class="drop" onclick="document.getElementById('fi').click()">
-            <p>📎 Toca para seleccionar</p><p id="fn" style="color:#1976d2;font-weight:bold"></p>
-          </div>
-          <button type="submit" class="btn" id="sb" disabled>📤 Subir Comprobante</button>
+        <form method="POST" enctype="multipart/form-data" action="${uploadUrl}">
+          <label for="fi" class="drop">
+            <p style="font-size:32px">📎</p>
+            <p><strong>Toca aquí para seleccionar el archivo</strong></p>
+            <p style="font-size:12px;color:#999">JPG, PNG, WEBP o PDF · máx. 10 MB</p>
+          </label>
+          <input type="file" id="fi" name="receipt" accept="image/jpeg,image/png,image/webp,application/pdf" required>
+          <button type="submit" class="btn">📤 Subir Comprobante</button>
         </form>
-        <div id="st"></div>
-      </div>
-      <script>
-        const fi=document.getElementById('fi'),sb=document.getElementById('sb'),fn=document.getElementById('fn'),st=document.getElementById('st');
-        fi.addEventListener('change',()=>{if(fi.files[0]){fn.textContent=fi.files[0].name;sb.disabled=false;}});
-        document.getElementById('f').addEventListener('submit',async e=>{
-          e.preventDefault();sb.disabled=true;sb.textContent='⏳ Subiendo...';
-          const fd=new FormData();fd.append('receipt',fi.files[0]);
-          try{const r=await fetch('${uploadUrl}',{method:'POST',body:fd});const d=await r.json();
-            if(d.success){st.innerHTML='<span style="color:green">✅ Comprobante recibido. ¡Gracias!</span>';sb.textContent='✅ Enviado';}
-            else{throw new Error(d.message||'Error');}
-          }catch(err){st.innerHTML='<span style="color:red">❌ '+err.message+'</span>';sb.disabled=false;sb.textContent='📤 Subir';}
-        });
-      </script></body></html>`);
+      </div></body></html>`);
   }
 
   /**
@@ -271,22 +263,26 @@ export class PublicQuotationController {
       },
     });
 
+    const HTML_BASE = (title: string, body: string) =>
+      `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+      <title>${title}</title><style>body{font-family:Arial,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f0f4f8}
+      .card{background:white;padding:40px;border-radius:16px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.12);max-width:460px;width:90%}</style></head>
+      <body><div class="card">${body}</div></body></html>`;
+
     if (!quotation) {
-      res.status(404).json({ message: "Enlace no válido o expirado" });
+      res.status(404).send(HTML_BASE("Error", "<h2 style='color:#c62828'>⚠️ Enlace no válido o expirado</h2><p>Por favor contacte a su proveedor.</p>"));
       return;
     }
 
     const meta = (quotation.metadata as any) || {};
     if (meta.paymentReceiptUrl) {
-      res
-        .status(409)
-        .json({ message: "Ya se recibió un comprobante para esta cotización" });
+      res.send(HTML_BASE("✅ Comprobante recibido", "<h2 style='color:#2e7d32'>✅ Comprobante ya recibido</h2><p>Ya recibimos tu comprobante para la cotización <strong>${quotation.code}</strong>.</p>"));
       return;
     }
 
     const file = req.file;
     if (!file) {
-      res.status(400).json({ message: "No se recibió ningún archivo" });
+      res.status(400).send(HTML_BASE("Error", "<h2 style='color:#c62828'>❌ No se recibió ningún archivo</h2><p>Por favor vuelva a intentarlo.</p>"));
       return;
     }
 
@@ -338,10 +334,14 @@ export class PublicQuotationController {
       console.warn("[PublicQuotation] Error enviando notificación:", notifErr);
     }
 
-    res.json({
-      success: true,
-      message: "Comprobante recibido correctamente",
-    });
+    const HTML_SUCCESS = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+      <title>✅ Comprobante recibido</title><style>body{font-family:Arial,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f0f4f8}
+      .card{background:white;padding:40px;border-radius:16px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.12);max-width:460px;width:90%}</style></head>
+      <body><div class="card"><div style="font-size:64px;margin-bottom:16px">✅</div>
+      <h2 style="color:#2e7d32">¡Comprobante recibido!</h2>
+      <p>Gracias por subir su comprobante para la cotización <strong>${quotation.code}</strong>.</p>
+      <p>Nuestro equipo lo verificará y le contactará a la brevedad.</p></div></body></html>`;
+    res.send(HTML_SUCCESS);
   }
 
   // ─── HELPERS PRIVADOS ──────────────────────────────────────────────────────

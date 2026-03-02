@@ -37,17 +37,17 @@ const STYLES = `
   .badge { display: inline-block; padding: 6px 16px; border-radius: 20px; font-size: 13px;
     font-weight: bold; margin-bottom: 16px; }
   .badge-blue { background: #e3f2fd; color: #1565c0; }
-  input[type=file] { display: none; position: absolute; pointer-events: none; }
-  .drop-zone { border: 2px dashed #90caf9; border-radius: 12px; padding: 36px 20px;
-    cursor: pointer; transition: all .2s; margin: 20px 0; background: #f8fbff; }
-  .drop-zone:hover, .drop-zone.drag { border-color: #1976d2; background: #e3f2fd; }
+  .drop-zone { display: block; border: 2px dashed #90caf9; border-radius: 12px;
+    padding: 36px 20px; cursor: pointer; margin: 20px 0; background: #f8fbff;
+    text-decoration: none; color: inherit; }
+  .drop-zone:hover { border-color: #1976d2; background: #e3f2fd; }
   .drop-zone p { margin: 8px 0; color: #555; font-size: 14px; }
+  input[type=file] { display: block; width: 100%; margin: 0 auto 8px;
+    font-size: 14px; box-sizing: border-box; }
   .btn { background: #1976d2; color: white; border: none; padding: 14px 32px;
     border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer;
-    width: 100%; margin-top: 12px; transition: background .2s; }
+    width: 100%; margin-top: 12px; }
   .btn:hover { background: #1565c0; }
-  .btn:disabled { background: #90caf9; cursor: not-allowed; }
-  #status { margin-top: 16px; font-size: 14px; min-height: 20px; }
   .success { color: #2e7d32; } .error { color: #c62828; }
 `;
 
@@ -95,64 +95,17 @@ class PublicContractController {
     <p>Monto: <strong>${contract.currency ?? "USD"} $${total}</strong></p>
     <p>Suba su comprobante de pago para activar el contrato.</p>
 
-    <form id="uploadForm" method="POST" enctype="multipart/form-data" action="${uploadUrl}">
-      <input type="file" id="fileInput" name="receipt" accept="image/jpeg,image/png,image/webp,application/pdf">
-      <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+    <form method="POST" enctype="multipart/form-data" action="${uploadUrl}">
+      <label for="fileInput" class="drop-zone">
         <p style="font-size:32px">📎</p>
-        <p><strong>Toca para seleccionar el archivo</strong></p>
-        <p>o arrastra tu comprobante aquí</p>
-        <p id="fileName" style="color:#1976d2;font-weight:bold"></p>
+        <p><strong>Toca aquí para seleccionar el archivo</strong></p>
         <p style="font-size:12px;color:#999">JPG, PNG, WEBP o PDF · máx. 10 MB</p>
-      </div>
-      <button type="submit" class="btn" id="submitBtn" disabled>📤 Subir Comprobante</button>
+      </label>
+      <input type="file" id="fileInput" name="receipt"
+        accept="image/jpeg,image/png,image/webp,application/pdf" required>
+      <button type="submit" class="btn">📤 Subir Comprobante</button>
     </form>
-    <div id="status"></div>
   </div>
-
-  <script>
-    const input = document.getElementById('fileInput');
-    const drop = document.getElementById('dropZone');
-    const btn = document.getElementById('submitBtn');
-    const nameLabel = document.getElementById('fileName');
-    const status = document.getElementById('status');
-
-    input.addEventListener('change', () => {
-      if (input.files[0]) { nameLabel.textContent = input.files[0].name; btn.disabled = false; }
-    });
-    drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('drag'); });
-    drop.addEventListener('dragleave', () => drop.classList.remove('drag'));
-    drop.addEventListener('drop', e => {
-      e.preventDefault(); drop.classList.remove('drag');
-      if (e.dataTransfer.files[0]) {
-        const dt = new DataTransfer();
-        dt.items.add(e.dataTransfer.files[0]);
-        input.files = dt.files;
-        nameLabel.textContent = e.dataTransfer.files[0].name;
-        btn.disabled = false;
-      }
-    });
-
-    document.getElementById('uploadForm').addEventListener('submit', async e => {
-      e.preventDefault();
-      btn.disabled = true; btn.textContent = '⏳ Subiendo...';
-      status.textContent = '';
-      const fd = new FormData();
-      fd.append('receipt', input.files[0]);
-      try {
-        const r = await fetch('${uploadUrl}', { method: 'POST', body: fd });
-        const data = await r.json();
-        if (data.success) {
-          status.innerHTML = '<span class="success">✅ Comprobante recibido. ¡Gracias! Nuestro equipo lo verificará a la brevedad.</span>';
-          btn.textContent = '✅ Enviado';
-        } else {
-          throw new Error(data.message || 'Error al subir');
-        }
-      } catch (err) {
-        status.innerHTML = '<span class="error">❌ ' + err.message + '. Por favor intente de nuevo.</span>';
-        btn.disabled = false; btn.textContent = '📤 Subir Comprobante';
-      }
-    });
-  </script>
 </body></html>`);
   }
 
@@ -233,7 +186,17 @@ class PublicContractController {
       console.warn("[PublicContract] Error enviando notificación:", err);
     }
 
-    res.json({ success: true, message: "Comprobante recibido correctamente" });
+    res.send(this._successPage(contract.code));
+  }
+
+  private _successPage(code: string) {
+    return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Comprobante recibido</title><style>${STYLES}</style></head><body>
+      <div class="card"><div style="font-size:64px;margin-bottom:16px">✅</div>
+      <h2 style="color:#2e7d32">¡Comprobante recibido!</h2>
+      <p>Gracias por subir su comprobante para el contrato <strong>${code}</strong>.</p>
+      <p>Nuestro equipo lo verificará y le contactará a la brevedad.</p></div></body></html>`;
   }
 
   private _errorPage(msg: string) {
