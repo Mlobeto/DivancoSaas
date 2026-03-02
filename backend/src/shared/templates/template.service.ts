@@ -257,10 +257,37 @@ export class TemplateService {
       throw new Error(`Template ${params.templateId} is not active`);
     }
 
-    // Compilar plantilla (eliminar bloque placeholder si quedó guardado)
-    const PLACEHOLDER_RE =
-      /<div[^>]*>\s*<h2[^>]*>[^<]*Empieza insertando bloques[^<]*<\/h2>[\s\S]*?<\/div>/gi;
-    const cleanContent = template.content.replace(PLACEHOLDER_RE, "").trim();
+    // Limpiar contenido de placeholders del editor visual
+    // (cuando el usuario guardó accidentalmente el bloque de "Empieza insertando bloques")
+    let cleanContent = template.content;
+
+    // Paso 1: eliminar cualquier bloque <div> que contenga el heading placeholder
+    // Usamos reemplazo iterativo para manejar divs anidados
+    const PLACEHOLDER_PHRASES = [
+      "Empieza insertando bloques",
+      "Haz click en los bloques del panel",
+      "para construir tu plantilla de cotización",
+      "para construir tu plantilla",
+    ];
+    const hasPlaceholder = PLACEHOLDER_PHRASES.some((p) =>
+      cleanContent.includes(p),
+    );
+    if (hasPlaceholder) {
+      // Eliminar línea a línea cualquier fragmento que contenga las frases placeholder
+      cleanContent = cleanContent
+        .split(/\n/)
+        .filter(
+          (line) => !PLACEHOLDER_PHRASES.some((p) => line.includes(p)),
+        )
+        .join("\n");
+
+      // Eliminar divs vacíos o con solo espacios que puedan haber quedado huérfanos
+      cleanContent = cleanContent
+        .replace(/<div[^>]*>\s*<\/div>/gi, "")
+        .replace(/<p[^>]*>\s*<\/p>/gi, "")
+        .trim();
+    }
+
     const compiledTemplate = this.handlebars.compile(cleanContent);
 
     // Preparar datos con helpers y opciones

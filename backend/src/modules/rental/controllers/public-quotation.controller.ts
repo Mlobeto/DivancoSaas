@@ -157,21 +157,32 @@ export class PublicQuotationController {
   </div>
 
   <script>
+    console.log('[Divanco] Página de revisión cargada');
+    console.log('[Divanco] approveUrl:', '${approveUrl}');
+    console.log('[Divanco] changesUrl:', '${changesUrl}');
+    console.log('[Divanco] window.location:', window.location.href);
+
     async function doApprove() {
+      console.log('[Divanco] doApprove() llamado');
       const btn = document.querySelector('.btn-approve');
       const msg = document.getElementById('msg');
       msg.style.display = 'none';
       btn.disabled = true;
       btn.textContent = '⏳ Procesando...';
+      const url = '${approveUrl}';
+      console.log('[Divanco] fetch POST:', url);
       try {
-        const r = await fetch('${approveUrl}', { method: 'POST', headers: {'Content-Type':'application/json'} });
+        const r = await fetch(url, { method: 'POST', headers: {'Content-Type':'application/json'} });
+        console.log('[Divanco] response status:', r.status, r.ok);
         let d;
-        try { d = await r.json(); } catch(_) { throw new Error('El servidor devolvió una respuesta inesperada (código ' + r.status + ')'); }
+        try { d = await r.json(); console.log('[Divanco] response json:', d); }
+        catch(je) { console.error('[Divanco] no se pudo parsear JSON:', je); throw new Error('El servidor devolvió una respuesta inesperada (código ' + r.status + ')'); }
         if (d.success) {
           document.querySelector('.card').innerHTML =
             '<div style="text-align:center;padding:40px 20px"><div style="font-size:64px;margin-bottom:16px">🎉</div><h2 style="color:#38a169;margin-bottom:12px">¡Cotización aprobada!</h2><p style="color:#4a5568">Hemos generado su contrato <strong>' + d.contractCode + '</strong>.<br>Recibirá un email con los detalles y el enlace para subir su comprobante de pago.</p></div>';
         } else { throw new Error(d.error || 'Error al aprobar'); }
       } catch(e) {
+        console.error('[Divanco] error en doApprove:', e);
         msg.style.display = 'block';
         msg.className = 'error';
         msg.textContent = '❌ ' + e.message;
@@ -180,6 +191,7 @@ export class PublicQuotationController {
       }
     }
     async function doChanges() {
+      console.log('[Divanco] doChanges() llamado');
       const text = document.getElementById('changeMsg').value.trim();
       if (!text) { alert('Por favor escriba su solicitud'); return; }
       const btn = document.querySelector('.btn-send');
@@ -187,14 +199,19 @@ export class PublicQuotationController {
       msg.style.display = 'none';
       btn.disabled = true;
       btn.textContent = '⏳ Enviando...';
+      const url = '${changesUrl}';
+      console.log('[Divanco] fetch POST:', url);
       try {
-        const r = await fetch('${changesUrl}', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ message: text }) });
+        const r = await fetch(url, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ message: text }) });
+        console.log('[Divanco] response status:', r.status, r.ok);
         let d;
-        try { d = await r.json(); } catch(_) { throw new Error('El servidor devolvió una respuesta inesperada (código ' + r.status + ')'); }
+        try { d = await r.json(); console.log('[Divanco] response json:', d); }
+        catch(je) { console.error('[Divanco] no se pudo parsear JSON:', je); throw new Error('El servidor devolvió una respuesta inesperada (código ' + r.status + ')'); }
         if (d.success) {
           document.getElementById('changesForm').innerHTML = '<div class="success" style="display:block;margin-top:8px">✅ Su solicitud fue enviada. Nuestro equipo la revisará y le responderá a la brevedad.</div>';
         } else { throw new Error(d.error || 'Error al enviar'); }
       } catch(e) {
+        console.error('[Divanco] error en doChanges:', e);
         msg.style.display = 'block';
         msg.className = 'error';
         msg.textContent = '❌ ' + e.message;
