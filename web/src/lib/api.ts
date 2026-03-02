@@ -50,6 +50,20 @@ api.interceptors.request.use((config) => {
     }
   }
 
+  // Log detallado de la petición
+  console.log("[API REQUEST]", {
+    method: config.method?.toUpperCase(),
+    url: config.url,
+    baseURL: config.baseURL,
+    fullURL: `${config.baseURL}${config.url}`,
+    data: config.data,
+    headers: {
+      Authorization: config.headers.Authorization ? "Bearer ***" : "NO AUTH",
+      "X-Tenant-Id": config.headers["X-Tenant-Id"],
+      "X-Business-Unit-Id": config.headers["X-Business-Unit-Id"],
+    },
+  });
+
   return config;
 });
 
@@ -69,6 +83,17 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
+    // Log detallado del error
+    console.error("[API ERROR]", {
+      method: error.config?.method?.toUpperCase(),
+      url: error.config?.url,
+      fullURL: error.config?.baseURL + error.config?.url,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      message: error.message,
+    });
+
     // Handle blob errors specially
     if (
       error.config?.responseType === "blob" &&
