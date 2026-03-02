@@ -55,8 +55,6 @@ export class PublicQuotationController {
       return;
     }
 
-    const approveUrl = `/api/v1/public/quotations/${token}/approve`;
-    const changesUrl = `/api/v1/public/quotations/${token}/request-changes`;
     const total = Number(quotation.totalAmount).toLocaleString("es-MX", {
       minimumFractionDigits: 2,
     });
@@ -103,15 +101,12 @@ export class PublicQuotationController {
     .divider{border:none;border-top:1px solid #e2e8f0;margin:20px 0}
     .btn-approve{width:100%;padding:16px;background:#38a169;color:white;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;transition:.2s;margin-bottom:12px}
     .btn-approve:hover{background:#2f855a}
-    .btn-changes{width:100%;padding:14px;background:white;color:#4a5568;border:2px solid #e2e8f0;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;transition:.2s}
-    .btn-changes:hover{border-color:#cbd5e0;background:#f7fafc}
-    #changesForm{display:none;margin-top:16px}
-    textarea{width:100%;height:120px;padding:12px;border:2px solid #e2e8f0;border-radius:8px;font-size:15px;resize:vertical;font-family:inherit}
+    .divider{border:none;border-top:1px solid #e2e8f0;margin:20px 0}
+    details{margin-top:0;border:2px solid #e2e8f0;border-radius:10px;overflow:hidden}
+    details summary{padding:14px 16px;font-size:15px;font-weight:600;color:#4a5568;cursor:pointer;list-style:none}
+    details summary::-webkit-details-marker{display:none}
+    textarea{width:100%;height:120px;padding:12px;border:2px solid #e2e8f0;border-radius:8px;font-size:15px;resize:vertical;font-family:inherit;background:white}
     textarea:focus{outline:none;border-color:#3182ce}
-    .btn-send{width:100%;padding:14px;background:#3182ce;color:white;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;margin-top:12px}
-    #msg{margin-top:16px;padding:14px;border-radius:8px;font-size:14px;display:none}
-    .success{background:#f0fff4;color:#276749;border:1px solid #9ae6b4}
-    .error{background:#fff5f5;color:#c53030;border:1px solid #fc8181}
     .footer{text-align:center;margin-top:24px;color:#a0aec0;font-size:12px}
   </style>
 </head>
@@ -143,83 +138,23 @@ export class PublicQuotationController {
     <hr class="divider">
     <p style="color:#4a5568;font-size:14px;margin-bottom:16px">Revise los detalles de su cotización:</p>
 
-    <button class="btn-approve" onclick="doApprove()">✅ Aprobar Cotización</button>
-    <button class="btn-changes" onclick="document.getElementById('changesForm').style.display='block';this.style.display='none'">✏️ Solicitar modificaciones</button>
+    <form method="POST" action="/api/v1/public/quotations/${token}/approve" style="margin-bottom:12px">
+      <button type="submit" style="width:100%;padding:16px;background:#38a169;color:white;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer">✅ Aprobar Cotización</button>
+    </form>
 
-    <div id="changesForm">
-      <p style="font-size:14px;color:#4a5568;margin-bottom:8px">Explique brevemente qué cambios necesita:</p>
-      <textarea id="changeMsg" placeholder="Ej: Necesito reducir la cantidad del ítem 2 y agregar 3 días más al periodo..."></textarea>
-      <button class="btn-send" onclick="doChanges()">📩 Enviar solicitud de cambios</button>
-    </div>
+    <details style="border:2px solid #e2e8f0;border-radius:10px;overflow:hidden">
+      <summary style="padding:14px 16px;font-size:15px;font-weight:600;color:#4a5568;cursor:pointer;list-style:none">✏️ Solicitar modificaciones</summary>
+      <div style="padding:16px;background:#f7fafc">
+        <form method="POST" action="/api/v1/public/quotations/${token}/request-changes">
+          <p style="font-size:14px;color:#4a5568;margin-bottom:8px">Explique brevemente qué cambios necesita:</p>
+          <textarea name="message" required style="width:100%;height:120px;padding:12px;border:2px solid #e2e8f0;border-radius:8px;font-size:15px;resize:vertical;font-family:inherit" placeholder="Ej: Necesito reducir la cantidad del ítem 2 y agregar 3 días más al periodo..."></textarea>
+          <button type="submit" style="width:100%;padding:14px;background:#3182ce;color:white;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;margin-top:12px">📩 Enviar solicitud de cambios</button>
+        </form>
+      </div>
+    </details>
 
-    <div id="msg"></div>
-    <p class="footer">© ${new Date().getFullYear()} ${quotation.businessUnit.name}</p>
+    <p style="text-align:center;margin-top:24px;color:#a0aec0;font-size:12px">© ${new Date().getFullYear()} ${quotation.businessUnit.name}</p>
   </div>
-
-  <script>
-    console.log('[Divanco] Página de revisión cargada');
-    console.log('[Divanco] approveUrl:', '${approveUrl}');
-    console.log('[Divanco] changesUrl:', '${changesUrl}');
-    console.log('[Divanco] window.location:', window.location.href);
-
-    async function doApprove() {
-      console.log('[Divanco] doApprove() llamado');
-      const btn = document.querySelector('.btn-approve');
-      const msg = document.getElementById('msg');
-      msg.style.display = 'none';
-      btn.disabled = true;
-      btn.textContent = '⏳ Procesando...';
-      const url = '${approveUrl}';
-      console.log('[Divanco] fetch POST:', url);
-      try {
-        const r = await fetch(url, { method: 'POST', headers: {'Content-Type':'application/json'} });
-        console.log('[Divanco] response status:', r.status, r.ok);
-        let d;
-        try { d = await r.json(); console.log('[Divanco] response json:', d); }
-        catch(je) { console.error('[Divanco] no se pudo parsear JSON:', je); throw new Error('El servidor devolvió una respuesta inesperada (código ' + r.status + ')'); }
-        if (d.success) {
-          document.querySelector('.card').innerHTML =
-            '<div style="text-align:center;padding:40px 20px"><div style="font-size:64px;margin-bottom:16px">🎉</div><h2 style="color:#38a169;margin-bottom:12px">¡Cotización aprobada!</h2><p style="color:#4a5568">Hemos generado su contrato <strong>' + d.contractCode + '</strong>.<br>Recibirá un email con los detalles y el enlace para subir su comprobante de pago.</p></div>';
-        } else { throw new Error(d.error || 'Error al aprobar'); }
-      } catch(e) {
-        console.error('[Divanco] error en doApprove:', e);
-        msg.style.display = 'block';
-        msg.className = 'error';
-        msg.textContent = '❌ ' + e.message;
-        btn.disabled = false;
-        btn.textContent = '✅ Aprobar Cotización';
-      }
-    }
-    async function doChanges() {
-      console.log('[Divanco] doChanges() llamado');
-      const text = document.getElementById('changeMsg').value.trim();
-      if (!text) { alert('Por favor escriba su solicitud'); return; }
-      const btn = document.querySelector('.btn-send');
-      const msg = document.getElementById('msg');
-      msg.style.display = 'none';
-      btn.disabled = true;
-      btn.textContent = '⏳ Enviando...';
-      const url = '${changesUrl}';
-      console.log('[Divanco] fetch POST:', url);
-      try {
-        const r = await fetch(url, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ message: text }) });
-        console.log('[Divanco] response status:', r.status, r.ok);
-        let d;
-        try { d = await r.json(); console.log('[Divanco] response json:', d); }
-        catch(je) { console.error('[Divanco] no se pudo parsear JSON:', je); throw new Error('El servidor devolvió una respuesta inesperada (código ' + r.status + ')'); }
-        if (d.success) {
-          document.getElementById('changesForm').innerHTML = '<div class="success" style="display:block;margin-top:8px">✅ Su solicitud fue enviada. Nuestro equipo la revisará y le responderá a la brevedad.</div>';
-        } else { throw new Error(d.error || 'Error al enviar'); }
-      } catch(e) {
-        console.error('[Divanco] error en doChanges:', e);
-        msg.style.display = 'block';
-        msg.className = 'error';
-        msg.textContent = '❌ ' + e.message;
-        btn.disabled = false;
-        btn.textContent = '📩 Enviar solicitud de cambios';
-      }
-    }
-  </script>
 </body></html>`);
   }
 
@@ -231,11 +166,9 @@ export class PublicQuotationController {
     const { token } = req.params;
     try {
       const result = await approveQuotationAsClient(token);
-      res.json({ success: true, ...result });
+      res.send(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>¡Cotización Aprobada!</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:#f0f4f8;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px}.card{background:white;border-radius:16px;padding:40px 32px;box-shadow:0 8px 32px rgba(0,0,0,.12);max-width:520px;width:100%;text-align:center}</style></head><body><div class="card"><div style="font-size:72px;margin-bottom:20px">🎉</div><h1 style="color:#38a169;font-size:26px;margin-bottom:12px">¡Cotización aprobada!</h1><p style="color:#4a5568;font-size:16px;line-height:1.6">Hemos generado su contrato <strong>${result.contractCode}</strong>.<br>Recibirá un email con los detalles y el enlace para subir su comprobante de pago.</p></div></body></html>`);
     } catch (err: any) {
-      res
-        .status(400)
-        .json({ success: false, error: err.message || "Error al aprobar" });
+      res.status(400).send(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Error</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:#f0f4f8;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px}.card{background:white;border-radius:16px;padding:40px 32px;box-shadow:0 8px 32px rgba(0,0,0,.12);max-width:520px;width:100%;text-align:center}</style></head><body><div class="card"><div style="font-size:72px;margin-bottom:20px">❌</div><h1 style="color:#c53030;font-size:22px;margin-bottom:12px">No se pudo procesar</h1><p style="color:#4a5568;font-size:15px">${err.message || "Error al aprobar la cotización"}</p><a href="javascript:history.back()" style="display:inline-block;margin-top:20px;padding:12px 24px;background:#3182ce;color:white;border-radius:8px;text-decoration:none;font-weight:600">← Volver</a></div></body></html>`);
     }
   }
 
@@ -247,18 +180,14 @@ export class PublicQuotationController {
     const { token } = req.params;
     const { message } = req.body;
     if (!message?.trim()) {
-      res
-        .status(400)
-        .json({ success: false, error: "El mensaje es requerido" });
+      res.status(400).send(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Error</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:#f0f4f8;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px}.card{background:white;border-radius:16px;padding:40px 32px;box-shadow:0 8px 32px rgba(0,0,0,.12);max-width:520px;width:100%;text-align:center}</style></head><body><div class="card"><div style="font-size:64px;margin-bottom:16px">⚠️</div><h1 style="color:#c53030;font-size:20px;margin-bottom:12px">El mensaje es requerido</h1><a href="javascript:history.back()" style="display:inline-block;margin-top:20px;padding:12px 24px;background:#3182ce;color:white;border-radius:8px;text-decoration:none;font-weight:600">← Volver</a></div></body></html>`);
       return;
     }
     try {
       await requestChangesAsClient(token, message.trim());
-      res.json({ success: true });
+      res.send(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Solicitud enviada</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:#f0f4f8;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px}.card{background:white;border-radius:16px;padding:40px 32px;box-shadow:0 8px 32px rgba(0,0,0,.12);max-width:520px;width:100%;text-align:center}</style></head><body><div class="card"><div style="font-size:72px;margin-bottom:20px">✅</div><h1 style="color:#2b6cb0;font-size:24px;margin-bottom:12px">Solicitud enviada</h1><p style="color:#4a5568;font-size:16px;line-height:1.6">Nuestro equipo revisará sus comentarios y se pondrá en contacto con usted a la brevedad.</p></div></body></html>`);
     } catch (err: any) {
-      res
-        .status(400)
-        .json({ success: false, error: err.message || "Error al guardar" });
+      res.status(400).send(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Error</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:#f0f4f8;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px}.card{background:white;border-radius:16px;padding:40px 32px;box-shadow:0 8px 32px rgba(0,0,0,.12);max-width:520px;width:100%;text-align:center}</style></head><body><div class="card"><div style="font-size:72px;margin-bottom:20px">❌</div><h1 style="color:#c53030;font-size:22px;margin-bottom:12px">No se pudo enviar</h1><p style="color:#4a5568;font-size:15px">${err.message || "Error al guardar"}</p><a href="javascript:history.back()" style="display:inline-block;margin-top:20px;padding:12px 24px;background:#3182ce;color:white;border-radius:8px;text-decoration:none;font-weight:600">← Volver</a></div></body></html>`);
     }
   }
 
