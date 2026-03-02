@@ -11,7 +11,6 @@ import {
   FilePlus,
   Eye,
   Download,
-  FileSignature,
   CheckCircle,
   Clock,
   XCircle,
@@ -229,35 +228,30 @@ export function QuotationsListPage() {
     sent: "bg-blue-900/30 text-blue-400 border-blue-800",
     viewed: "bg-cyan-900/30 text-cyan-400 border-cyan-800",
     pending_approval: "bg-orange-900/30 text-orange-400 border-orange-800",
+    // legacy — se mantienen para datos históricos
     signature_pending: "bg-yellow-900/30 text-yellow-400 border-yellow-800",
     signed: "bg-green-900/30 text-green-400 border-green-800",
     paid: "bg-emerald-900/30 text-emerald-400 border-emerald-800",
     cancelled: "bg-red-900/30 text-red-400 border-red-800",
   };
 
-  // Estados editables (no pagados ni cancelados)
+  // Estados editables
   const editableStatuses: QuotationStatus[] = [
     "draft",
     "sent",
     "viewed",
     "pending_approval",
-    "signature_pending",
   ];
-  // Estados en que ya fue enviado (mostrar “Reenviar”)
-  const sentStatuses: QuotationStatus[] = [
-    "sent",
-    "viewed",
-    "signature_pending",
-    "signed",
-  ];
+  // Estados en que ya fue enviado (mostrar "Reenviar")
+  const sentStatuses: QuotationStatus[] = ["sent", "viewed"];
 
   const statusIcons: Record<QuotationStatus, any> = {
     draft: FileText,
     sent: FilePlus,
     viewed: Eye,
     pending_approval: Clock,
-    signature_pending: Clock,
-    signed: CheckCircle,
+    signature_pending: Clock, // legacy
+    signed: CheckCircle, // legacy
     paid: CheckCircle,
     cancelled: XCircle,
   };
@@ -291,7 +285,7 @@ export function QuotationsListPage() {
   return (
     <Layout
       title="Cotizaciones"
-      subtitle={`Gestión de cotizaciones con auto-cálculo y firma digital - ${businessUnit.name}`}
+      subtitle={`Gestión de cotizaciones - ${businessUnit.name}`}
       actions={
         <>
           <ProtectedAction permission="templates:read">
@@ -299,7 +293,7 @@ export function QuotationsListPage() {
               onClick={() => navigate("/rental/templates")}
               className="btn-secondary mr-2"
             >
-              <FileSignature className="w-4 h-4 inline mr-1" />
+              <FileText className="w-4 h-4 inline mr-1" />
               Plantillas PDF
             </button>
           </ProtectedAction>
@@ -320,33 +314,21 @@ export function QuotationsListPage() {
       {/* Helper card */}
       <div className="card mb-6 bg-dark-800/80 border-dark-600">
         <h2 className="text-sm font-semibold text-primary-300 mb-2">
-          💡 Sistema de Cotizaciones Inteligente
+          💡 Sistema de Cotizaciones
         </h2>
         <p className="text-sm text-gray-300 mb-2">
-          Este módulo calcula automáticamente los precios desde los activos
-          (maquinaria y herramientas), permite override manual, genera PDFs
-          personalizados y gestiona firmas digitales.
+          Crea cotizaciones, envíalas al cliente por email para revisión.
+          Cuando el cliente aprueba, el contrato se genera automáticamente.
         </p>
         <ul className="list-disc list-inside text-xs text-gray-400 space-y-1">
           <li>
-            <strong>Auto-cálculo:</strong> Los precios se calculan desde los
-            assets (días × horas × tarifa).
+            <strong>Auto-cálculo:</strong> Precios calculados desde activos (días × horas × tarifa).
           </li>
           <li>
-            <strong>Override manual:</strong> Puedes editar cualquier precio
-            después de crearlo.
+            <strong>Revisión del cliente:</strong> El cliente recibe un link para aprobar o solicitar cambios.
           </li>
           <li>
-            <strong>Plantillas PDF:</strong> Cada BusinessUnit puede tener sus
-            propias plantillas con logo y estilos.
-          </li>
-          <li>
-            <strong>Firma digital:</strong> Integración con SignNow para firmas
-            electrónicas.
-          </li>
-          <li>
-            <strong>Conversión:</strong> Una vez firmada, se convierte
-            automáticamente en contrato de renta.
+            <strong>Contrato automático:</strong> Al aprobar, se crea el contrato sin intervención manual.
           </li>
         </ul>
       </div>
@@ -372,9 +354,7 @@ export function QuotationsListPage() {
               <option value="draft">Borradores</option>
               <option value="sent">Enviadas</option>
               <option value="viewed">Vistas</option>
-              <option value="pending_approval">Pend. Aprobación</option>
-              <option value="signature_pending">Pendiente Firma</option>
-              <option value="signed">Firmadas</option>
+            <option value="pending_approval">Pend. Aprobación interna</option>
               <option value="paid">Pagadas</option>
               <option value="cancelled">Canceladas</option>
             </select>
@@ -617,12 +597,11 @@ export function QuotationsListPage() {
                             </ProtectedAction>
                           )}
 
-                          {/* Confirmar pago (signed o si hay comprobante subido) */}
-                          {(quotation.status === "signed" ||
-                            (quotation.metadata?.paymentReceiptUrl &&
-                              !["paid", "cancelled"].includes(
-                                quotation.status,
-                              ))) && (
+                          {/* Confirmar pago si hay comprobante subido */}
+                          {quotation.metadata?.paymentReceiptUrl &&
+                            !["paid", "cancelled"].includes(
+                              quotation.status,
+                            ) && (
                             <ProtectedAction permission="quotations:confirm-payment">
                               <button
                                 onClick={() => handleConfirmPayment(quotation)}
