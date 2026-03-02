@@ -2,7 +2,7 @@ import { createServer } from "http";
 import { createApp } from "./app";
 import { config } from "@config/index";
 import prisma from "@config/database";
-import { execSync } from "child_process";
+import { exec } from "child_process";
 import { initializeSocketServer } from "./bootstrap/socket.bootstrap";
 
 // Estado del servidor para health checks
@@ -16,10 +16,17 @@ export const serverState = {
 async function runMigrations() {
   try {
     console.log("🔄 Running database migrations...");
-    execSync("npx prisma migrate deploy", {
-      stdio: "inherit",
-      env: process.env,
-      cwd: process.cwd(),
+    await new Promise<void>((resolve, reject) => {
+      exec(
+        "npx prisma migrate deploy",
+        { env: process.env, cwd: process.cwd() },
+        (error, stdout, stderr) => {
+          if (stdout) process.stdout.write(stdout);
+          if (stderr) process.stderr.write(stderr);
+          if (error) reject(error);
+          else resolve();
+        },
+      );
     });
     console.log("✅ Migrations completed successfully");
     serverState.migrationsComplete = true;
