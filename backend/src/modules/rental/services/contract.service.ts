@@ -682,10 +682,11 @@ export class ContractService {
           await import("./contract-template.service");
 
         // Renderizar y generar PDF desde template v2.0
-        const html = await contractTemplateService.renderContract(
-          contract.templateId,
+        const html = await contractTemplateService.renderContract({
+          templateId: contract.templateId,
           contractId,
-        );
+          tenantId: contract.tenantId,
+        });
 
         // Generar PDF
         const { pdfGeneratorService } =

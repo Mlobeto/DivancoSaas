@@ -773,7 +773,7 @@ export class ContractController {
         return;
       }
 
-      const contract = await contractService.getContractById(id, tenantId);
+      const contract = await contractService.getContractById(id);
 
       if (!contract) {
         res.status(404).json({

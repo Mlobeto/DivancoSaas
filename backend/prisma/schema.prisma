@@ -2068,6 +2068,8 @@ model RentalContract {
   signatureStatus      String? // "pending", "signed", "declined"
   signatureRequestedAt DateTime?
   signatureCompletedAt DateTime?
+  signatureRequestId   String? // ID en SignNow/DocuSign
+  signatureProvider    String? // "signow", "docusign"
   activationMethod     String? // "payment", "account_balance", "manual"
 
   // Metadata
