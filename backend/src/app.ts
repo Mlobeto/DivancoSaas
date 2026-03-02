@@ -8,6 +8,7 @@ import { swaggerSpec } from "@config/swagger";
 
 import { config } from "@config/index";
 import prisma from "@config/database";
+import { serverState } from "./index";
 import {
   errorHandler,
   notFoundHandler,
@@ -102,6 +103,32 @@ export function createApp(): Application {
   });
 
   console.log("[App] Health check routes registered");
+
+  // ============================================
+  // MIGRATION STATUS MIDDLEWARE
+  // Block all requests (except health checks) until migrations complete
+  // ============================================
+  app.use((req, res, next) => {
+    // Allow health checks always
+    if (req.path === "/health" || req.path === "/" || req.path === "/health/details") {
+      return next();
+    }
+
+    // Check if migrations are complete
+    if (!serverState.migrationsComplete) {
+      return res.status(503).json({
+        success: false,
+        error: {
+          code: "SERVICE_UNAVAILABLE",
+          message: "Database migrations are still in progress. Please try again in a moment.",
+        },
+      });
+    }
+
+    next();
+  });
+
+  console.log("[App] Migration status middleware registered");
 
   // Initialize business modules
   const assetsModule = new AssetsModule();
@@ -201,6 +228,7 @@ export function createApp(): Application {
         status: "ok",
         timestamp: new Date().toISOString(),
         database: "connected",
+        migrations: serverState.migrationsComplete ? "complete" : "in_progress",
         uptime: process.uptime(),
       });
     } catch (error) {
@@ -208,6 +236,7 @@ export function createApp(): Application {
         status: "starting",
         timestamp: new Date().toISOString(),
         database: "connecting",
+        migrations: serverState.migrationsComplete ? "complete" : "in_progress",
         uptime: process.uptime(),
       });
     }
