@@ -23,6 +23,9 @@ import {
   ThumbsUp,
   ThumbsDown,
   CreditCard,
+  UserCheck,
+  MessageSquareWarning,
+  Hourglass,
 } from "lucide-react";
 
 export function QuotationsListPage() {
@@ -31,6 +34,7 @@ export function QuotationsListPage() {
   const { tenant, businessUnit } = useAuthStore();
   const [filters, setFilters] = useState<{
     status?: QuotationStatus;
+    clientResponse?: "pending_review" | "approved" | "changes_requested";
     clientId?: string;
     page?: number;
     limit?: number;
@@ -150,6 +154,23 @@ export function QuotationsListPage() {
     onError: (error: any) => {
       alert(
         `❌ Error al rechazar: ${error.response?.data?.message || error.message || "Error desconocido"}`,
+      );
+    },
+  });
+
+  // Workflow: Send Review link to client
+  const sendReviewMutation = useMutation({
+    mutationFn: (quotationId: string) =>
+      quotationService.sendReview(quotationId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["quotations"] });
+      alert("✅ Link de revisión enviado al cliente");
+    },
+    onError: (error: any) => {
+      alert(
+        `❌ Error al enviar revisión: ${
+          error.response?.data?.message || error.message || "Error desconocido"
+        }`,
       );
     },
   });
@@ -333,31 +354,58 @@ export function QuotationsListPage() {
       {/* Filters */}
       <div className="card mb-6">
         <div className="grid grid-cols-3 gap-4">
-          <select
-            value={filters.status || ""}
-            onChange={(e) =>
-              setFilters({
-                ...filters,
-                status: e.target.value as QuotationStatus | undefined,
-                page: 1,
-              })
-            }
-            className="form-input"
-          >
-            <option value="">Todos los estados</option>
-            <option value="draft">Borradores</option>
-            <option value="sent">Enviadas</option>
-            <option value="pending_approval">Pend. Aprobación</option>
-            <option value="signature_pending">Pendiente Firma</option>
-            <option value="signed">Firmadas</option>
-            <option value="paid">Pagadas</option>
-            <option value="cancelled">Canceladas</option>
-          </select>
+          <div className="col-span-2 flex gap-3">
+            {/* Filtro por estado interno */}
+            <select
+              value={filters.status || ""}
+              onChange={(e) =>
+                setFilters({
+                  ...filters,
+                  status: (e.target.value as QuotationStatus) || undefined,
+                  clientResponse: undefined,
+                  page: 1,
+                })
+              }
+              className="form-input flex-1"
+            >
+              <option value="">Todos los estados</option>
+              <option value="draft">Borradores</option>
+              <option value="sent">Enviadas</option>
+              <option value="viewed">Vistas</option>
+              <option value="pending_approval">Pend. Aprobación</option>
+              <option value="signature_pending">Pendiente Firma</option>
+              <option value="signed">Firmadas</option>
+              <option value="paid">Pagadas</option>
+              <option value="cancelled">Canceladas</option>
+            </select>
 
-          <div className="col-span-2 flex items-center gap-2 text-sm text-dark-400">
-            <span>
-              💡 Tip: Usa las plantillas PDF para personalizar tus cotizaciones
-            </span>
+            {/* Filtro por respuesta del cliente */}
+            <select
+              value={filters.clientResponse || ""}
+              onChange={(e) =>
+                setFilters({
+                  ...filters,
+                  clientResponse:
+                    (e.target.value as
+                      | "pending_review"
+                      | "approved"
+                      | "changes_requested"
+                      | "") || undefined,
+                  status: undefined,
+                  page: 1,
+                })
+              }
+              className="form-input flex-1"
+            >
+              <option value="">Respuesta cliente (todas)</option>
+              <option value="pending_review">⏳ En revisión</option>
+              <option value="approved">✅ Aprobada por cliente</option>
+              <option value="changes_requested">⚠️ Cambios solicitados</option>
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2 text-sm text-dark-400">
+            <span>💡 Tip: Usa las plantillas PDF para personalizar tus cotizaciones</span>
           </div>
         </div>
       </div>
@@ -451,14 +499,34 @@ export function QuotationsListPage() {
                         {new Date(quotation.validUntil).toLocaleDateString()}
                       </td>
                       <td className="p-4">
-                        <span
-                          className={`inline-flex items-center gap-1 px-3 py-1 rounded-full border text-xs font-medium ${
-                            statusColors[quotation.status]
-                          }`}
-                        >
-                          <StatusIcon className="w-3 h-3" />
-                          {statusLabels[quotation.status]}
-                        </span>
+                        <div className="flex flex-col gap-1">
+                          <span
+                            className={`inline-flex items-center gap-1 px-3 py-1 rounded-full border text-xs font-medium ${
+                              statusColors[quotation.status]
+                            }`}
+                          >
+                            <StatusIcon className="w-3 h-3" />
+                            {statusLabels[quotation.status]}
+                          </span>
+                          {quotation.clientResponse === "approved" && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs font-medium bg-green-900/40 text-green-400 border-green-700">
+                              <UserCheck className="w-3 h-3" />
+                              Cliente aprobó
+                            </span>
+                          )}
+                          {quotation.clientResponse === "changes_requested" && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs font-medium bg-yellow-900/40 text-yellow-400 border-yellow-700">
+                              <MessageSquareWarning className="w-3 h-3" />
+                              Cliente pidió cambios
+                            </span>
+                          )}
+                          {quotation.clientResponse === "pending_review" && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs font-medium bg-blue-900/40 text-blue-400 border-blue-700">
+                              <Hourglass className="w-3 h-3" />
+                              En revisión
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="p-4 text-center">
                         {quotation.pdfUrl ? (
@@ -565,6 +633,24 @@ export function QuotationsListPage() {
                               </button>
                             </ProtectedAction>
                           )}
+
+                          {/* Enviar link de revisión al cliente */}
+                          {quotation.pdfUrl &&
+                            quotation.client?.email &&
+                            ["sent", "viewed", "pending_approval"].includes(
+                              quotation.status,
+                            ) && (
+                              <button
+                                onClick={() =>
+                                  sendReviewMutation.mutate(quotation.id)
+                                }
+                                disabled={sendReviewMutation.isPending}
+                                className="btn-sm btn-ghost text-purple-400 hover:text-purple-300"
+                                title="Enviar link de revisión al cliente (aprobar/solicitar cambios)"
+                              >
+                                <UserCheck className="w-4 h-4" />
+                              </button>
+                            )}
 
                           {/* Enviar / Reenviar por email (requiere PDF) */}
                           {quotation.client?.email && quotation.pdfUrl && (

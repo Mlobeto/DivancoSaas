@@ -46,6 +46,12 @@ export interface Quotation {
   updatedAt: Date;
   createdBy: string;
 
+  // Flujo de revisión del cliente (email link)
+  clientResponse?: "pending_review" | "approved" | "changes_requested";
+  clientMessage?: string;
+  clientRespondedAt?: Date;
+  clientReviewToken?: string;
+
   // Relaciones
   client?: Client;
   assignedUser?: User;

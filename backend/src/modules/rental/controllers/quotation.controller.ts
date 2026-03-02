@@ -67,12 +67,13 @@ export class QuotationController {
    */
   async list(req: Request, res: Response): Promise<void> {
     try {
-      const { businessUnitId, status, clientId } = req.query;
+      const { businessUnitId, status, clientId, clientResponse } = req.query;
 
       const quotations = await quotationService.listQuotations({
         businessUnitId: businessUnitId as string,
         status: status as string,
         clientId: clientId as string,
+        clientResponse: clientResponse as string,
       });
 
       // Enriquecer con SAS URLs

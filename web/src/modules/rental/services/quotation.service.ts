@@ -20,6 +20,7 @@ export const quotationService = {
     filters: {
       status?: string;
       clientId?: string;
+      clientResponse?: string;
       page?: number;
       limit?: number;
     } = {},
@@ -35,6 +36,7 @@ export const quotationService = {
     const params = new URLSearchParams();
     if (filters.status) params.append("status", filters.status);
     if (filters.clientId) params.append("clientId", filters.clientId);
+    if (filters.clientResponse) params.append("clientResponse", filters.clientResponse);
     if (filters.page) params.append("page", filters.page.toString());
     if (filters.limit) params.append("limit", filters.limit.toString());
 
@@ -193,5 +195,15 @@ export const quotationService = {
       { notes },
     );
     return response.data.data;
+  },
+
+  /**
+   * Enviar link de revisión al cliente por email.
+   * El cliente recibe un enlace para aprobar o solicitar cambios.
+   */
+  async sendReview(quotationId: string): Promise<void> {
+    await apiClient.post(
+      `${BASE_URL}/quotations/${quotationId}/send-review`,
+    );
   },
 };

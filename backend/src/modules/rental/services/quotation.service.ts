@@ -1037,6 +1037,7 @@ export class QuotationService {
     businessUnitId: string;
     status?: string;
     clientId?: string;
+    clientResponse?: string;
   }): Promise<any[]> {
     const where: any = {
       businessUnitId: filters.businessUnitId,
@@ -1048,6 +1049,10 @@ export class QuotationService {
 
     if (filters.clientId) {
       where.clientId = filters.clientId;
+    }
+
+    if (filters.clientResponse) {
+      where.clientResponse = filters.clientResponse;
     }
 
     return await prisma.quotation.findMany({
