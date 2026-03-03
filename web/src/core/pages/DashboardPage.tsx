@@ -36,24 +36,9 @@ export function DashboardPage() {
   });
 
   return (
-    <Layout title="Dashboard">
+    <Layout title="Configuración inicial">
       <div className="p-8">
-        {/* Welcome Message & Modules */}
-        <div className="card bg-gradient-to-br from-dark-800 to-dark-900 border-primary-800">
-          <h3 className="text-lg font-semibold mb-2">
-            Bienvenido a DivancoSaaS
-          </h3>
-          <p className="text-dark-300 text-sm leading-relaxed mb-4">
-            Sistema de gestión modular multitenant profesional. La arquitectura
-            permite activar módulos según las necesidades de cada Business Unit,
-            con datos completamente aislados y workflows configurables.
-          </p>
-
-          {/* Dynamic Module Cards */}
-          <DynamicDashboardCards />
-        </div>
-
-        {/* Quick Access Cards */}
+        
         {businessUnit && (
           <div className="mt-8 space-y-4">
             {/* Branding Section - Collapsible */}
