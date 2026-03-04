@@ -67,6 +67,9 @@ export function DashboardPage() {
     ["business_unit:update", "business_units:update", "branding:update"],
   );
 
+  const canAccessOwnerNotificationCenter =
+    roleName === "OWNER" || userPermissions.includes("notifications:broadcast");
+
   const canViewOperations = hasAccess(
     ["ADMIN", "MANAGER"],
     [
@@ -211,9 +214,9 @@ export function DashboardPage() {
         </div>
 
         <div className="card bg-dark-800 border-dark-700 mt-4">
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3">
             <Bell className="w-5 h-5 text-primary-400 mt-0.5" />
-            <div className="flex-1">
+            <div>
               <h3 className="font-semibold">
                 Notificaciones para todos los roles
               </h3>
@@ -222,13 +225,6 @@ export function DashboardPage() {
                 desde la campana en la barra superior.
               </p>
             </div>
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={() => setManualNotificationOpen(true)}
-            >
-              Enviar manual
-            </button>
           </div>
         </div>
 
@@ -255,6 +251,29 @@ export function DashboardPage() {
 
                 {showOwnerPanel && (
                   <div className="mt-4 pt-4 border-t border-dark-700 space-y-4">
+                    {canAccessOwnerNotificationCenter && (
+                      <div className="card bg-dark-800 border-dark-700">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <h4 className="font-medium">
+                              Centro de notificaciones de la Business Unit
+                            </h4>
+                            <p className="text-dark-400 text-sm mt-1">
+                              Configura y envía comunicaciones generales desde
+                              el OWNER de esta unidad de negocios.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            className="btn-primary"
+                            onClick={() => setManualNotificationOpen(true)}
+                          >
+                            Enviar manual
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
                     <BrandingStatusCard />
 
                     <div className="card bg-dark-800 border-dark-700">
