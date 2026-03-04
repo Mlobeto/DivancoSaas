@@ -41,6 +41,11 @@ const PERMISSIONS = [
   },
   {
     resource: "quotations",
+    action: "approve-credit-limit",
+    description: "Aprobar cotizaciones en espera por exceder límite de crédito",
+  },
+  {
+    resource: "quotations",
     action: "confirm-payment",
     description: "Confirmar pago recibido por transferencia bancaria",
   },

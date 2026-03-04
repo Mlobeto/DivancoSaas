@@ -3,7 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "@/store/auth.store";
 import { dashboardService } from "@/core/services/dashboard.service";
 import { Layout } from "@/core/components/Layout";
-import { DynamicDashboardCards } from "@/core/components/DynamicDashboardCards";
 import { BrandingStatusCard } from "@/core/components/BrandingStatusCard";
 import { ChevronDown, ChevronUp, BarChart3 } from "lucide-react";
 

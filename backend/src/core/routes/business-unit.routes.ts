@@ -395,6 +395,42 @@ const updateBusinessUnitSchema = z.object({
   description: z.string().optional(),
 });
 
+const updateRentalSettingsSchema = z.object({
+  timezone: z.string().min(3).optional(),
+  defaultCurrency: z.string().length(3).optional(),
+  secondaryCurrency: z.string().length(3).optional(),
+});
+
+router.get("/:id/rental-settings", async (req, res, next) => {
+  try {
+    const tenantId = req.context!.tenantId;
+    const { id } = req.params;
+
+    const data = await businessUnitService.getRentalSettings(tenantId, id);
+    res.json({ success: true, data });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.put("/:id/rental-settings", async (req, res, next) => {
+  try {
+    const tenantId = req.context!.tenantId;
+    const { id } = req.params;
+    const data = updateRentalSettingsSchema.parse(req.body);
+
+    const updated = await businessUnitService.updateRentalSettings(
+      tenantId,
+      id,
+      data,
+    );
+
+    res.json({ success: true, data: updated });
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.put("/:id", async (req, res, next) => {
   try {
     const tenantId = req.context!.tenantId;

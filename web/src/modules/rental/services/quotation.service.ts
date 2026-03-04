@@ -36,7 +36,8 @@ export const quotationService = {
     const params = new URLSearchParams();
     if (filters.status) params.append("status", filters.status);
     if (filters.clientId) params.append("clientId", filters.clientId);
-    if (filters.clientResponse) params.append("clientResponse", filters.clientResponse);
+    if (filters.clientResponse)
+      params.append("clientResponse", filters.clientResponse);
     if (filters.page) params.append("page", filters.page.toString());
     if (filters.limit) params.append("limit", filters.limit.toString());
 
@@ -165,9 +166,22 @@ export const quotationService = {
   /**
    * Aprobar cotización pendiente de aprobación interna.
    */
-  async approve(quotationId: string): Promise<Quotation> {
+  async approve(
+    quotationId: string,
+    payload?: {
+      creditApproval?: {
+        creditLimitAmount: number;
+        creditLimitDays: number;
+        requiresOwnerApprovalOnExceed?: boolean;
+        isActive?: boolean;
+        notes?: string;
+        justification: string;
+      };
+    },
+  ): Promise<Quotation> {
     const response = await apiClient.post(
       `${BASE_URL}/quotations/${quotationId}/approve`,
+      payload || {},
     );
     return response.data.data;
   },
@@ -202,8 +216,6 @@ export const quotationService = {
    * El cliente recibe un enlace para aprobar o solicitar cambios.
    */
   async sendReview(quotationId: string): Promise<void> {
-    await apiClient.post(
-      `${BASE_URL}/quotations/${quotationId}/send-review`,
-    );
+    await apiClient.post(`${BASE_URL}/quotations/${quotationId}/send-review`);
   },
 };

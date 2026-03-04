@@ -809,7 +809,7 @@ web/dist/
 **Environment Variables:**
 
 ```bash
-VITE_API_URL=https://backend.railway.app/api/v1
+VITE_API_URL=https://divancosaas-backend.azurewebsites.net
 VITE_APP_NAME=DivancoSaaS
 ```
 

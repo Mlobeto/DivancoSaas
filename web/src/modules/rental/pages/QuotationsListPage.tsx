@@ -7,6 +7,10 @@ import { useAuthStore } from "@/store/auth.store";
 import { quotationService } from "../services/quotation.service";
 import { Quotation, QuotationStatus } from "../types/quotation.types";
 import {
+  CreditApprovalModal,
+  CreditApprovalPayload,
+} from "../components/CreditApprovalModal";
+import {
   FileText,
   FilePlus,
   Eye,
@@ -30,7 +34,8 @@ import {
 export function QuotationsListPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { tenant, businessUnit } = useAuthStore();
+  const { tenant, businessUnit, permissions, role } = useAuthStore();
+  const isOwner = role === "OWNER";
   const [filters, setFilters] = useState<{
     status?: QuotationStatus;
     clientResponse?: "pending_review" | "approved" | "changes_requested";
@@ -59,6 +64,11 @@ export function QuotationsListPage() {
   const [selectedQuotationForPayment, setSelectedQuotationForPayment] =
     useState<Quotation | null>(null);
   const [paymentNotes, setPaymentNotes] = useState("");
+
+  // Credit approval modal state
+  const [approveCreditModalOpen, setApproveCreditModalOpen] = useState(false);
+  const [selectedQuotationForApprove, setSelectedQuotationForApprove] =
+    useState<Quotation | null>(null);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["quotations", tenant?.id, businessUnit?.id, filters],
@@ -122,9 +132,26 @@ export function QuotationsListPage() {
 
   // Workflow: Approve
   const approveMutation = useMutation({
-    mutationFn: (quotationId: string) => quotationService.approve(quotationId),
+    mutationFn: ({
+      quotationId,
+      payload,
+    }: {
+      quotationId: string;
+      payload?: {
+        creditApproval?: {
+          creditLimitAmount: number;
+          creditLimitDays: number;
+          requiresOwnerApprovalOnExceed?: boolean;
+          isActive?: boolean;
+          notes?: string;
+          justification: string;
+        };
+      };
+    }) => quotationService.approve(quotationId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["quotations"] });
+      setApproveCreditModalOpen(false);
+      setSelectedQuotationForApprove(null);
       alert("✅ Cotización aprobada");
     },
     onError: (error: any) => {
@@ -213,6 +240,34 @@ export function QuotationsListPage() {
   const handleConfirmPayment = (quotation: Quotation) => {
     setSelectedQuotationForPayment(quotation);
     setConfirmPaymentModalOpen(true);
+  };
+
+  const resetApproveCreditModal = () => {
+    setApproveCreditModalOpen(false);
+    setSelectedQuotationForApprove(null);
+  };
+
+  const handleApprove = (quotation: Quotation) => {
+    const approvalReason = quotation.metadata?.approvalReason;
+
+    if (approvalReason !== "credit_limit_exceeded") {
+      approveMutation.mutate({ quotationId: quotation.id });
+      return;
+    }
+
+    setSelectedQuotationForApprove(quotation);
+    setApproveCreditModalOpen(true);
+  };
+
+  const handleConfirmApproveCredit = (payload: CreditApprovalPayload) => {
+    if (!selectedQuotationForApprove) return;
+
+    approveMutation.mutate({
+      quotationId: selectedQuotationForApprove.id,
+      payload: {
+        creditApproval: payload,
+      },
+    });
   };
 
   const handleConfirmPaymentSubmit = () => {
@@ -317,18 +372,21 @@ export function QuotationsListPage() {
           💡 Sistema de Cotizaciones
         </h2>
         <p className="text-sm text-gray-300 mb-2">
-          Crea cotizaciones, envíalas al cliente por email para revisión.
-          Cuando el cliente aprueba, el contrato se genera automáticamente.
+          Crea cotizaciones, envíalas al cliente por email para revisión. Cuando
+          el cliente aprueba, el contrato se genera automáticamente.
         </p>
         <ul className="list-disc list-inside text-xs text-gray-400 space-y-1">
           <li>
-            <strong>Auto-cálculo:</strong> Precios calculados desde activos (días × horas × tarifa).
+            <strong>Auto-cálculo:</strong> Precios calculados desde activos
+            (días × horas × tarifa).
           </li>
           <li>
-            <strong>Revisión del cliente:</strong> El cliente recibe un link para aprobar o solicitar cambios.
+            <strong>Revisión del cliente:</strong> El cliente recibe un link
+            para aprobar o solicitar cambios.
           </li>
           <li>
-            <strong>Contrato automático:</strong> Al aprobar, se crea el contrato sin intervención manual.
+            <strong>Contrato automático:</strong> Al aprobar, se crea el
+            contrato sin intervención manual.
           </li>
         </ul>
       </div>
@@ -354,7 +412,7 @@ export function QuotationsListPage() {
               <option value="draft">Borradores</option>
               <option value="sent">Enviadas</option>
               <option value="viewed">Vistas</option>
-            <option value="pending_approval">Pend. Aprobación interna</option>
+              <option value="pending_approval">Pend. Aprobación interna</option>
               <option value="paid">Pagadas</option>
               <option value="cancelled">Canceladas</option>
             </select>
@@ -385,7 +443,9 @@ export function QuotationsListPage() {
           </div>
 
           <div className="flex items-center gap-2 text-sm text-dark-400">
-            <span>💡 Tip: Usa las plantillas PDF para personalizar tus cotizaciones</span>
+            <span>
+              💡 Tip: Usa las plantillas PDF para personalizar tus cotizaciones
+            </span>
           </div>
         </div>
       </div>
@@ -573,45 +633,53 @@ export function QuotationsListPage() {
                           )}
 
                           {/* Aprobar / Rechazar (solo pending_approval) */}
-                          {quotation.status === "pending_approval" && (
-                            <ProtectedAction permission="quotations:approve">
+                          {quotation.status === "pending_approval" &&
+                            (isOwner ||
+                              permissions.includes("quotations:approve") ||
+                              permissions.includes(
+                                "quotations:approve-credit-limit",
+                              )) && (
                               <>
                                 <button
-                                  onClick={() =>
-                                    approveMutation.mutate(quotation.id)
-                                  }
+                                  onClick={() => handleApprove(quotation)}
                                   disabled={approveMutation.isPending}
                                   className="btn-sm btn-ghost text-green-400 hover:text-green-300"
                                   title="Aprobar cotización"
                                 >
                                   <ThumbsUp className="w-4 h-4" />
                                 </button>
-                                <button
-                                  onClick={() => handleReject(quotation)}
-                                  className="btn-sm btn-ghost text-red-400 hover:text-red-300"
-                                  title="Rechazar cotización"
-                                >
-                                  <ThumbsDown className="w-4 h-4" />
-                                </button>
+                                {(isOwner ||
+                                  permissions.includes(
+                                    "quotations:approve",
+                                  )) && (
+                                  <button
+                                    onClick={() => handleReject(quotation)}
+                                    className="btn-sm btn-ghost text-red-400 hover:text-red-300"
+                                    title="Rechazar cotización"
+                                  >
+                                    <ThumbsDown className="w-4 h-4" />
+                                  </button>
+                                )}
                               </>
-                            </ProtectedAction>
-                          )}
+                            )}
 
                           {/* Confirmar pago si hay comprobante subido */}
                           {quotation.metadata?.paymentReceiptUrl &&
                             !["paid", "cancelled"].includes(
                               quotation.status,
                             ) && (
-                            <ProtectedAction permission="quotations:confirm-payment">
-                              <button
-                                onClick={() => handleConfirmPayment(quotation)}
-                                className="btn-sm btn-ghost text-emerald-400 hover:text-emerald-300"
-                                title="Confirmar pago recibido"
-                              >
-                                <CreditCard className="w-4 h-4" />
-                              </button>
-                            </ProtectedAction>
-                          )}
+                              <ProtectedAction permission="quotations:confirm-payment">
+                                <button
+                                  onClick={() =>
+                                    handleConfirmPayment(quotation)
+                                  }
+                                  className="btn-sm btn-ghost text-emerald-400 hover:text-emerald-300"
+                                  title="Confirmar pago recibido"
+                                >
+                                  <CreditCard className="w-4 h-4" />
+                                </button>
+                              </ProtectedAction>
+                            )}
 
                           {/* Enviar link de revisión al cliente */}
                           {quotation.pdfUrl &&
@@ -856,6 +924,14 @@ export function QuotationsListPage() {
           </div>
         </div>
       )}
+
+      <CreditApprovalModal
+        isOpen={approveCreditModalOpen}
+        quotation={selectedQuotationForApprove}
+        isSubmitting={approveMutation.isPending}
+        onClose={resetApproveCreditModal}
+        onConfirm={handleConfirmApproveCredit}
+      />
 
       {/* Email Modal */}
       {emailModalOpen && selectedQuotationForEmail && (

@@ -268,4 +268,47 @@ export class ClientsController {
       next(error);
     }
   }
+
+  static async getRentalCreditProfile(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      const context = validateBusinessUnitContext(req, res);
+      if (!context) return;
+
+      const clientId = req.params.clientId as string;
+      const profile = await clientsService.getRentalCreditProfile(
+        context,
+        clientId,
+      );
+
+      res.json({ success: true, data: profile });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateRentalCreditProfile(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      const context = validateBusinessUnitContext(req, res);
+      if (!context) return;
+
+      const clientId = req.params.clientId as string;
+      const profile = await clientsService.upsertRentalCreditProfile(
+        context,
+        clientId,
+        req.body,
+      );
+
+      res.json({ success: true, data: profile });
+    } catch (error) {
+      next(error);
+    }
+  }
 }

@@ -8,6 +8,7 @@ import { quotationService } from "../services/quotation.service";
 import { quotationEmailService } from "../services/quotation-email.service";
 import { azureBlobStorageService } from "@shared/storage/azure-blob-storage.service";
 import { permissionService } from "@core/services/permission.service";
+import prisma from "@config/database";
 import {
   approveQuotationAsAdmin,
   ensureClientReviewToken,
@@ -561,8 +562,233 @@ export class QuotationController {
   async approve(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const userId = (req as any).user?.userId;
-      const result = await approveQuotationAsAdmin(id, userId);
+      const quotationId = Array.isArray(id) ? id[0] : id;
+      const { userId, businessUnitId, role } = req.context!;
+      const { creditApproval } = req.body || {};
+
+      if (!businessUnitId) {
+        res.status(400).json({
+          success: false,
+          error: "Business unit context is required",
+        });
+        return;
+      }
+
+      const quotation = await prisma.quotation.findUnique({
+        where: { id: quotationId },
+        select: {
+          id: true,
+          tenantId: true,
+          businessUnitId: true,
+          clientId: true,
+          metadata: true,
+        },
+      });
+
+      if (!quotation) {
+        res.status(404).json({
+          success: false,
+          error: "Quotation not found",
+        });
+        return;
+      }
+
+      const userPermissions = await permissionService.getUserPermissions(
+        userId,
+        businessUnitId,
+      );
+
+      const globalRole = (req as any).user?.role;
+      for (const pseudoPermission of [globalRole, role]) {
+        if (pseudoPermission && !userPermissions.includes(pseudoPermission)) {
+          userPermissions.push(pseudoPermission);
+        }
+      }
+
+      const isOwnerOrSuperAdmin =
+        userPermissions.includes("OWNER") ||
+        userPermissions.includes("SUPER_ADMIN");
+
+      const approvalReason = ((quotation.metadata as any) || {})
+        .approvalReason as string | undefined;
+
+      const hasGeneralApprovalPermission =
+        userPermissions.includes("quotations:approve");
+      const hasCreditLimitApprovalPermission = userPermissions.includes(
+        "quotations:approve-credit-limit",
+      );
+
+      if (!isOwnerOrSuperAdmin) {
+        if (approvalReason === "credit_limit_exceeded") {
+          if (
+            !hasGeneralApprovalPermission &&
+            !hasCreditLimitApprovalPermission
+          ) {
+            res.status(403).json({
+              success: false,
+              error:
+                "Insufficient permissions to approve quotations exceeding credit limits",
+            });
+            return;
+          }
+        } else if (!hasGeneralApprovalPermission) {
+          res.status(403).json({
+            success: false,
+            error: "Insufficient permissions to approve quotations",
+          });
+          return;
+        }
+      }
+
+      if (approvalReason === "credit_limit_exceeded") {
+        if (!creditApproval) {
+          res.status(400).json({
+            success: false,
+            error:
+              "Credit approval input is required for quotations exceeding credit limits",
+          });
+          return;
+        }
+
+        const parsedAmount = Number(creditApproval.creditLimitAmount);
+        const parsedDays = Number(creditApproval.creditLimitDays);
+
+        if (!Number.isFinite(parsedAmount) || parsedAmount < 0) {
+          res.status(400).json({
+            success: false,
+            error: "creditLimitAmount must be a valid non-negative number",
+          });
+          return;
+        }
+
+        if (!Number.isFinite(parsedDays) || parsedDays < 0) {
+          res.status(400).json({
+            success: false,
+            error: "creditLimitDays must be a valid non-negative number",
+          });
+          return;
+        }
+
+        const approvalJustification = String(
+          creditApproval.justification || "",
+        ).trim();
+        if (!approvalJustification) {
+          res.status(400).json({
+            success: false,
+            error:
+              "justification is required when approving a quotation that exceeded credit limits",
+          });
+          return;
+        }
+
+        await prisma.$transaction(async (tx) => {
+          const existingProfile = await tx.rentalClientCreditProfile.findUnique(
+            {
+              where: {
+                tenantId_businessUnitId_clientId: {
+                  tenantId: quotation.tenantId,
+                  businessUnitId: quotation.businessUnitId,
+                  clientId: quotation.clientId,
+                },
+              },
+            },
+          );
+
+          const updatedProfile = await tx.rentalClientCreditProfile.upsert({
+            where: {
+              tenantId_businessUnitId_clientId: {
+                tenantId: quotation.tenantId,
+                businessUnitId: quotation.businessUnitId,
+                clientId: quotation.clientId,
+              },
+            },
+            create: {
+              tenantId: quotation.tenantId,
+              businessUnitId: quotation.businessUnitId,
+              clientId: quotation.clientId,
+              creditLimitAmount: parsedAmount,
+              creditLimitDays: parsedDays,
+              requiresOwnerApprovalOnExceed:
+                creditApproval.requiresOwnerApprovalOnExceed !== undefined
+                  ? Boolean(creditApproval.requiresOwnerApprovalOnExceed)
+                  : true,
+              isActive:
+                creditApproval.isActive !== undefined
+                  ? Boolean(creditApproval.isActive)
+                  : true,
+              notes:
+                creditApproval.notes !== undefined
+                  ? String(creditApproval.notes)
+                  : null,
+              metadata: {
+                source: "quotation_credit_approval",
+                approvedQuotationId: quotationId,
+                approvedBy: userId,
+              },
+              updatedBy: userId,
+            },
+            update: {
+              creditLimitAmount: parsedAmount,
+              creditLimitDays: parsedDays,
+              requiresOwnerApprovalOnExceed:
+                creditApproval.requiresOwnerApprovalOnExceed !== undefined
+                  ? Boolean(creditApproval.requiresOwnerApprovalOnExceed)
+                  : undefined,
+              isActive:
+                creditApproval.isActive !== undefined
+                  ? Boolean(creditApproval.isActive)
+                  : undefined,
+              notes:
+                creditApproval.notes !== undefined
+                  ? String(creditApproval.notes)
+                  : undefined,
+              metadata: {
+                source: "quotation_credit_approval",
+                approvedQuotationId: quotationId,
+                approvedBy: userId,
+              },
+              updatedBy: userId,
+            },
+          });
+
+          const quotationMetadata = (quotation.metadata as any) || {};
+          await tx.quotation.update({
+            where: { id: quotationId },
+            data: {
+              metadata: {
+                ...quotationMetadata,
+                creditApproval: {
+                  approvedBy: userId,
+                  approvedAt: new Date().toISOString(),
+                  justification: approvalJustification,
+                  previousProfile: existingProfile
+                    ? {
+                        creditLimitAmount: Number(
+                          existingProfile.creditLimitAmount,
+                        ),
+                        creditLimitDays: existingProfile.creditLimitDays,
+                        requiresOwnerApprovalOnExceed:
+                          existingProfile.requiresOwnerApprovalOnExceed,
+                        isActive: existingProfile.isActive,
+                        notes: existingProfile.notes,
+                      }
+                    : null,
+                  newProfile: {
+                    creditLimitAmount: Number(updatedProfile.creditLimitAmount),
+                    creditLimitDays: updatedProfile.creditLimitDays,
+                    requiresOwnerApprovalOnExceed:
+                      updatedProfile.requiresOwnerApprovalOnExceed,
+                    isActive: updatedProfile.isActive,
+                    notes: updatedProfile.notes,
+                  },
+                },
+              },
+            },
+          });
+        });
+      }
+
+      const result = await approveQuotationAsAdmin(quotationId, userId);
       res.json({ success: true, ...result });
     } catch (error: any) {
       res.status(400).json({ success: false, error: error.message });

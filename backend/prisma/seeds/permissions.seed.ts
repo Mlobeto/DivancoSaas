@@ -155,6 +155,12 @@ const MODULE_PERMISSIONS: PermissionDefinition[] = [
     description: "Approve quotations",
     scope: "BUSINESS_UNIT",
   },
+  {
+    resource: "quotations",
+    action: "approve-credit-limit",
+    description: "Approve quotations pending due to credit limit exceed",
+    scope: "BUSINESS_UNIT",
+  },
 
   // CONTRACTS (Rental sub-module)
   {

@@ -1,8 +1,116 @@
 # 📋 Technical Debt - DivancoSaaS
 
-**Last Updated**: 2026-02-11
+**Last Updated**: 2026-03-04
 
 Este documento registra decisiones técnicas pospuestas, features pendientes y mejoras arquitectónicas identificadas durante el desarrollo.
+
+---
+
+## 🔴 High Priority (Rental Governance & Collaboration - Marzo 2026)
+
+### 0. Aprobación de crédito con delegación + input estructurado
+
+**Status**: Parcial (backend base implementado)  
+**Pending**:
+
+- [ ] Notificación accionable cuando una cotización queda en `pending_approval` por `credit_limit_exceeded`
+- [ ] UI de aprobación con inputs obligatorios para quien aprueba:
+  - nuevo `creditLimitAmount`
+  - nuevo `creditLimitDays`
+  - comentario/justificación
+- [ ] Acción atómica "aprobar y actualizar perfil de crédito" (evitar pasos manuales separados)
+- [ ] Auditoría completa: quién cambió límites, valores previos/nuevos, motivo, fecha/hora y BU
+- [ ] Regla de negocio configurable: exigir ajuste de límite antes de aprobar vs permitir aprobación puntual sin cambiar perfil
+
+**Context**:
+
+Cuando quien cotiza no es quien aprueba, se necesita que la aprobación sea operativa y deje trazabilidad. La notificación debe llevar al aprobador (OWNER o delegado con permiso específico) a una vista con formulario, no solo a aprobar/rechazar.
+
+**Effort**: 2-3 días  
+**Dependencies**:
+
+- Permiso `quotations:approve-credit-limit` ✅ (base creada)
+- Flujo de notificaciones en rental ✅ (requiere UI accionable)
+
+---
+
+### 0.1 Chat interno operativo (general y por usuario)
+
+**Status**: Not started  
+**Pending**:
+
+- [ ] Modelo de conversación/mensajes por tenant + BU + contexto (general, usuario, cotización, contrato)
+- [ ] Canales:
+  - `general` de BU
+  - directo entre usuarios
+  - hilo contextual (ej. una cotización/contrato)
+- [ ] Mensajes con acciones de negocio seguras (ej. actualizar límite de crédito) vía comandos/acciones explícitas
+- [ ] Trazabilidad de acciones ejecutadas desde chat (quién, qué cambió, before/after)
+- [ ] Reglas de autorización por acción (chat no puede saltarse RBAC)
+- [ ] Notificaciones push/email por menciones y mensajes directos
+
+**Context**:
+
+Se requiere comunicación interna en tiempo real y asincrónica, pero las modificaciones de datos deben pasar por comandos validados y auditables, no por texto libre.
+
+**Effort**: 1-2 semanas (MVP)  
+**Dependencies**:
+
+- Socket infra existente (base)
+- RBAC y auditoría cross-módulo
+
+---
+
+### 0.2 Modelo de evidencias asociadas al contrato (web + mobile offline)
+
+**Status**: Not started (parcial en evidencias sueltas)  
+**Pending**:
+
+- [ ] Nuevo modelo centralizado `ContractEvidence` (o equivalente) con:
+  - `tenantId`, `businessUnitId`, `contractId`
+  - `visibility`: `INTERNAL` | `CLOSING_REPORT`
+  - `category`: foto, video, documento, comentario, checklist, firma, etc.
+  - metadatos operativos (fecha evento, usuario, operador, ubicación opcional)
+  - estado de sincronización offline (`PENDING_SYNC`, `SYNCED`, `FAILED`)
+- [ ] Asociación de comentario + evidencia (no solo archivo)
+- [ ] API de carga masiva con idempotencia para sincronización móvil offline
+- [ ] Política de corte: qué evidencias entran al cierre y cuáles quedan solo internas
+- [ ] Timeline unificada de evidencias por contrato
+
+**Context**:
+
+La app mobile offline debe capturar evidencias y comentarios en campo. No todo debe ir al corte del cliente; algunas evidencias son solo de uso interno operativo.
+
+**Effort**: 1-2 semanas (MVP técnico)  
+**Dependencies**:
+
+- Azure Blob Storage ✅
+- Cola/sync offline en mobile (pendiente)
+
+---
+
+### 0.3 Estandarización obligatoria de zona horaria por BU (cross-component)
+
+**Status**: Parcial (setting BU creado, adopción incompleta)  
+**Pending**:
+
+- [ ] Utilitario único de fecha/hora en backend que reciba timezone BU
+- [ ] Prohibir `new Date().toLocale...` directo en módulos de negocio
+- [ ] Aplicar timezone BU en:
+  - cierres diarios
+  - plantillas de correo/contrato
+  - vistas públicas
+  - frontend rental y mobile
+- [ ] Tests de frontera (cambios de día, UTC offset, DST)
+
+**Context**:
+
+La zona horaria debe ser consistente en todas las funciones para evitar conflictos operativos y contables.
+
+**Effort**: 3-5 días  
+**Dependencies**:
+
+- `businessUnit.settings.rental.timezone` ✅ (base creada)
 
 ---
 
@@ -201,7 +309,7 @@ Actualmente los tenants se auto-registran vía `/auth/register` sin control come
 **Status**: Not started  
 **Pending**:
 
-- [ ] Blue-green deployment setup en Railway/Azure
+- [ ] Blue-green deployment setup en Azure
 - [ ] Database migration strategy (online migrations)
 - [ ] Health check endpoints mejorados
 - [ ] Graceful shutdown de conexiones activas

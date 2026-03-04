@@ -384,4 +384,4 @@ Al agregar funcionalidad al módulo:
 
 - [ARQUITECTURA.md](../../../docs/ARQUITECTURA.md) - Principios arquitectónicos
 - [MODULE_CONTRACT.md](../../README.md) - Contrato de módulos
-- [Swagger Docs](https://divancosaas-production.up.railway.app/api-docs/) - API en vivo
+- [Swagger Docs](https://divancosaas-backend.azurewebsites.net/api-docs/) - API en vivo

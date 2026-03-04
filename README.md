@@ -280,7 +280,7 @@ Frameworks recomendados:
 
 ### Backend
 
-- Railway / Render
+- Azure App Service (Docker + ACR)
 - AWS ECS / DigitalOcean
 - Vercel (con Postgres)
 
@@ -299,7 +299,7 @@ Frameworks recomendados:
 
 - AWS RDS PostgreSQL
 - Supabase
-- Railway Postgres
+- Azure Database for PostgreSQL
 
 ---
 

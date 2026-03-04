@@ -242,6 +242,21 @@ export class QuotationService {
       params.businessUnitId,
     );
 
+    // Resolver moneda por BU (rental settings) con fallback seguro
+    let resolvedCurrency = params.currency;
+    if (!resolvedCurrency) {
+      const businessUnit = await prisma.businessUnit.findFirst({
+        where: {
+          id: params.businessUnitId,
+          tenantId: params.tenantId,
+        },
+        select: { settings: true },
+      });
+
+      const settings = (businessUnit?.settings as any) || {};
+      resolvedCurrency = settings?.rental?.defaultCurrency || "COP";
+    }
+
     // 4. Crear cotización con precios calculados
     const quotation = await prisma.quotation.create({
       data: {
@@ -255,7 +270,7 @@ export class QuotationService {
         taxRate: new Decimal(taxRate),
         taxAmount: new Decimal(taxAmount),
         totalAmount: new Decimal(totalAmount),
-        currency: params.currency || "USD",
+        currency: resolvedCurrency,
         validUntil: params.validUntil,
 
         // v4.0: Tipo de cotización
@@ -1205,6 +1220,7 @@ export class QuotationService {
       include: {
         client: true,
         businessUnit: true,
+        items: true,
         creator: {
           select: { id: true, firstName: true, lastName: true, email: true },
         },
@@ -1222,6 +1238,33 @@ export class QuotationService {
       userPermissions.includes("quotations:send") ||
       userPermissions.includes("OWNER") ||
       userPermissions.includes("SUPER_ADMIN");
+
+    // Validar política de crédito por cliente+BU (solo vertical rental)
+    const isOwnerOrSuperAdmin =
+      userPermissions.includes("OWNER") ||
+      userPermissions.includes("SUPER_ADMIN");
+
+    const creditValidation =
+      await this.validateCreditPolicyForQuotation(quotation);
+
+    if (creditValidation.requiresApproval && !isOwnerOrSuperAdmin) {
+      await prisma.quotation.update({
+        where: { id: quotationId },
+        data: {
+          status: "pending_approval",
+          metadata: {
+            ...((quotation.metadata as any) || {}),
+            approvalReason: "credit_limit_exceeded",
+            creditValidation,
+            requestedBy: actorId,
+            requestedAt: new Date().toISOString(),
+          },
+        },
+      });
+
+      await this.notifyApprovers(quotation, "credit_limit_exceeded");
+      return { sent: false, status: "pending_approval" };
+    }
 
     if (canSendDirect) {
       // Generar PDF si no existe
@@ -1245,11 +1288,19 @@ export class QuotationService {
       // Sin permiso → solicitar aprobación
       await prisma.quotation.update({
         where: { id: quotationId },
-        data: { status: "pending_approval" },
+        data: {
+          status: "pending_approval",
+          metadata: {
+            ...((quotation.metadata as any) || {}),
+            approvalReason: "permission_required",
+            requestedBy: actorId,
+            requestedAt: new Date().toISOString(),
+          },
+        },
       });
 
       // Notificar a aprobadores
-      await this.notifyApprovers(quotation);
+      await this.notifyApprovers(quotation, "permission_required");
 
       return { sent: false, status: "pending_approval" };
     }
@@ -1456,12 +1507,19 @@ export class QuotationService {
   }
 
   /**
-   * Notificar a usuarios con permiso quotations:approve
+   * Notificar a usuarios con permisos de aprobación según motivo.
    */
-  private async notifyApprovers(quotation: any): Promise<void> {
+  private async notifyApprovers(
+    quotation: any,
+    approvalReason: "credit_limit_exceeded" | "permission_required",
+  ): Promise<void> {
     try {
-      // Buscar usuarios con permiso de aprobar en la misma BU
-      const approvers = await prisma.userBusinessUnit.findMany({
+      const requiredActions =
+        approvalReason === "credit_limit_exceeded"
+          ? ["approve", "approve-credit-limit"]
+          : ["approve"];
+
+      const roleApprovers = await prisma.userBusinessUnit.findMany({
         where: {
           businessUnitId: quotation.businessUnitId,
           role: {
@@ -1469,29 +1527,74 @@ export class QuotationService {
               some: {
                 permission: {
                   resource: "quotations",
-                  action: "approve",
+                  action: {
+                    in: requiredActions,
+                  },
                 },
               },
             },
           },
         },
         include: {
-          user: { select: { email: true, firstName: true } },
+          user: { select: { id: true, email: true, firstName: true } },
         },
       });
 
+      const additionalApprovers = await prisma.userPermission.findMany({
+        where: {
+          businessUnitId: quotation.businessUnitId,
+          permission: {
+            resource: "quotations",
+            action: {
+              in: requiredActions,
+            },
+          },
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+            },
+          },
+        },
+      });
+
+      const approversMap = new Map<
+        string,
+        { id: string; email: string | null; firstName: string | null }
+      >();
+
+      for (const ub of roleApprovers) {
+        approversMap.set(ub.user.id, ub.user);
+      }
+
+      for (const up of additionalApprovers) {
+        approversMap.set(up.user.id, up.user);
+      }
+
+      const approvers = Array.from(approversMap.values());
+
       const { emailService } = await import("@core/services/email.service");
 
-      for (const ub of approvers) {
-        if (!ub.user.email) continue;
+      for (const approver of approvers) {
+        if (!approver.email) continue;
+
+        const approvalHint =
+          approvalReason === "credit_limit_exceeded"
+            ? "Motivo: excede límite de crédito del cliente."
+            : "Motivo: requiere aprobación interna para envío.";
+
         await emailService
           .sendGenericEmail(quotation.businessUnitId, {
-            to: ub.user.email,
+            to: approver.email,
             subject: `Cotización ${quotation.code} pendiente de aprobación`,
             html: `
-            <p>Hola ${ub.user.firstName},</p>
+            <p>Hola ${approver.firstName || "equipo"},</p>
             <p>La cotización <strong>${quotation.code}</strong> para el cliente 
             <strong>${quotation.client?.name || ""}</strong> está pendiente de tu aprobación.</p>
+            <p><strong>${approvalHint}</strong></p>
             <p>Por favor ingresa al sistema para aprobarla o rechazarla.</p>
           `,
           })
@@ -1500,6 +1603,71 @@ export class QuotationService {
     } catch (e) {
       console.error("[QuotationService] Error notificando aprobadores:", e);
     }
+  }
+
+  /**
+   * Valida límites de crédito para una cotización en el contexto cliente+BU.
+   * Si no existe perfil o está inactivo, no bloquea el envío.
+   */
+  private async validateCreditPolicyForQuotation(quotation: any): Promise<{
+    requiresApproval: boolean;
+    hasProfile: boolean;
+    exceededAmount: boolean;
+    exceededDays: boolean;
+    projectedAmount: number;
+    projectedDays: number;
+    amountLimit: number;
+    daysLimit: number;
+  }> {
+    const profile = await prisma.rentalClientCreditProfile.findUnique({
+      where: {
+        tenantId_businessUnitId_clientId: {
+          tenantId: quotation.tenantId,
+          businessUnitId: quotation.businessUnitId,
+          clientId: quotation.clientId,
+        },
+      },
+    });
+
+    if (!profile || !profile.isActive) {
+      return {
+        requiresApproval: false,
+        hasProfile: false,
+        exceededAmount: false,
+        exceededDays: false,
+        projectedAmount: Number(quotation.totalAmount || 0),
+        projectedDays: Number(quotation.estimatedDays || 0),
+        amountLimit: 0,
+        daysLimit: 0,
+      };
+    }
+
+    const projectedAmount = Number(quotation.totalAmount || 0);
+    const projectedDays = Math.max(
+      Number(quotation.estimatedDays || 0),
+      ...(Array.isArray(quotation.items)
+        ? quotation.items.map((it: any) => Number(it.rentalDays || 0))
+        : [0]),
+    );
+
+    const amountLimit = Number(profile.creditLimitAmount || 0);
+    const daysLimit = Number(profile.creditLimitDays || 0);
+
+    const exceededAmount = amountLimit > 0 && projectedAmount > amountLimit;
+    const exceededDays = daysLimit > 0 && projectedDays > daysLimit;
+
+    return {
+      requiresApproval:
+        profile.requiresOwnerApprovalOnExceed &&
+        (exceededAmount || exceededDays),
+      hasProfile: true,
+      exceededAmount,
+      exceededDays,
+      projectedAmount,
+      projectedDays,
+      amountLimit,
+      daysLimit,
+    };
   }
 
   // ============================================

@@ -61,6 +61,13 @@ export class BusinessUnitService {
       description?: string;
     },
   ) {
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { country: true },
+    });
+
+    const isColombia = (tenant?.country || "").toUpperCase() === "CO";
+
     // Validar que el slug no exista
     const existing = await prisma.businessUnit.findFirst({
       where: { tenantId, slug: data.slug },
@@ -76,7 +83,13 @@ export class BusinessUnitService {
         name: data.name,
         slug: data.slug,
         description: data.description,
-        settings: {},
+        settings: {
+          rental: {
+            timezone: "America/Bogota",
+            defaultCurrency: isColombia ? "COP" : "USD",
+            secondaryCurrency: isColombia ? "USD" : "COP",
+          },
+        },
       },
     });
   }
@@ -167,5 +180,77 @@ export class BusinessUnitService {
     return prisma.businessUnit.delete({
       where: { id, tenantId },
     });
+  }
+
+  async getRentalSettings(tenantId: string, id: string) {
+    const businessUnit = await prisma.businessUnit.findFirst({
+      where: { id, tenantId },
+      select: { id: true, settings: true },
+    });
+
+    if (!businessUnit) {
+      throw new Error("Business Unit not found");
+    }
+
+    const settings = (businessUnit.settings as any) || {};
+    const rental = settings.rental || {};
+
+    return {
+      businessUnitId: businessUnit.id,
+      timezone: rental.timezone || "America/Bogota",
+      defaultCurrency: rental.defaultCurrency || "COP",
+      secondaryCurrency: rental.secondaryCurrency || "USD",
+    };
+  }
+
+  async updateRentalSettings(
+    tenantId: string,
+    id: string,
+    data: {
+      timezone?: string;
+      defaultCurrency?: string;
+      secondaryCurrency?: string;
+    },
+  ) {
+    const businessUnit = await prisma.businessUnit.findFirst({
+      where: { id, tenantId },
+      select: { id: true, settings: true },
+    });
+
+    if (!businessUnit) {
+      throw new Error("Business Unit not found");
+    }
+
+    const currentSettings = (businessUnit.settings as any) || {};
+    const currentRental = currentSettings.rental || {};
+
+    const nextSettings = {
+      ...currentSettings,
+      rental: {
+        ...currentRental,
+        ...(data.timezone !== undefined ? { timezone: data.timezone } : {}),
+        ...(data.defaultCurrency !== undefined
+          ? { defaultCurrency: data.defaultCurrency }
+          : {}),
+        ...(data.secondaryCurrency !== undefined
+          ? { secondaryCurrency: data.secondaryCurrency }
+          : {}),
+      },
+    };
+
+    const updated = await prisma.businessUnit.update({
+      where: { id, tenantId },
+      data: { settings: nextSettings },
+      select: { id: true, settings: true },
+    });
+
+    const rental = (updated.settings as any)?.rental || {};
+
+    return {
+      businessUnitId: updated.id,
+      timezone: rental.timezone || "America/Bogota",
+      defaultCurrency: rental.defaultCurrency || "COP",
+      secondaryCurrency: rental.secondaryCurrency || "USD",
+    };
   }
 }

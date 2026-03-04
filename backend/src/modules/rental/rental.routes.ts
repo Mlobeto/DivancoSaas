@@ -453,7 +453,7 @@ router.post(
 // Aprobar cotización pendiente (requiere quotations:approve)
 router.post(
   "/quotations/:id/approve",
-  authorize("quotations:approve"),
+  authorize("quotations:approve", "quotations:approve-credit-limit"),
   quotationController.approve.bind(quotationController),
 );
 
@@ -558,9 +558,7 @@ router.post(
 router.post(
   "/contracts/templates/preview-section",
   authorize("contracts:read"),
-  contractTemplateController.previewSection.bind(
-    contractTemplateController,
-  ),
+  contractTemplateController.previewSection.bind(contractTemplateController),
 );
 
 // Obtener metadata del template

@@ -183,12 +183,35 @@ export async function authenticate(
       }
     }
 
-    // Construir contexto
     const businessUnit = user.businessUnits[0];
-    const permissions =
+
+    const rolePermissions =
       businessUnit?.role.permissions.map(
         (rp) => `${rp.permission.resource}:${rp.permission.action}`,
       ) || [];
+
+    let additionalPermissions: string[] = [];
+    if (businessUnitId) {
+      const userAdditionalPermissions = await prisma.userPermission.findMany({
+        where: {
+          userId: user.id,
+          businessUnitId,
+        },
+        include: {
+          permission: true,
+        },
+      });
+
+      additionalPermissions = userAdditionalPermissions.map(
+        (up) => `${up.permission.resource}:${up.permission.action}`,
+      );
+    }
+
+    const permissions = [
+      ...new Set([...rolePermissions, ...additionalPermissions]),
+    ];
+
+    // Construir contexto
 
     // For SUPER_ADMIN, tenantId can be from header (when managing other tenants) or null
     const contextTenantId =

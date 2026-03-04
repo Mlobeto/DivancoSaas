@@ -32,6 +32,16 @@ router.post(
   ClientsController.createAccountMovement,
 );
 
+router.get(
+  "/clients/:clientId/rental-credit-profile",
+  ClientsController.getRentalCreditProfile,
+);
+
+router.put(
+  "/clients/:clientId/rental-credit-profile",
+  ClientsController.updateRentalCreditProfile,
+);
+
 router.get("/config/current", ClientsController.getCurrentConfig);
 
 router.put("/config/current", ClientsController.updateCurrentConfig);

@@ -542,7 +542,7 @@ model BusinessUnit {
 
 ### Current Setup
 
-- **Platform:** Railway (development/staging)
+- **Platform:** Azure App Service (Docker + ACR)
 - **Database:** PostgreSQL
 - **Storage:** Azure Blob Storage
 - **Runtime:** Node.js 20 + tsx
@@ -574,13 +574,34 @@ SMTP_PORT=587
 
 ### Puppeteer Configuration
 
-```toml
-# nixpacks.toml (Railway)
-[phases.setup]
-nixPkgs = ["...", "chromium"]
+```dockerfile
+# Dockerfile (Azure App Service)
+FROM node:20-slim
 
-[phases.install]
-cmds = ["npm ci"]
+# Instalar dependencias del sistema para Chromium/Playwright
+RUN apt-get update && apt-get install -y \
+  ca-certificates \
+  fonts-liberation \
+  fonts-noto-color-emoji \
+  libasound2 \
+  libatk-bridge2.0-0 \
+  libatk1.0-0 \
+  libcups2 \
+  libdbus-1-3 \
+  libdrm2 \
+  libgbm1 \
+  libgtk-3-0 \
+  libnspr4 \
+  libnss3 \
+  libx11-6 \
+  libxcomposite1 \
+  libxdamage1 \
+  libxext6 \
+  libxfixes3 \
+  libxrandr2 \
+  xdg-utils \
+  --no-install-recommends && \
+  rm -rf /var/lib/apt/lists/*
 ```
 
 ---

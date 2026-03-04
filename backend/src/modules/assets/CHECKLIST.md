@@ -251,7 +251,7 @@
 
 ## 🎯 Próximos Pasos Inmediatos
 
-1. **Deploy a Railway** ✅ (ya está configurado)
+1. **Deploy a Azure App Service** ✅
 2. **Testing manual en Swagger UI**
    - Crear assets de prueba
    - Registrar uso

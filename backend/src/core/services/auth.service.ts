@@ -173,6 +173,11 @@ export class AuthService {
           settings: {
             enabledModules: [],
             vertical: null,
+            rental: {
+              timezone: "America/Bogota",
+              defaultCurrency: country === "CO" ? "COP" : "USD",
+              secondaryCurrency: country === "CO" ? "USD" : "COP",
+            },
           },
         },
       });
@@ -267,7 +272,10 @@ export class AuthService {
   async login(input: LoginInput): Promise<AuthResponse> {
     const { email, password, tenantSlug } = input;
 
-    console.log("[AuthService.login] Starting login for:", { email, tenantSlug: tenantSlug || "(none)" });
+    console.log("[AuthService.login] Starting login for:", {
+      email,
+      tenantSlug: tenantSlug || "(none)",
+    });
 
     // 1. Buscar usuario
     let user;
@@ -314,7 +322,9 @@ export class AuthService {
       }
 
       if (users.length > 1) {
-        console.log("[AuthService.login] ❌ Multiple tenants found, need tenantSlug");
+        console.log(
+          "[AuthService.login] ❌ Multiple tenants found, need tenantSlug",
+        );
         // Usuario existe en múltiples tenants, debe especificar
         throw new AppError(
           400,
@@ -341,7 +351,11 @@ export class AuthService {
       throw new AppError(401, "INVALID_CREDENTIALS", "Invalid credentials");
     }
 
-    console.log("[AuthService.login] User found:", { id: user.id, email: user.email, status: user.status });
+    console.log("[AuthService.login] User found:", {
+      id: user.id,
+      email: user.email,
+      status: user.status,
+    });
 
     // 2. Verificar status
     if (user.status !== "ACTIVE") {
@@ -353,7 +367,10 @@ export class AuthService {
 
     // SUPER_ADMIN no tiene tenant, skip validación
     if (user.tenant && user.tenant.status !== "ACTIVE") {
-      console.log("[AuthService.login] ❌ Tenant is not ACTIVE:", user.tenant.status);
+      console.log(
+        "[AuthService.login] ❌ Tenant is not ACTIVE:",
+        user.tenant.status,
+      );
       throw new AppError(
         403,
         "TENANT_SUSPENDED",
@@ -371,7 +388,9 @@ export class AuthService {
       throw new AppError(401, "INVALID_CREDENTIALS", "Invalid credentials");
     }
 
-    console.log("[AuthService.login] ✅ Password valid, proceeding with token generation");
+    console.log(
+      "[AuthService.login] ✅ Password valid, proceeding with token generation",
+    );
 
     // 4. Actualizar lastLoginAt
     await prisma.user.update({

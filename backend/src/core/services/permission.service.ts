@@ -84,6 +84,7 @@ export class PermissionService {
         "quotations:delete",
         "quotations:send",
         "quotations:approve",
+        "quotations:approve-credit-limit",
         "quotations:confirm-payment",
         "contracts:create",
         "contracts:read",

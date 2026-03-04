@@ -136,44 +136,57 @@ AZURE_STORAGE_CONNECTION_STRING="..."
 ### Crear archivo: `.github/workflows/deploy-backend.yml`
 
 ```yaml
-name: Deploy Backend to Railway
+name: Build and deploy Node.js app to Azure Web App - divancosaas-backend
 
 on:
   push:
-    branches: [main, production]
-    paths:
-      - "backend/**"
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  REGISTRY_NAME: divancosaas2026
+  IMAGE_NAME: divancosaas-backend
+  APP_NAME: divancosaas-backend
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+      - name: Login to Azure
+        uses: azure/login@v2
         with:
-          node-version: "18"
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_9F1F7C40B85347F8B59CFBE63C98C81C }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_EFEBEF97B0BB48BE80D258C4AF5D8ECF }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_A5ADA5AEC81C4C9E986AD8A1111FBD2F }}
 
-      - name: Install dependencies
+      - name: Login to Azure Container Registry
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ env.REGISTRY_NAME }}.azurecr.io
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Build and push Docker image
+        working-directory: ./backend
         run: |
-          cd backend
-          npm ci
+          docker build . -t ${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          docker build . -t ${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest
+          docker push ${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          docker push ${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest
 
-      - name: Build
-        run: |
-          cd backend
-          npm run build
-
-      - name: Run Prisma migrations
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: |
-          cd backend
-          npx prisma migrate deploy
-
-      - name: Deploy to Railway
-        run: echo "Railway auto-deploys on git push"
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.APP_NAME }}
+          slot-name: "Production"
+          images: ${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
 ```
 
 ---
@@ -240,7 +253,7 @@ O desde Azure Portal:
 - [ ] Crear Azure Communication Services
 - [ ] Crear Azure Blob Storage
 - [ ] Copiar connection strings a .env
-- [ ] Actualizar variables en Railway
+- [ ] Actualizar variables en Azure Web App / GitHub Secrets
 - [ ] Probar conexión desde backend local
 - [ ] Configurar GitHub Actions
 - [ ] Probar deploy automático

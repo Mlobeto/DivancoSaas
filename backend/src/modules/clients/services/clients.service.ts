@@ -137,11 +137,23 @@ export class ClientsService {
 
     const bu = client.businessUnits[0];
 
+    const rentalCreditProfile =
+      await this.prisma.rentalClientCreditProfile.findUnique({
+        where: {
+          tenantId_businessUnitId_clientId: {
+            tenantId: context.tenantId,
+            businessUnitId: context.businessUnitId,
+            clientId,
+          },
+        },
+      });
+
     return {
       ...client,
       status: bu?.status ?? ClientStatus.ACTIVE,
       tags: bu?.tags ?? [],
       businessUnitId: context.businessUnitId,
+      rentalCreditProfile,
     };
   }
 
@@ -278,33 +290,43 @@ export class ClientsService {
   }
 
   async getClientSummary(context: Context, clientId: string) {
-    const [client, movements, risk] = await this.prisma.$transaction([
-      this.prisma.client.findFirst({
-        where: {
-          id: clientId,
-          tenantId: context.tenantId,
-        },
-        include: {
-          contacts: true,
-          taxProfiles: true,
-          businessUnits: {
-            where: { businessUnitId: context.businessUnitId },
+    const [client, movements, risk, rentalCreditProfile] =
+      await this.prisma.$transaction([
+        this.prisma.client.findFirst({
+          where: {
+            id: clientId,
+            tenantId: context.tenantId,
           },
-        },
-      }),
-      this.prisma.clientAccountMovement.findMany({
-        where: {
-          clientId,
-          tenantId: context.tenantId,
-          businessUnitId: context.businessUnitId,
-        },
-        orderBy: { date: "desc" },
-        take: 10,
-      }),
-      this.prisma.clientRiskSnapshot.findUnique({
-        where: { clientId },
-      }),
-    ]);
+          include: {
+            contacts: true,
+            taxProfiles: true,
+            businessUnits: {
+              where: { businessUnitId: context.businessUnitId },
+            },
+          },
+        }),
+        this.prisma.clientAccountMovement.findMany({
+          where: {
+            clientId,
+            tenantId: context.tenantId,
+            businessUnitId: context.businessUnitId,
+          },
+          orderBy: { date: "desc" },
+          take: 10,
+        }),
+        this.prisma.clientRiskSnapshot.findUnique({
+          where: { clientId },
+        }),
+        this.prisma.rentalClientCreditProfile.findUnique({
+          where: {
+            tenantId_businessUnitId_clientId: {
+              tenantId: context.tenantId,
+              businessUnitId: context.businessUnitId,
+              clientId,
+            },
+          },
+        }),
+      ]);
 
     if (!client) {
       throw new Error("Client not found");
@@ -321,7 +343,88 @@ export class ClientsService {
       },
       recentMovements: movements,
       risk,
+      rentalCreditProfile,
     };
+  }
+
+  async getRentalCreditProfile(context: Context, clientId: string) {
+    const profile = await this.prisma.rentalClientCreditProfile.findUnique({
+      where: {
+        tenantId_businessUnitId_clientId: {
+          tenantId: context.tenantId,
+          businessUnitId: context.businessUnitId,
+          clientId,
+        },
+      },
+    });
+
+    return (
+      profile ?? {
+        tenantId: context.tenantId,
+        businessUnitId: context.businessUnitId,
+        clientId,
+        creditLimitAmount: 0,
+        creditLimitDays: 0,
+        requiresOwnerApprovalOnExceed: true,
+        isActive: false,
+      }
+    );
+  }
+
+  async upsertRentalCreditProfile(
+    context: Context,
+    clientId: string,
+    payload: any,
+  ) {
+    const {
+      creditLimitAmount,
+      creditLimitDays,
+      requiresOwnerApprovalOnExceed,
+      isActive,
+      notes,
+      metadata,
+    } = payload;
+
+    return this.prisma.rentalClientCreditProfile.upsert({
+      where: {
+        tenantId_businessUnitId_clientId: {
+          tenantId: context.tenantId,
+          businessUnitId: context.businessUnitId,
+          clientId,
+        },
+      },
+      create: {
+        tenantId: context.tenantId,
+        businessUnitId: context.businessUnitId,
+        clientId,
+        creditLimitAmount: Number(creditLimitAmount || 0),
+        creditLimitDays: Number(creditLimitDays || 0),
+        requiresOwnerApprovalOnExceed:
+          requiresOwnerApprovalOnExceed !== undefined
+            ? Boolean(requiresOwnerApprovalOnExceed)
+            : true,
+        isActive: isActive !== undefined ? Boolean(isActive) : true,
+        notes,
+        metadata,
+        updatedBy: context.userId,
+      },
+      update: {
+        creditLimitAmount:
+          creditLimitAmount !== undefined
+            ? Number(creditLimitAmount)
+            : undefined,
+        creditLimitDays:
+          creditLimitDays !== undefined ? Number(creditLimitDays) : undefined,
+        requiresOwnerApprovalOnExceed:
+          requiresOwnerApprovalOnExceed !== undefined
+            ? Boolean(requiresOwnerApprovalOnExceed)
+            : undefined,
+        isActive: isActive !== undefined ? Boolean(isActive) : undefined,
+        notes: notes !== undefined ? notes : undefined,
+        metadata: metadata !== undefined ? metadata : undefined,
+        updatedBy: context.userId,
+      },
+    });
   }
 
   async getClientRiskProfile(context: Context, clientId: string) {

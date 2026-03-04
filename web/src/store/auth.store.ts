@@ -35,7 +35,10 @@ export const useAuthStore = create<AuthState>()(
           tenant: data.tenant || null,
           businessUnit: data.businessUnit || null,
           role: data.role || null,
-          permissions: data.permissions || [],
+          permissions:
+            data.role === "OWNER"
+              ? Array.from(new Set([...(data.permissions || []), "OWNER"]))
+              : data.permissions || [],
           isAuthenticated: true,
         }),
 

@@ -36,36 +36,37 @@ model Tenant {
   updatedAt DateTime @updatedAt
 
   // Relations
-  businessUnits       BusinessUnit[]
-  users               User[]
-  subscriptions       PlatformSubscription[]
-  auditLogs           AuditLog[]
-  eventQueue          EventQueue[]
-  assets              Asset[]
-  supplies            Supply[]
-  rentalContracts     RentalContract[]
-  suppliers           Supplier[]
-  supplyQuotes        SupplyQuote[]
-  purchaseOrders      PurchaseOrder[]
-  stockTransactions   StockTransaction[]
-  supplyCategories    SupplyCategory[]
-  clients             Client[]
-  clientMovements     ClientAccountMovement[]
-  clientConfigs       ClientRankingConfig[]
-  clientBUs           ClientBusinessUnit[]
-  clientAccounts      ClientAccount[] // Cuentas de alquiler
-  templates           Template[]
-  quotations          Quotation[]
-  stockLevels         StockLevel[]
-  stockMovements      StockMovement[]
-  bulkRentalItems     BulkRentalItem[]
-  documentTemplates   DocumentTemplate[]
-  emailTemplates      EmailTemplate[]
-  operatorProfiles    OperatorProfile[]
-  assetRentalProfiles AssetRentalProfile[]
-  notifications       Notification[]
-  chatRooms           ChatRoom[]
-  contractClauses     ContractClause[]
+  businessUnits        BusinessUnit[]
+  users                User[]
+  subscriptions        PlatformSubscription[]
+  auditLogs            AuditLog[]
+  eventQueue           EventQueue[]
+  assets               Asset[]
+  supplies             Supply[]
+  rentalContracts      RentalContract[]
+  suppliers            Supplier[]
+  supplyQuotes         SupplyQuote[]
+  purchaseOrders       PurchaseOrder[]
+  stockTransactions    StockTransaction[]
+  supplyCategories     SupplyCategory[]
+  clients              Client[]
+  clientMovements      ClientAccountMovement[]
+  clientConfigs        ClientRankingConfig[]
+  clientBUs            ClientBusinessUnit[]
+  clientAccounts       ClientAccount[] // Cuentas de alquiler
+  rentalCreditProfiles RentalClientCreditProfile[]
+  templates            Template[]
+  quotations           Quotation[]
+  stockLevels          StockLevel[]
+  stockMovements       StockMovement[]
+  bulkRentalItems      BulkRentalItem[]
+  documentTemplates    DocumentTemplate[]
+  emailTemplates       EmailTemplate[]
+  operatorProfiles     OperatorProfile[]
+  assetRentalProfiles  AssetRentalProfile[]
+  notifications        Notification[]
+  chatRooms            ChatRoom[]
+  contractClauses      ContractClause[]
 
   @@index([slug])
   @@index([country])
@@ -115,6 +116,7 @@ model BusinessUnit {
   stockTransactions      StockTransaction[]
   clientMovements        ClientAccountMovement[]
   clientConfigs          ClientRankingConfig[]
+  rentalCreditProfiles   RentalClientCreditProfile[]
   templates              Template[]
   quotations             Quotation[]
   quotationContracts     QuotationContract[]
@@ -177,11 +179,12 @@ model User {
   createdBulkRentalItems BulkRentalItem[] @relation("BulkRentalItemCreator")
 
   // Operator profile (optional 1:1 extension)
-  operatorProfile OperatorProfile?
-  notifications   Notification[]
-  userPushTokens  UserPushToken[]
-  chatRoomMembers ChatRoomMember[]
-  sentMessages    ChatMessage[]
+  operatorProfile             OperatorProfile?
+  notifications               Notification[]
+  userPushTokens              UserPushToken[]
+  chatRoomMembers             ChatRoomMember[]
+  sentMessages                ChatMessage[]
+  rentalCreditProfilesUpdated RentalClientCreditProfile[] @relation("RentalCreditProfileUpdater")
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -1410,15 +1413,16 @@ model Client {
   updatedAt DateTime @updatedAt
 
   // Relaciones
-  tenant          Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  contacts        ClientContact[]
-  taxProfiles     ClientTaxProfile[]
-  movements       ClientAccountMovement[]
-  riskSnapshots   ClientRiskSnapshot[]
-  businessUnits   ClientBusinessUnit[]
-  quotations      Quotation[]
-  rentalContracts RentalContract[]
-  rentalAccount   ClientAccount? // Cuenta única para alquiler
+  tenant               Tenant                      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contacts             ClientContact[]
+  taxProfiles          ClientTaxProfile[]
+  movements            ClientAccountMovement[]
+  riskSnapshots        ClientRiskSnapshot[]
+  businessUnits        ClientBusinessUnit[]
+  quotations           Quotation[]
+  rentalContracts      RentalContract[]
+  rentalAccount        ClientAccount? // Cuenta única para alquiler
+  rentalCreditProfiles RentalClientCreditProfile[]
 
   @@index([tenantId])
   @@index([name])
@@ -1501,6 +1505,42 @@ model ClientBusinessUnit {
   @@index([tenantId])
   @@index([businessUnitId])
   @@map("client_business_units")
+}
+
+// ============================================
+// RENTAL: Perfil de crédito por Cliente + BU
+// ============================================
+
+model RentalClientCreditProfile {
+  id             String @id @default(uuid())
+  tenantId       String
+  businessUnitId String
+  clientId       String
+
+  // Límites exclusivos para la BU (vertical rental)
+  creditLimitAmount Decimal @default(0) @db.Decimal(12, 2)
+  creditLimitDays   Int     @default(0)
+
+  // Política operativa
+  requiresOwnerApprovalOnExceed Boolean @default(true)
+  isActive                      Boolean @default(true)
+
+  // Metadata
+  notes     String?  @db.Text
+  metadata  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  businessUnit BusinessUnit @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
+  client       Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  updater      User?        @relation("RentalCreditProfileUpdater", fields: [updatedBy], references: [id])
+
+  @@unique([tenantId, businessUnitId, clientId])
+  @@index([tenantId, businessUnitId])
+  @@index([clientId])
+  @@map("rental_client_credit_profiles")
 }
 
 model ClientContact {
@@ -2310,21 +2350,21 @@ enum AnnouncementType {
 // ============================================
 
 model Template {
-  id             String   @id @default(uuid())
+  id             String  @id @default(uuid())
   tenantId       String
   businessUnitId String
   name           String
   type           String // "quotation", "contract", "invoice", "receipt", "report", "certificate"
-  version        String   @default("1.0") // Version del template
+  version        String  @default("1.0") // Version del template
   content        Json // Estructura modular de secciones (v2.0)
-  styles         String?  @db.Text // CSS personalizado adicional
+  styles         String? @db.Text // CSS personalizado adicional
   variables      Json // Array de TemplateVariable (legacy, puede ser removido en v3.0)
-  
+
   // Configuración de features (v2.0)
   requiresSignature    Boolean @default(false)
   requiresPaymentProof Boolean @default(false)
   allowLocalPayment    Boolean @default(true)
-  
+
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
