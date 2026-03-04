@@ -1,12 +1,10 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "@/store/auth.store";
 import { dashboardService } from "@/core/services/dashboard.service";
 import { Layout } from "@/core/components/Layout";
-import { BrandingStatusCard } from "@/core/components/BrandingStatusCard";
 import { ManualNotificationModal } from "@/core/components/ManualNotificationModal";
-import { businessUnitService } from "@/core/services/businessUnit.service";
 import {
   ChevronDown,
   ChevronUp,
@@ -18,15 +16,6 @@ import {
   Shield,
 } from "lucide-react";
 
-const TIMEZONE_OPTIONS = [
-  "America/Mexico_City",
-  "America/Bogota",
-  "America/Lima",
-  "America/Santiago",
-  "America/Argentina/Buenos_Aires",
-  "UTC",
-];
-
 interface ActionCard {
   id: string;
   title: string;
@@ -34,18 +23,22 @@ interface ActionCard {
   path: string;
 }
 
+interface OwnerFocusCard {
+  id: string;
+  title: string;
+  description: string;
+  path?: string;
+  comingSoon?: boolean;
+}
+
 export function DashboardPage() {
-  const { user, tenant, businessUnit, role, permissions, setAuth } =
-    useAuthStore();
+  const { tenant, businessUnit, role, permissions } = useAuthStore();
   const [showTenantStats, setShowTenantStats] = useState(false);
   const [showBuStats, setShowBuStats] = useState(false);
   const [showOwnerPanel, setShowOwnerPanel] = useState(true);
   const [showOperationsPanel, setShowOperationsPanel] = useState(true);
   const [showMaintenancePanel, setShowMaintenancePanel] = useState(true);
   const [manualNotificationOpen, setManualNotificationOpen] = useState(false);
-  const [timezoneValue, setTimezoneValue] = useState(
-    businessUnit?.timezone || "America/Mexico_City",
-  );
 
   const roleName = role || "USER";
   const userPermissions = permissions || [];
@@ -70,6 +63,52 @@ export function DashboardPage() {
   const canAccessOwnerNotificationCenter =
     roleName === "OWNER" || userPermissions.includes("notifications:broadcast");
 
+  const ownerFocusCards = useMemo<OwnerFocusCard[]>(
+    () => [
+      {
+        id: "chat",
+        title: "Chat operativo",
+        description:
+          "Canal interno para coordinación rápida entre áreas y seguimiento operativo.",
+        comingSoon: true,
+      },
+      {
+        id: "quotations",
+        title: "Cotizaciones",
+        description: "Gestión completa de cotizaciones comerciales y técnicas.",
+        path: "/rental/quotations",
+      },
+      {
+        id: "contracts",
+        title: "Contratos",
+        description: "Seguimiento de contratos activos, firmas y estados.",
+        path: "/rental/contracts",
+      },
+      {
+        id: "client-accounts",
+        title: "Cuentas de clientes",
+        description:
+          "Consulta de cuentas corrientes y estado financiero por cliente.",
+        path: "/rental/accounts",
+      },
+      {
+        id: "asset-maintenance",
+        title: "Mantenimiento de activos",
+        description:
+          "Tablero de control para revisar ejecución y calidad de mantenimientos.",
+        comingSoon: true,
+      },
+      {
+        id: "reports",
+        title: "Informes",
+        description:
+          "Vista consolidada para KPIs y reportes ejecutivos (definir contenido).",
+        comingSoon: true,
+      },
+    ],
+    [],
+  );
+
   const canViewOperations = hasAccess(
     ["ADMIN", "MANAGER"],
     [
@@ -84,25 +123,6 @@ export function DashboardPage() {
   const canViewMaintenance = hasAccess(
     ["MAINTENANCE", "OPERATOR", "TECHNICIAN", "MANAGER"],
     ["operators:read", "operators:create", "inventory:read", "assets:read"],
-  );
-
-  const ownerActions = useMemo<ActionCard[]>(
-    () => [
-      {
-        id: "branding",
-        title: "Branding de la Business Unit",
-        description: "Configura logo, colores, fuentes y estilo institucional.",
-        path: "/settings/branding",
-      },
-      {
-        id: "staff",
-        title: "Gestión de personal",
-        description:
-          "Define equipo, roles base y permisos adicionales por usuario.",
-        path: "/settings/staff",
-      },
-    ],
-    [],
   );
 
   const operationsActions = useMemo<ActionCard[]>(
@@ -147,26 +167,6 @@ export function DashboardPage() {
     ],
     [],
   );
-
-  const updateTimezoneMutation = useMutation({
-    mutationFn: async (timezone: string) => {
-      if (!businessUnit) return;
-      return businessUnitService.update(businessUnit.id, { timezone });
-    },
-    onSuccess: (updatedBusinessUnit) => {
-      if (!updatedBusinessUnit || !user || !tenant) return;
-      setAuth({
-        user,
-        tenant,
-        businessUnit: {
-          ...businessUnit,
-          ...updatedBusinessUnit,
-        },
-        role: role || undefined,
-        permissions: userPermissions,
-      });
-    },
-  });
 
   // Fetch tenant stats
   const { data: tenantStats, isLoading: loadingTenantStats } = useQuery({
@@ -238,8 +238,8 @@ export function DashboardPage() {
                 >
                   <div className="flex items-center gap-2">
                     <Settings className="w-5 h-5" />
-                    <h3 className="text-lg font-semibold">
-                      Panel OWNER · Configuración inicial
+                    <h3 className="text-lg font-semibold tracking-wide uppercase">
+                      Panel OWNER · Operación principal
                     </h3>
                   </div>
                   {showOwnerPanel ? (
@@ -252,10 +252,13 @@ export function DashboardPage() {
                 {showOwnerPanel && (
                   <div className="mt-4 pt-4 border-t border-dark-700 space-y-4">
                     {canAccessOwnerNotificationCenter && (
-                      <div className="card bg-dark-800 border-dark-700">
+                      <div className="card bg-dark-900 border border-dark-600 rounded-none shadow-none">
                         <div className="flex items-center justify-between gap-3">
                           <div>
-                            <h4 className="font-medium">
+                            <p className="text-xs tracking-[0.18em] text-dark-400 uppercase mb-1">
+                              Comunicaciones
+                            </p>
+                            <h4 className="font-medium uppercase tracking-wide">
                               Centro de notificaciones de la Business Unit
                             </h4>
                             <p className="text-dark-400 text-sm mt-1">
@@ -274,59 +277,52 @@ export function DashboardPage() {
                       </div>
                     )}
 
-                    <BrandingStatusCard />
-
-                    <div className="card bg-dark-800 border-dark-700">
-                      <h4 className="font-medium mb-2">
-                        Zona horaria de la Business Unit
-                      </h4>
-                      <p className="text-dark-400 text-sm mb-3">
-                        Esta zona horaria debe ser la referencia operativa para
-                        cotizaciones, contratos y reportes.
-                      </p>
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                        <select
-                          value={timezoneValue}
-                          onChange={(event) =>
-                            setTimezoneValue(event.target.value)
-                          }
-                          className="input flex-1"
-                        >
-                          {TIMEZONE_OPTIONS.map((timezone) => (
-                            <option key={timezone} value={timezone}>
-                              {timezone}
-                            </option>
-                          ))}
-                        </select>
-                        <button
-                          type="button"
-                          className="btn-primary"
-                          disabled={updateTimezoneMutation.isPending}
-                          onClick={() =>
-                            updateTimezoneMutation.mutate(timezoneValue)
-                          }
-                        >
-                          {updateTimezoneMutation.isPending
-                            ? "Guardando..."
-                            : "Guardar zona horaria"}
-                        </button>
-                      </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {ownerFocusCards.map((card) =>
+                        card.path && !card.comingSoon ? (
+                          <Link
+                            key={card.id}
+                            to={card.path}
+                            className="card bg-dark-900 border border-dark-600 rounded-none shadow-none hover:border-primary-500 hover:bg-dark-800 transition-colors"
+                          >
+                            <p className="text-[11px] tracking-[0.16em] text-dark-500 uppercase mb-1">
+                              {card.id.replace(/-/g, " ")}
+                            </p>
+                            <h4 className="font-semibold uppercase tracking-wide">
+                              {card.title}
+                            </h4>
+                            <p className="text-dark-400 text-sm mt-1">
+                              {card.description}
+                            </p>
+                          </Link>
+                        ) : (
+                          <div
+                            key={card.id}
+                            className="card bg-dark-900 border border-dark-700 rounded-none shadow-none"
+                          >
+                            <p className="text-[11px] tracking-[0.16em] text-dark-500 uppercase mb-1">
+                              {card.id.replace(/-/g, " ")}
+                            </p>
+                            <div className="flex items-center justify-between gap-2">
+                              <h4 className="font-semibold uppercase tracking-wide">
+                                {card.title}
+                              </h4>
+                              <span className="text-[10px] px-2 py-1 rounded-none bg-dark-700 text-dark-300 uppercase tracking-wide">
+                                Próximamente
+                              </span>
+                            </div>
+                            <p className="text-dark-400 text-sm mt-1">
+                              {card.description}
+                            </p>
+                          </div>
+                        ),
+                      )}
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {ownerActions.map((action) => (
-                        <Link
-                          key={action.id}
-                          to={action.path}
-                          className="card bg-dark-800 hover:bg-dark-700 transition-colors"
-                        >
-                          <h4 className="font-semibold">{action.title}</h4>
-                          <p className="text-dark-400 text-sm mt-1">
-                            {action.description}
-                          </p>
-                        </Link>
-                      ))}
-                    </div>
+                    <p className="text-xs text-dark-400 uppercase tracking-wide">
+                      Configuración inicial (branding, personal y parámetros de
+                      la BU) disponible desde el menú de navegación.
+                    </p>
                   </div>
                 )}
               </div>
