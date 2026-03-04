@@ -51,6 +51,7 @@ export interface BusinessUnit {
   name: string;
   slug: string;
   description?: string;
+  timezone?: string;
   enabledModules?: string[];
   role?: string; // Role within this BU (OWNER, ADMIN, MANAGER, etc.)
   permissions?: string[]; // User permissions in this BU from backend

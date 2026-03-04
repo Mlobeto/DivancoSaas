@@ -13,6 +13,8 @@ export interface CreateNotificationParams {
   businessUnitId?: string;
   /** Si se omite, se notifica a todos los admins/owners de la BU */
   userId?: string;
+  /** Lista explícita de destinatarios (prioridad sobre userId/businessUnit auto) */
+  userIds?: string[];
   type: string;
   title: string;
   body: string;
@@ -37,7 +39,9 @@ class NotificationService {
 
     // Determinar destinatarios
     let userIds: string[] = [];
-    if (params.userId) {
+    if (params.userIds && params.userIds.length > 0) {
+      userIds = [...new Set(params.userIds)];
+    } else if (params.userId) {
       userIds = [params.userId];
     } else if (businessUnitId) {
       // Todos los OWNER y SUPER_ADMIN con acceso a la BU

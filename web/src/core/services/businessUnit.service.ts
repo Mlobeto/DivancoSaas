@@ -8,9 +8,12 @@ export interface CreateBusinessUnitData {
   description?: string;
 }
 
-export type UpdateBusinessUnitData = Partial<
-  Omit<CreateBusinessUnitData, "tenantId">
->;
+export interface UpdateBusinessUnitData {
+  name?: string;
+  slug?: string;
+  description?: string;
+  timezone?: string;
+}
 
 export const businessUnitService = {
   /**
