@@ -400,14 +400,7 @@ export function useQuotationForm(options?: UseQuotationFormOptions) {
       }
 
       // v4.0: Validaciones según tipo de cotización
-      if (quotationType === "time_based") {
-        if (!estimatedStartDate || !estimatedEndDate) {
-          alert(
-            "Para cotización por tiempo, especifique las fechas de inicio y fin",
-          );
-          return;
-        }
-      } else if (quotationType === "service_based") {
+      if (quotationType === "service_based") {
         if (!serviceDescription || serviceDescription.length < 10) {
           alert(
             "Para cotización por servicio, describa el trabajo a realizar (mínimo 10 caracteres)",
