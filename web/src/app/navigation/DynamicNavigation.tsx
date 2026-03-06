@@ -332,6 +332,21 @@ export default function DynamicNavigation({
       });
     }
 
+    // Add Warehouses option if user has permission AND tenant has rental vertical
+    if (
+      tenant?.vertical === "rental" &&
+      (userPermissions.includes("assets:read") ||
+        role === "OWNER" ||
+        role === "SUPER_ADMIN")
+    ) {
+      settingsChildren.push({
+        id: "warehouses",
+        label: "Bodegas",
+        path: "/settings/warehouses",
+        icon: "warehouse",
+      });
+    }
+
     const settingsNavigation: NavigationItem = {
       id: "settings",
       label: "Configuración",

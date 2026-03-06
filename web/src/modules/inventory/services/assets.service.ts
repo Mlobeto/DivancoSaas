@@ -68,6 +68,12 @@ export interface CreateAssetData {
   salePrice?: number; // OPCIONAL: Precio de venta (retail/liquidación)
   origin?: string;
   currentLocation?: string;
+  warehouseId?: string; // Bodega/Taller asignado
+
+  // Rental status (si ya está alquilado al crear)
+  isCurrentlyRented?: boolean;
+  currentRentalContract?: string;
+
   customData?: any;
   requiresOperator?: boolean;
   requiresTracking?: boolean;
@@ -83,6 +89,10 @@ export interface CreateAssetData {
   pricePerMonth?: number;
   operatorCostType?: "PER_HOUR" | "PER_DAY" | null;
   operatorCostRate?: number;
+
+  // Tracking fields configuration (rental vertical)
+  trackingFields?: Record<string, boolean>; // { hourometer: true, odometer: true, ... }
+  initialValues?: Record<string, number>; // { hourometer: 1500, odometer: 25000, ... }
 
   // Relación de partes (activos únicos)
   machineParts?: any[];

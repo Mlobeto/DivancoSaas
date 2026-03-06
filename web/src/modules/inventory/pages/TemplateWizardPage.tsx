@@ -60,7 +60,7 @@ export function TemplateWizardPage() {
     icon: "",
     managementType: "UNIT",
     requiresPreventiveMaintenance: false,
-    requiresWeight: false,
+    requiresWeight: true, // Siempre requerido
     requiresDocumentation: false,
     machineParts: [],
     customFields: [],
@@ -85,7 +85,7 @@ export function TemplateWizardPage() {
         icon: existingTemplate.icon || "",
         managementType: existingTemplate.managementType ?? "UNIT",
         minStockLevel: existingTemplate.minStockLevel,
-        requiresWeight: existingTemplate.requiresWeight ?? false,
+        requiresWeight: true, // Siempre requerido
         requiresPreventiveMaintenance:
           existingTemplate.requiresPreventiveMaintenance,
         requiresDocumentation: existingTemplate.requiresDocumentation || false,
@@ -94,7 +94,18 @@ export function TemplateWizardPage() {
         technicalSpecs: existingTemplate.technicalSpecs,
         compatibleWith: existingTemplate.compatibleWith,
         businessRules: existingTemplate.businessRules,
-        rentalRules: existingTemplate.rentalRules,
+        rentalRules: existingTemplate.rentalRules
+          ? {
+              ...existingTemplate.rentalRules,
+              // Forzar requiresOperator=true para vehículos
+              requiresOperator:
+                existingTemplate.category === AssetCategory.VEHICLE
+                  ? true
+                  : existingTemplate.rentalRules.requiresOperator,
+            }
+          : existingTemplate.category === AssetCategory.VEHICLE
+            ? { requiresOperator: true }
+            : undefined,
         hasExpiryDate: existingTemplate.hasExpiryDate,
         requiresLotTracking: existingTemplate.requiresLotTracking,
         isDangerous: existingTemplate.isDangerous,

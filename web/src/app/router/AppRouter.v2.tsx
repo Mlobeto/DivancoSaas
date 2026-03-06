@@ -88,6 +88,12 @@ const TimezonePage = lazy(() =>
   })),
 );
 
+const WarehouseListPage = lazy(() =>
+  import("@/core/pages/settings").then((m) => ({
+    default: m.WarehouseListPage,
+  })),
+);
+
 //================================================================
 // CORE ROUTE DEFINITIONS
 //================================================================
@@ -175,6 +181,21 @@ const coreProtectedRoutes: DynamicRouteDefinition[] = [
     permissions: ["users:update"],
     meta: {
       title: "Editar Usuario",
+    },
+  },
+  {
+    path: "/settings/warehouses",
+    element: WarehouseListPage,
+    protection: RouteProtection.AUTHENTICATED,
+    layout: RouteLayout.APP,
+    permissions: ["assets:read"],
+    guard: (context) => {
+      // Warehouses are only available for rental vertical
+      return context.tenant?.vertical === "rental";
+    },
+    meta: {
+      title: "Bodegas y Talleres",
+      icon: "warehouse",
     },
   },
   {
@@ -311,6 +332,7 @@ function buildGuardContext(moduleContext: ModuleContext): GuardContext {
       ? {
           id: authState.tenant.id,
           name: authState.tenant.name,
+          vertical: authState.tenant.vertical,
         }
       : null,
     businessUnit: authState.businessUnit

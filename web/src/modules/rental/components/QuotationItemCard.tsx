@@ -51,13 +51,10 @@ export function QuotationItemCard({
           />
         </div>
 
-        {/* Período readonly */}
+        {/* Duración */}
         <div className="text-sm text-gray-500 pb-2">
-          <span>{item.startDate}</span>
-          <span className="mx-1">→</span>
-          <span>{item.endDate}</span>
-          <span className="ml-2 font-semibold text-gray-700">
-            ({item.rentalDays} días)
+          <span className="font-semibold text-gray-700">
+            Duración: {item.rentalDays} días
           </span>
         </div>
 
@@ -145,50 +142,159 @@ export function QuotationItemCard({
       </div>
 
       {/* Price Preview & Manual Override */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-gray-200">
-        {/* Calculated Preview */}
-        <div>
-          <h5 className="text-sm font-semibold text-blue-600 mb-3 flex items-center gap-2">
-            <AlertCircle className="w-4 h-4" />
-            Precio Calculado
-          </h5>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-600">Precio Unitario:</span>
-              <span className="font-mono font-medium text-gray-900">
-                ${(item.calculatedUnitPrice || 0).toLocaleString()}
-              </span>
-            </div>
-            {item.operatorIncluded && (
-              <div className="flex justify-between">
-                <span className="text-gray-600">Costo Operador:</span>
-                <span className="font-mono font-medium text-gray-900">
-                  ${(item.calculatedOperatorCost || 0).toLocaleString()}
-                </span>
-              </div>
-            )}
-            <div className="flex justify-between font-semibold pt-2 border-t border-gray-200">
-              <span className="text-gray-900">
-                Subtotal (x{item.quantity}):
-              </span>
-              <span className="font-mono text-blue-600">
-                $
-                {(
-                  ((item.calculatedUnitPrice || 0) +
-                    (item.calculatedOperatorCost || 0)) *
-                  item.quantity
-                ).toLocaleString()}
-              </span>
+      <div className="pt-4 border-t border-gray-200">
+        {/* v5.0: Tabla comparativa de modalidades */}
+        {item.selectedPeriods &&
+        (item.selectedPeriods.daily ||
+          item.selectedPeriods.weekly ||
+          item.selectedPeriods.monthly) ? (
+          <div className="mb-4">
+            <h5 className="text-sm font-semibold text-blue-600 mb-3 flex items-center gap-2">
+              <AlertCircle className="w-4 h-4" />
+              Modalidades a Cotizar
+            </h5>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-200">
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700">
+                      Modalidad
+                    </th>
+                    <th className="px-3 py-2 text-right text-xs font-semibold text-gray-700">
+                      Precio Base
+                    </th>
+                    {item.operatorIncluded && (
+                      <th className="px-3 py-2 text-right text-xs font-semibold text-gray-700">
+                        + Operario
+                      </th>
+                    )}
+                    <th className="px-3 py-2 text-right text-xs font-semibold text-gray-700">
+                      Total Unitario
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {item.selectedPeriods.daily && (
+                    <tr className="border-b border-gray-100 hover:bg-blue-50">
+                      <td className="px-3 py-2 font-medium text-gray-900">
+                        📅 Por Día
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono text-gray-900">
+                        ${(item.pricePerDay || 0).toLocaleString()}
+                      </td>
+                      {item.operatorIncluded && (
+                        <td className="px-3 py-2 text-right font-mono text-gray-600">
+                          ${(item.operatorCostPerDay || 0).toLocaleString()}
+                        </td>
+                      )}
+                      <td className="px-3 py-2 text-right font-mono font-semibold text-blue-600">
+                        $
+                        {(
+                          (item.pricePerDay || 0) +
+                          (item.operatorIncluded
+                            ? item.operatorCostPerDay || 0
+                            : 0)
+                        ).toLocaleString()}
+                      </td>
+                    </tr>
+                  )}
+                  {item.selectedPeriods.weekly && (
+                    <tr className="border-b border-gray-100 hover:bg-green-50">
+                      <td className="px-3 py-2 font-medium text-gray-900">
+                        📆 Por Semana
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono text-gray-900">
+                        ${(item.pricePerWeek || 0).toLocaleString()}
+                      </td>
+                      {item.operatorIncluded && (
+                        <td className="px-3 py-2 text-right font-mono text-gray-600">
+                          ${(item.operatorCostPerWeek || 0).toLocaleString()}
+                        </td>
+                      )}
+                      <td className="px-3 py-2 text-right font-mono font-semibold text-green-600">
+                        $
+                        {(
+                          (item.pricePerWeek || 0) +
+                          (item.operatorIncluded
+                            ? item.operatorCostPerWeek || 0
+                            : 0)
+                        ).toLocaleString()}
+                      </td>
+                    </tr>
+                  )}
+                  {item.selectedPeriods.monthly && (
+                    <tr className="border-b border-gray-100 hover:bg-purple-50">
+                      <td className="px-3 py-2 font-medium text-gray-900">
+                        📅 Por Mes
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono text-gray-900">
+                        ${(item.pricePerMonth || 0).toLocaleString()}
+                      </td>
+                      {item.operatorIncluded && (
+                        <td className="px-3 py-2 text-right font-mono text-gray-600">
+                          ${(item.operatorCostPerMonth || 0).toLocaleString()}
+                        </td>
+                      )}
+                      <td className="px-3 py-2 text-right font-mono font-semibold text-purple-600">
+                        $
+                        {(
+                          (item.pricePerMonth || 0) +
+                          (item.operatorIncluded
+                            ? item.operatorCostPerMonth || 0
+                            : 0)
+                        ).toLocaleString()}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
-        </div>
+        ) : (
+          // Fallback: mostrar precio legacy para items antiguos
+          <div className="mb-4">
+            <h5 className="text-sm font-semibold text-blue-600 mb-3 flex items-center gap-2">
+              <AlertCircle className="w-4 h-4" />
+              Precio Calculado
+            </h5>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Precio Unitario:</span>
+                <span className="font-mono font-medium text-gray-900">
+                  ${(item.calculatedUnitPrice || 0).toLocaleString()}
+                </span>
+              </div>
+              {item.operatorIncluded && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Costo Operador:</span>
+                  <span className="font-mono font-medium text-gray-900">
+                    ${(item.calculatedOperatorCost || 0).toLocaleString()}
+                  </span>
+                </div>
+              )}
+              <div className="flex justify-between font-semibold pt-2 border-t border-gray-200">
+                <span className="text-gray-900">
+                  Subtotal (x{item.quantity}):
+                </span>
+                <span className="font-mono text-blue-600">
+                  $
+                  {(
+                    ((item.calculatedUnitPrice || 0) +
+                      (item.calculatedOperatorCost || 0)) *
+                    item.quantity
+                  ).toLocaleString()}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
 
-        {/* Manual Override */}
-        <div>
-          <h5 className="text-sm font-semibold text-amber-600 mb-3">
-            Override Manual (Opcional)
-          </h5>
-          <div className="space-y-3">
+        {/* Manual Override - Optional for future use */}
+        <details className="mb-4">
+          <summary className="text-sm font-semibold text-amber-600 cursor-pointer hover:text-amber-700 mb-3">
+            ⚙️ Override Manual (Opcional - Avanzado)
+          </summary>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3 p-4 bg-amber-50 rounded-lg border border-amber-200">
             <div>
               <label className="block text-xs text-gray-600 mb-1">
                 Precio Unitario Personalizado
@@ -233,7 +339,7 @@ export function QuotationItemCard({
               </div>
             )}
           </div>
-        </div>
+        </details>
       </div>
     </div>
   );

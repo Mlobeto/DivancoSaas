@@ -21,7 +21,9 @@ import { RentalController } from "./controllers/rental.controller";
 import { SupplyController } from "./controllers/supply.controller";
 import { IncidentController } from "./controllers/incident.controller";
 import { StockLevelController } from "./controllers/stock-level.controller";
+import { WarehouseController } from "./controllers/warehouse.controller";
 import { authorize } from "@core/middlewares/auth.middleware";
+import { requireVertical } from "@core/middlewares/vertical.middleware";
 import assetTemplateRoutes from "./routes/asset-template.routes";
 
 export class AssetsModule implements ModuleContract {
@@ -37,6 +39,38 @@ export class AssetsModule implements ModuleContract {
 
     // ========== ASSET TEMPLATES ==========
     router.use("/templates", assetTemplateRoutes);
+
+    // ========== WAREHOUSES (Bodegas y Talleres) - RENTAL VERTICAL ONLY ==========
+    router.get(
+      "/warehouses",
+      authorize("assets:read"),
+      requireVertical("rental"),
+      WarehouseController.list,
+    );
+    router.post(
+      "/warehouses",
+      authorize("assets:create"),
+      requireVertical("rental"),
+      WarehouseController.create,
+    );
+    router.get(
+      "/warehouses/:id",
+      authorize("assets:read"),
+      requireVertical("rental"),
+      WarehouseController.getById,
+    );
+    router.put(
+      "/warehouses/:id",
+      authorize("assets:update"),
+      requireVertical("rental"),
+      WarehouseController.update,
+    );
+    router.delete(
+      "/warehouses/:id",
+      authorize("assets:delete"),
+      requireVertical("rental"),
+      WarehouseController.delete,
+    );
 
     // ========== STOCK LEVELS (BULK INVENTORY) ==========
     router.get(

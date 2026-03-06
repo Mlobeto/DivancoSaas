@@ -11,6 +11,12 @@ export interface CreateAssetDTO {
   acquisitionCost?: number;
   origin?: string;
   currentLocation?: string; // Ubicación actual (obra, taller, bodega)
+  warehouseId?: string; // Bodega/Taller asignado (FK)
+
+  // Estado de alquiler actual (si ya está trabajando al momento de creación)
+  isCurrentlyRented?: boolean; // ¿Está alquilado actualmente?
+  currentRentalContract?: string; // Número de contrato actual
+
   requiresOperator?: boolean;
   requiresTracking?: boolean;
   requiresClinic?: boolean; // Requiere historia clínica de mantenimiento
@@ -57,6 +63,12 @@ export interface UpdateAssetDTO {
   acquisitionCost?: number;
   origin?: string;
   currentLocation?: string;
+  warehouseId?: string;
+
+  // Estado de alquiler
+  isCurrentlyRented?: boolean;
+  currentRentalContract?: string;
+
   requiresOperator?: boolean;
   requiresTracking?: boolean;
   requiresClinic?: boolean;

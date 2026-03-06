@@ -48,11 +48,8 @@ export function QuotationFormPage() {
     setSelectedClientId,
     quotationType,
     setQuotationType,
-    estimatedStartDate,
-    setEstimatedStartDate,
-    estimatedEndDate,
-    setEstimatedEndDate,
     estimatedDays,
+    setEstimatedDays,
     serviceDescription,
     setServiceDescription,
     items,
@@ -106,9 +103,6 @@ export function QuotationFormPage() {
       trackingType: itemData.trackingType,
       quantity: itemData.quantity,
       rentalDays: itemData.rentalDays,
-      startDate: itemData.startDate,
-      endDate: itemData.endDate,
-      rentalPeriodType: itemData.rentalPeriodType,
       standbyHours: itemData.standbyHours,
       operatorIncluded: itemData.operatorIncluded,
       operatorCostType: itemData.operatorCostType,
@@ -116,6 +110,14 @@ export function QuotationFormPage() {
       customOperatorCost: itemData.customOperatorCost,
       calculatedUnitPrice: itemData.calculatedUnitPrice,
       calculatedOperatorCost: itemData.calculatedOperatorCost,
+      // v5.0: Multi-period pricing
+      selectedPeriods: itemData.selectedPeriods,
+      pricePerDay: itemData.pricePerDay,
+      pricePerWeek: itemData.pricePerWeek,
+      pricePerMonth: itemData.pricePerMonth,
+      operatorCostPerDay: itemData.operatorCostPerDay,
+      operatorCostPerWeek: itemData.operatorCostPerWeek,
+      operatorCostPerMonth: itemData.operatorCostPerMonth,
     });
   };
 
@@ -129,8 +131,6 @@ export function QuotationFormPage() {
       description: itemData.description,
       quantity: itemData.quantity,
       rentalDays: 0,
-      startDate: "",
-      endDate: "",
       rentalPeriodType: "daily" as const,
       standbyHours: undefined,
       operatorIncluded: false,
@@ -176,11 +176,8 @@ export function QuotationFormPage() {
             <QuotationTypeSelector
               quotationType={quotationType}
               onTypeChange={setQuotationType}
-              estimatedStartDate={estimatedStartDate}
-              onStartDateChange={setEstimatedStartDate}
-              estimatedEndDate={estimatedEndDate}
-              onEndDateChange={setEstimatedEndDate}
               estimatedDays={estimatedDays}
+              onEstimatedDaysChange={setEstimatedDays}
               serviceDescription={serviceDescription}
               onServiceDescriptionChange={setServiceDescription}
             />
@@ -359,11 +356,9 @@ export function QuotationFormPage() {
             {/* Totals Summary */}
             {items.length > 0 && (
               <QuotationSummary
-                subtotal={totals.subtotal}
+                items={items}
                 taxRate={taxRate}
                 onTaxRateChange={setTaxRate}
-                taxAmount={totals.taxAmount}
-                total={totals.total}
               />
             )}
 
@@ -408,7 +403,11 @@ export function QuotationFormPage() {
               <div className="p-4 rounded-lg bg-red-50 border border-red-200 text-red-700">
                 <div className="flex items-center gap-2 mb-2">
                   <AlertCircle className="w-5 h-5" />
-                  <strong>{isEditMode ? "Error al guardar cambios" : "Error al crear cotización"}</strong>
+                  <strong>
+                    {isEditMode
+                      ? "Error al guardar cambios"
+                      : "Error al crear cotización"}
+                  </strong>
                 </div>
                 <p className="text-sm">
                   {mutation.error instanceof Error
@@ -425,8 +424,6 @@ export function QuotationFormPage() {
           <PreviewPanel
             quotationType={quotationType}
             clientName={selectedClient?.name}
-            estimatedStartDate={estimatedStartDate}
-            estimatedEndDate={estimatedEndDate}
             estimatedDays={estimatedDays}
             serviceDescription={serviceDescription}
             items={items}
@@ -447,8 +444,6 @@ export function QuotationFormPage() {
           setSelectedAssetForModal(null);
         }}
         asset={selectedAssetForModal}
-        estimatedStartDate={estimatedStartDate}
-        estimatedEndDate={estimatedEndDate}
         estimatedDays={estimatedDays}
         onAdd={handleAddTimeBasedItem}
       />

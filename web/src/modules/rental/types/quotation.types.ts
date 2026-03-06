@@ -52,6 +52,9 @@ export interface Quotation {
   clientRespondedAt?: Date;
   clientReviewToken?: string;
 
+  // v5.0: Período seleccionado por el cliente al aprobar
+  selectedPeriodType?: "daily" | "weekly" | "monthly";
+
   // Relaciones
   client?: Client;
   assignedUser?: User;
@@ -76,7 +79,7 @@ export interface QuotationItem {
   rentalStartDate?: Date;
   rentalEndDate?: Date;
 
-  // v4.0: Nuevos campos
+  // v4.0: Campos legacy
   rentalPeriodType?: RentalPeriodType;
   standbyHours?: number;
   operatorCostType?: OperatorCostType;
@@ -85,6 +88,17 @@ export interface QuotationItem {
   maintenanceCost?: number;
   discount?: number;
   discountReason?: string;
+
+  // v5.0: Multi-period pricing
+  pricePerDay?: number;
+  totalPerDay?: number;
+  pricePerWeek?: number;
+  totalPerWeek?: number;
+  pricePerMonth?: number;
+  totalPerMonth?: number;
+  operatorCostPerDay?: number;
+  operatorCostPerWeek?: number;
+  operatorCostPerMonth?: number;
 
   sortOrder: number;
 

@@ -24,8 +24,6 @@ interface AddTimeBasedItemModalProps {
   isOpen: boolean;
   onClose: () => void;
   asset: AssetSearchResult | null;
-  estimatedStartDate: string;
-  estimatedEndDate: string;
   estimatedDays: number;
   onAdd: (itemData: TimeBasedItemData) => void;
 }
@@ -37,9 +35,6 @@ export interface TimeBasedItemData {
   trackingType: "MACHINERY" | "TOOL" | null;
   quantity: number;
   rentalDays: number;
-  startDate: string;
-  endDate: string;
-  rentalPeriodType: "hourly" | "daily" | "weekly" | "monthly";
   standbyHours?: number;
   operatorIncluded: boolean;
   operatorCostType?: OperatorCostType;
@@ -48,6 +43,19 @@ export interface TimeBasedItemData {
   // Precios calculados automáticamente (para mostrar en la lista)
   calculatedUnitPrice: number;
   calculatedOperatorCost: number;
+  // v5.0: Períodos seleccionados para cotizar
+  selectedPeriods: {
+    daily: boolean;
+    weekly: boolean;
+    monthly: boolean;
+  };
+  // v5.0: Precios calculados por período
+  pricePerDay: number;
+  pricePerWeek: number;
+  pricePerMonth: number;
+  operatorCostPerDay: number;
+  operatorCostPerWeek: number;
+  operatorCostPerMonth: number;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -119,8 +127,6 @@ export function AddTimeBasedItemModal({
   isOpen,
   onClose,
   asset,
-  estimatedStartDate,
-  estimatedEndDate,
   estimatedDays,
   onAdd,
 }: AddTimeBasedItemModalProps) {
@@ -134,6 +140,13 @@ export function AddTimeBasedItemModal({
     number | undefined
   >();
 
+  // v5.0: Períodos seleccionados para cotizar
+  const [selectedPeriods, setSelectedPeriods] = useState({
+    daily: true,
+    weekly: true,
+    monthly: true,
+  });
+
   // ── Valores del perfil de alquiler ──────────────────────────────────────
   const getVal = (field: keyof AssetRentalProfile) => {
     const pv = asset?.rentalProfile?.[field];
@@ -146,11 +159,30 @@ export function AddTimeBasedItemModal({
 
   const pricePerHour = getVal("pricePerHour");
   const pricePerDay = getVal("pricePerDay");
-  const pricePerWeek = getVal("pricePerWeek") || null;
-  const pricePerMonth = getVal("pricePerMonth") || null;
+  const pricePerWeek = getVal("pricePerWeek");
+  const pricePerMonth = getVal("pricePerMonth");
   const operatorRate = getVal("operatorCostRate");
 
-  // ── Precio calculado automáticamente ────────────────────────────────────
+  // ── Cálculo de precios por período (v5.0) ────────────────────────────────────
+  // Para MACHINERY: precio por día = standbyHours × pricePerHour
+  const dailyPrice =
+    trackingType === "MACHINERY" ? standbyHours * pricePerHour : pricePerDay;
+
+  // Semana y mes: multiplicar o usar precio configurado
+  const weeklyPrice = pricePerWeek > 0 ? pricePerWeek : dailyPrice * 7;
+  const monthlyPrice = pricePerMonth > 0 ? pricePerMonth : dailyPrice * 30;
+
+  // Costos de operador por período
+  const operatorDailyPrice =
+    !operatorIncluded || !operatorRate
+      ? 0
+      : operatorCostType === "PER_HOUR"
+        ? standbyHours * operatorRate
+        : operatorRate;
+  const operatorWeeklyPrice = operatorDailyPrice * 7;
+  const operatorMonthlyPrice = operatorDailyPrice * 30;
+
+  // Legacy: precio total para el período estimado
   const machineryBasePrice =
     trackingType === "MACHINERY"
       ? estimatedDays * standbyHours * pricePerHour
@@ -158,7 +190,12 @@ export function AddTimeBasedItemModal({
 
   const tiered: PriceBreakdown | null =
     trackingType !== "MACHINERY" && pricePerDay > 0
-      ? calcTieredPrice(estimatedDays, pricePerDay, pricePerWeek, pricePerMonth)
+      ? calcTieredPrice(
+          estimatedDays,
+          pricePerDay,
+          pricePerWeek > 0 ? pricePerWeek : null,
+          pricePerMonth > 0 ? pricePerMonth : null,
+        )
       : null;
 
   const calculatedBasePrice =
@@ -182,20 +219,22 @@ export function AddTimeBasedItemModal({
     setOperatorCostType((oct as OperatorCostType) ?? "PER_DAY");
     setCustomUnitPrice(undefined);
     setCustomOperatorCost(undefined);
+    setSelectedPeriods({ daily: true, weekly: true, monthly: true });
   }, [asset]);
 
   if (!isOpen || !asset) return null;
 
-  const effectiveBase = customUnitPrice ?? calculatedBasePrice;
-  const effectiveOp = customOperatorCost ?? calculatedOperatorCost;
-  const totalItem = (effectiveBase + effectiveOp) * quantity;
+  // Validar que al menos un período esté seleccionado
+  const hasSelectedPeriod =
+    selectedPeriods.daily || selectedPeriods.weekly || selectedPeriods.monthly;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const rentalPeriodType: TimeBasedItemData["rentalPeriodType"] =
-      trackingType === "MACHINERY"
-        ? "hourly"
-        : (tiered?.dominantPeriod ?? "daily");
+
+    if (!hasSelectedPeriod) {
+      alert("Debes seleccionar al menos un período para cotizar");
+      return;
+    }
 
     onAdd({
       assetId: asset.id,
@@ -204,9 +243,6 @@ export function AddTimeBasedItemModal({
       trackingType,
       quantity,
       rentalDays: estimatedDays,
-      startDate: estimatedStartDate,
-      endDate: estimatedEndDate,
-      rentalPeriodType,
       standbyHours: trackingType === "MACHINERY" ? standbyHours : undefined,
       operatorIncluded,
       operatorCostType: operatorIncluded ? operatorCostType : undefined,
@@ -214,6 +250,14 @@ export function AddTimeBasedItemModal({
       customOperatorCost,
       calculatedUnitPrice: calculatedBasePrice,
       calculatedOperatorCost: calculatedOperatorCost,
+      // v5.0: Períodos seleccionados y precios por período
+      selectedPeriods,
+      pricePerDay: dailyPrice,
+      pricePerWeek: weeklyPrice,
+      pricePerMonth: monthlyPrice,
+      operatorCostPerDay: operatorDailyPrice,
+      operatorCostPerWeek: operatorWeeklyPrice,
+      operatorCostPerMonth: operatorMonthlyPrice,
     });
     onClose();
   };
@@ -234,8 +278,7 @@ export function AddTimeBasedItemModal({
                 : "Implemento / Herramienta"}
             </p>
             <p className="text-xs text-primary-400 mt-1">
-              {estimatedStartDate} → {estimatedEndDate} ·{" "}
-              <strong>{estimatedDays} días</strong>
+              Duración: <strong>{estimatedDays} días</strong>
             </p>
           </div>
           <button
@@ -282,95 +325,6 @@ export function AddTimeBasedItemModal({
             </div>
           )}
 
-          {/* ── Desglose de precio calculado ── */}
-          <div className="bg-dark-800 rounded-lg p-4 space-y-2 border border-dark-700">
-            <div className="flex items-center gap-2 mb-2">
-              <Calculator className="w-4 h-4 text-primary-400" />
-              <span className="text-sm font-medium text-dark-200">
-                Precio calculado automáticamente
-              </span>
-            </div>
-
-            {trackingType === "MACHINERY" ? (
-              <div className="flex justify-between text-sm text-dark-300">
-                <span>
-                  {estimatedDays} días × {standbyHours} hrs × $
-                  {fmt(pricePerHour)}/hr
-                </span>
-                <span className="font-semibold text-primary-300">
-                  ${fmt(machineryBasePrice)}
-                </span>
-              </div>
-            ) : tiered ? (
-              <div className="text-sm text-dark-300 space-y-1">
-                {tiered.months > 0 && (
-                  <div className="flex justify-between">
-                    <span>
-                      {tiered.months} {tiered.months === 1 ? "mes" : "meses"} ×
-                      ${fmt(tiered.monthlyPrice)}
-                    </span>
-                    <span className="font-semibold">
-                      ${fmt(tiered.months * tiered.monthlyPrice)}
-                    </span>
-                  </div>
-                )}
-                {tiered.weeks > 0 && (
-                  <div className="flex justify-between">
-                    <span>
-                      {tiered.weeks} {tiered.weeks === 1 ? "semana" : "semanas"}{" "}
-                      × ${fmt(tiered.weeklyPrice)}
-                    </span>
-                    <span className="font-semibold">
-                      ${fmt(tiered.weeks * tiered.weeklyPrice)}
-                    </span>
-                  </div>
-                )}
-                {tiered.days > 0 && (
-                  <div className="flex justify-between">
-                    <span>
-                      {tiered.days} {tiered.days === 1 ? "día" : "días"} × $
-                      {fmt(tiered.dailyPrice)}
-                    </span>
-                    <span className="font-semibold">
-                      ${fmt(tiered.days * tiered.dailyPrice)}
-                    </span>
-                  </div>
-                )}
-                <div className="border-t border-dark-600 pt-1 flex justify-between font-semibold text-primary-300">
-                  <span>Subtotal implemento</span>
-                  <span>${fmt(tiered.total)}</span>
-                </div>
-              </div>
-            ) : (
-              <p className="text-xs text-dark-400">
-                Sin precio configurado en el perfil de alquiler
-              </p>
-            )}
-          </div>
-
-          {/* ── Precio personalizado ── */}
-          <div className="form-group">
-            <label className="form-label">
-              Precio personalizado (opcional)
-            </label>
-            <input
-              type="number"
-              min="0"
-              step="1000"
-              className="form-input"
-              value={customUnitPrice ?? ""}
-              onChange={(e) =>
-                setCustomUnitPrice(
-                  e.target.value ? parseFloat(e.target.value) : undefined,
-                )
-              }
-              placeholder={`Auto: $${fmt(calculatedBasePrice)}`}
-            />
-            <p className="text-xs text-dark-400 mt-1">
-              Completar solo si desea sobreescribir el precio calculado
-            </p>
-          </div>
-
           {/* ── Operario ── */}
           <div className="border border-dark-700 rounded-lg p-4 space-y-3">
             <label className="flex items-center gap-2 cursor-pointer">
@@ -382,14 +336,16 @@ export function AddTimeBasedItemModal({
               />
               <span className="flex items-center gap-1.5 font-medium text-dark-200 text-sm">
                 <User className="w-4 h-4 text-primary-400" />
-                Incluir operario
+                Incluir operario en la cotización
               </span>
             </label>
 
             {operatorIncluded && (
               <div className="space-y-3 pt-1">
                 <div className="form-group">
-                  <label className="form-label">Modalidad de cobro</label>
+                  <label className="form-label">
+                    Modalidad de cobro del operario
+                  </label>
                   <select
                     className="form-input"
                     value={operatorCostType}
@@ -402,73 +358,178 @@ export function AddTimeBasedItemModal({
                   </select>
                 </div>
 
-                <div className="text-sm text-dark-300 bg-dark-800 rounded p-3 space-y-1">
-                  <div className="flex justify-between">
+                <div className="text-sm text-dark-300 bg-dark-800 rounded p-3">
+                  <p className="text-xs text-dark-400 mb-1">
+                    Tarifa configurada:
+                  </p>
+                  <div className="flex justify-between items-center">
                     <span>
-                      Tarifa: ${fmt(operatorRate)}/
-                      {operatorCostType === "PER_HOUR" ? "hr" : "día"}
+                      ${fmt(operatorRate)}/
+                      {operatorCostType === "PER_HOUR" ? "hora" : "día"}
                     </span>
                     <span className="font-semibold text-primary-300">
-                      ${fmt(calculatedOperatorCost)}
+                      ${fmt(operatorDailyPrice)}/día
                     </span>
                   </div>
-                  {operatorCostType === "PER_HOUR" && (
-                    <p className="text-xs text-dark-400">
-                      {estimatedDays} días × {standbyHours} hrs
-                    </p>
-                  )}
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">
-                    Costo operario personalizado (opcional)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="1000"
-                    className="form-input"
-                    value={customOperatorCost ?? ""}
-                    onChange={(e) =>
-                      setCustomOperatorCost(
-                        e.target.value ? parseFloat(e.target.value) : undefined,
-                      )
-                    }
-                    placeholder={`Auto: $${fmt(calculatedOperatorCost)}`}
-                  />
                 </div>
               </div>
             )}
           </div>
 
-          {/* ── Total ── */}
-          <div className="bg-primary-900/30 border border-primary-700/40 rounded-lg p-4">
-            <div className="flex justify-between items-center">
-              <span className="text-dark-200 font-medium">
-                TOTAL ÍTEM
-                {quantity > 1 && (
-                  <span className="text-xs text-dark-400 ml-1">
-                    ({quantity} × ${fmt(effectiveBase + effectiveOp)})
-                  </span>
-                )}
-              </span>
-              <span className="text-xl font-bold text-primary-300">
-                ${fmt(totalItem)}
+          {/* ── Opciones de precio por período (v5.0) ── */}
+          <div className="bg-dark-800 rounded-lg p-4 border border-dark-700">
+            <div className="flex items-center gap-2 mb-3">
+              <Calculator className="w-4 h-4 text-primary-400" />
+              <span className="text-sm font-medium text-dark-200">
+                Selecciona las modalidades a cotizar
               </span>
             </div>
-            {operatorIncluded && (
-              <p className="text-xs text-dark-400 mt-1">
-                Implemento: ${fmt(effectiveBase)} · Operario: $
-                {fmt(effectiveOp * quantity)}
+
+            <p className="text-xs text-dark-400 mb-4">
+              Puedes seleccionar una o varias opciones. El cliente verá una
+              tabla comparativa.
+            </p>
+
+            <div className="space-y-3">
+              {/* Opción Diaria */}
+              <label className="flex items-start gap-3 p-3 bg-dark-900 rounded-lg border border-dark-700 hover:border-primary-600 transition-colors cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selectedPeriods.daily}
+                  onChange={(e) =>
+                    setSelectedPeriods((prev) => ({
+                      ...prev,
+                      daily: e.target.checked,
+                    }))
+                  }
+                  className="mt-1 w-4 h-4 rounded accent-primary-500"
+                />
+                <div className="flex-1">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-semibold text-primary-300">
+                      📅 Por Día
+                    </span>
+                    <span className="text-lg font-bold text-primary-300">
+                      ${fmt(dailyPrice)}
+                    </span>
+                  </div>
+                  {operatorIncluded && (
+                    <p className="text-xs text-dark-400">
+                      + Operario: ${fmt(operatorDailyPrice)}/día = $
+                      {fmt(dailyPrice + operatorDailyPrice)}/día total
+                    </p>
+                  )}
+                  {trackingType === "MACHINERY" && (
+                    <p className="text-xs text-dark-400 mt-1">
+                      {standbyHours} hrs × ${fmt(pricePerHour)}/hr
+                    </p>
+                  )}
+                </div>
+              </label>
+
+              {/* Opción Semanal */}
+              <label className="flex items-start gap-3 p-3 bg-dark-900 rounded-lg border border-dark-700 hover:border-primary-600 transition-colors cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selectedPeriods.weekly}
+                  onChange={(e) =>
+                    setSelectedPeriods((prev) => ({
+                      ...prev,
+                      weekly: e.target.checked,
+                    }))
+                  }
+                  className="mt-1 w-4 h-4 rounded accent-primary-500"
+                />
+                <div className="flex-1">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-semibold text-green-300">
+                      📆 Por Semana
+                    </span>
+                    <span className="text-lg font-bold text-green-300">
+                      ${fmt(weeklyPrice)}
+                    </span>
+                  </div>
+                  {operatorIncluded && (
+                    <p className="text-xs text-dark-400">
+                      + Operario: ${fmt(operatorWeeklyPrice)}/sem = $
+                      {fmt(weeklyPrice + operatorWeeklyPrice)}/sem total
+                    </p>
+                  )}
+                  {pricePerWeek > 0 ? (
+                    <p className="text-xs text-dark-400 mt-1">
+                      Precio configurado
+                    </p>
+                  ) : (
+                    <p className="text-xs text-dark-400 mt-1">Diario × 7</p>
+                  )}
+                </div>
+              </label>
+
+              {/* Opción Mensual */}
+              <label className="flex items-start gap-3 p-3 bg-dark-900 rounded-lg border border-dark-700 hover:border-primary-600 transition-colors cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selectedPeriods.monthly}
+                  onChange={(e) =>
+                    setSelectedPeriods((prev) => ({
+                      ...prev,
+                      monthly: e.target.checked,
+                    }))
+                  }
+                  className="mt-1 w-4 h-4 rounded accent-primary-500"
+                />
+                <div className="flex-1">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-semibold text-purple-300">
+                      📅 Por Mes
+                    </span>
+                    <span className="text-lg font-bold text-purple-300">
+                      ${fmt(monthlyPrice)}
+                    </span>
+                  </div>
+                  {operatorIncluded && (
+                    <p className="text-xs text-dark-400">
+                      + Operario: ${fmt(operatorMonthlyPrice)}/mes = $
+                      {fmt(monthlyPrice + operatorMonthlyPrice)}/mes total
+                    </p>
+                  )}
+                  {pricePerMonth > 0 ? (
+                    <p className="text-xs text-dark-400 mt-1">
+                      Precio configurado
+                    </p>
+                  ) : (
+                    <p className="text-xs text-dark-400 mt-1">Diario × 30</p>
+                  )}
+                </div>
+              </label>
+            </div>
+
+            {!hasSelectedPeriod && (
+              <p className="text-xs text-red-400 mt-3">
+                ⚠️ Debes seleccionar al menos una modalidad
               </p>
             )}
           </div>
+
+          {/* ── Información de cantidad ── */}
+          {quantity > 1 && (
+            <div className="bg-blue-900/20 border border-blue-700/40 rounded-lg p-3">
+              <p className="text-sm text-blue-300">
+                ℹ️ Se agregarán <strong>{quantity} unidades</strong> de este
+                activo con las modalidades seleccionadas
+              </p>
+            </div>
+          )}
 
           <div className="flex justify-end gap-3 pt-1">
             <button type="button" onClick={onClose} className="btn-ghost">
               Cancelar
             </button>
-            <button type="submit" className="btn-primary">
+            <button
+              type="submit"
+              className="btn-primary"
+              disabled={!hasSelectedPeriod}
+            >
               Agregar a cotización
             </button>
           </div>

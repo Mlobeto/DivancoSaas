@@ -53,6 +53,12 @@ export function AssetFormPage() {
     acquisitionCost: undefined,
     origin: "",
     currentLocation: "",
+    warehouseId: undefined,
+
+    // Rental status
+    isCurrentlyRented: false,
+    currentRentalContract: "",
+
     customData: {},
     requiresOperator: false,
     requiresTracking: false,
@@ -68,6 +74,11 @@ export function AssetFormPage() {
     pricePerMonth: undefined,
     operatorCostType: null,
     operatorCostRate: undefined,
+
+    // Tracking fields configuration
+    trackingFields: {},
+    initialValues: {},
+
     machineParts: [],
   });
 
@@ -75,6 +86,17 @@ export function AssetFormPage() {
   const { data: templates } = useQuery({
     queryKey: ["asset-templates", businessUnit?.id],
     queryFn: () => assetTemplateService.list(),
+    enabled: !!tenant?.id && !!businessUnit?.id,
+  });
+
+  // Fetch warehouses
+  const { data: warehouses } = useQuery({
+    queryKey: ["warehouses"],
+    queryFn: async () => {
+      const { warehouseService } =
+        await import("@/modules/inventory/services/warehouse.service");
+      return warehouseService.list();
+    },
     enabled: !!tenant?.id && !!businessUnit?.id,
   });
 
@@ -101,6 +123,12 @@ export function AssetFormPage() {
         acquisitionCost: asset.acquisitionCost || undefined,
         origin: asset.origin || "",
         currentLocation: asset.currentLocation || "",
+        warehouseId: (asset as any).warehouseId || undefined,
+
+        // Rental status
+        isCurrentlyRented: (asset as any).isCurrentlyRented || false,
+        currentRentalContract: (asset as any).currentRentalContract || "",
+
         customData: asset.customData || {},
         requiresOperator: asset.requiresOperator,
         requiresTracking: asset.requiresTracking,
@@ -163,6 +191,11 @@ export function AssetFormPage() {
                   (asset as any).operatorCostRate,
               )
             : undefined,
+
+        // Tracking fields configuration (from rental profile)
+        trackingFields: asset.rentalProfile?.trackingFields || {},
+        initialValues: asset.rentalProfile?.initialValues || {},
+
         machineParts: (asset.machineParts as any[]) || [],
       });
       setManuallyEditedCode(true); // In edit mode, code is already set
@@ -598,10 +631,39 @@ export function AssetFormPage() {
                 />
               </div>
 
-              {/* Current Location */}
+              {/* Warehouse (Bodega/Taller) */}
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-300 mb-1">
-                  Ubicación Actual
+                  Bodega / Taller
+                </label>
+                <select
+                  value={formData.warehouseId || ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      warehouseId: e.target.value || undefined,
+                    })
+                  }
+                  className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Sin asignar</option>
+                  {warehouses?.data
+                    ?.filter((w) => w.isActive)
+                    .map((warehouse) => (
+                      <option key={warehouse.id} value={warehouse.id}>
+                        {warehouse.name} ({warehouse.type})
+                      </option>
+                    ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Configura bodegas en Configuración → Bodegas
+                </p>
+              </div>
+
+              {/* Current Location (texto libre adicional) */}
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  Ubicación Específica (opcional)
                 </label>
                 <input
                   type="text"
@@ -612,9 +674,61 @@ export function AssetFormPage() {
                       currentLocation: e.target.value,
                     })
                   }
-                  placeholder="Bodega Central"
+                  placeholder="Ej: Rack 3, Pasillo B"
                   className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
+              </div>
+
+              {/* Rental Status Section */}
+              <div className="md:col-span-2 p-4 bg-gray-900/50 border border-gray-700 rounded-lg space-y-4">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    id="isCurrentlyRented"
+                    checked={formData.isCurrentlyRented}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        isCurrentlyRented: e.target.checked,
+                        // Limpiar contrato si se desmarca
+                        ...(e.target.checked
+                          ? {}
+                          : { currentRentalContract: "" }),
+                      })
+                    }
+                    className="w-4 h-4 bg-gray-900 border-gray-700 rounded text-blue-600 focus:ring-2 focus:ring-blue-500"
+                  />
+                  <label
+                    htmlFor="isCurrentlyRented"
+                    className="text-sm font-medium text-gray-300 cursor-pointer"
+                  >
+                    🏗️ Este activo ya está alquilado actualmente
+                  </label>
+                </div>
+
+                {formData.isCurrentlyRented && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      Número de Contrato Actual
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.currentRentalContract || ""}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          currentRentalContract: e.target.value,
+                        })
+                      }
+                      placeholder="Ej: CONT-2024-0123"
+                      className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <p className="text-xs text-gray-400 mt-1">
+                      Este campo se actualizará automáticamente cuando termine
+                      el alquiler
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Flags — solo si no hay plantilla (la plantilla los hereda automáticamente) */}
@@ -1164,6 +1278,218 @@ export function AssetFormPage() {
                   alquiler
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Tracking Fields Configuration (Rental vertical only) */}
+          {formData.trackingType === "MACHINERY" && (
+            <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 space-y-6">
+              <h2 className="text-lg font-semibold text-white mb-4">
+                📊 Configuración de Campos de Evidencia
+              </h2>
+              <p className="text-sm text-gray-400 mb-4">
+                Selecciona qué campos quieres rastrear para este activo e
+                ingresa los valores iniciales
+              </p>
+
+              <div className="space-y-4">
+                {/* Hourometer */}
+                <div className="flex items-start gap-4 p-4 bg-gray-900/50 border border-gray-700 rounded-lg">
+                  <input
+                    type="checkbox"
+                    id="track_hourometer"
+                    checked={formData.trackingFields?.hourometer || false}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        trackingFields: {
+                          ...formData.trackingFields,
+                          hourometer: e.target.checked,
+                        },
+                      })
+                    }
+                    className="mt-1 w-4 h-4 rounded border-gray-700 bg-gray-900 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                  />
+                  <div className="flex-1">
+                    <label
+                      htmlFor="track_hourometer"
+                      className="block text-sm font-medium text-gray-300 mb-1 cursor-pointer"
+                    >
+                      ⏱️ Horómetro (horas de uso)
+                    </label>
+                    {formData.trackingFields?.hourometer && (
+                      <input
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        value={formData.initialValues?.hourometer || ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            initialValues: {
+                              ...formData.initialValues,
+                              hourometer: e.target.value
+                                ? parseFloat(e.target.value)
+                                : 0,
+                            },
+                          })
+                        }
+                        placeholder="Ej: 1500"
+                        className="mt-2 w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    )}
+                  </div>
+                </div>
+
+                {/* Odometer */}
+                <div className="flex items-start gap-4 p-4 bg-gray-900/50 border border-gray-700 rounded-lg">
+                  <input
+                    type="checkbox"
+                    id="track_odometer"
+                    checked={formData.trackingFields?.odometer || false}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        trackingFields: {
+                          ...formData.trackingFields,
+                          odometer: e.target.checked,
+                        },
+                      })
+                    }
+                    className="mt-1 w-4 h-4 rounded border-gray-700 bg-gray-900 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                  />
+                  <div className="flex-1">
+                    <label
+                      htmlFor="track_odometer"
+                      className="block text-sm font-medium text-gray-300 mb-1 cursor-pointer"
+                    >
+                      🚗 Odómetro (kilómetros recorridos)
+                    </label>
+                    {formData.trackingFields?.odometer && (
+                      <input
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        value={formData.initialValues?.odometer || ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            initialValues: {
+                              ...formData.initialValues,
+                              odometer: e.target.value
+                                ? parseFloat(e.target.value)
+                                : 0,
+                            },
+                          })
+                        }
+                        placeholder="Ej: 25000"
+                        className="mt-2 w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    )}
+                  </div>
+                </div>
+
+                {/* Fuel Level */}
+                <div className="flex items-start gap-4 p-4 bg-gray-900/50 border border-gray-700 rounded-lg">
+                  <input
+                    type="checkbox"
+                    id="track_fuelLevel"
+                    checked={formData.trackingFields?.fuelLevel || false}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        trackingFields: {
+                          ...formData.trackingFields,
+                          fuelLevel: e.target.checked,
+                        },
+                      })
+                    }
+                    className="mt-1 w-4 h-4 rounded border-gray-700 bg-gray-900 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                  />
+                  <div className="flex-1">
+                    <label
+                      htmlFor="track_fuelLevel"
+                      className="block text-sm font-medium text-gray-300 mb-1 cursor-pointer"
+                    >
+                      ⛽ Nivel de Combustible (litros)
+                    </label>
+                    {formData.trackingFields?.fuelLevel && (
+                      <input
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        value={formData.initialValues?.fuelLevel || ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            initialValues: {
+                              ...formData.initialValues,
+                              fuelLevel: e.target.value
+                                ? parseFloat(e.target.value)
+                                : 0,
+                            },
+                          })
+                        }
+                        placeholder="Ej: 50"
+                        className="mt-2 w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    )}
+                  </div>
+                </div>
+
+                {/* Oil Level */}
+                <div className="flex items-start gap-4 p-4 bg-gray-900/50 border border-gray-700 rounded-lg">
+                  <input
+                    type="checkbox"
+                    id="track_oilLevel"
+                    checked={formData.trackingFields?.oilLevel || false}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        trackingFields: {
+                          ...formData.trackingFields,
+                          oilLevel: e.target.checked,
+                        },
+                      })
+                    }
+                    className="mt-1 w-4 h-4 rounded border-gray-700 bg-gray-900 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                  />
+                  <div className="flex-1">
+                    <label
+                      htmlFor="track_oilLevel"
+                      className="block text-sm font-medium text-gray-300 mb-1 cursor-pointer"
+                    >
+                      🛢️ Nivel de Aceite
+                    </label>
+                    {formData.trackingFields?.oilLevel && (
+                      <input
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        value={formData.initialValues?.oilLevel || ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            initialValues: {
+                              ...formData.initialValues,
+                              oilLevel: e.target.value
+                                ? parseFloat(e.target.value)
+                                : 0,
+                            },
+                          })
+                        }
+                        placeholder="Ej: 10"
+                        className="mt-2 w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 p-3 bg-blue-900/10 border border-blue-800 rounded-lg text-sm text-blue-300">
+                💡 <strong>Tip:</strong> Los operadores reportarán estos valores
+                diariamente desde la app móvil
+              </div>
             </div>
           )}
 

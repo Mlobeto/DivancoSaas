@@ -148,6 +148,7 @@ export interface GuardContext {
   tenant: {
     id: string;
     name: string;
+    vertical?: string | null; // Vertical assigned to this tenant
   } | null;
 
   /** Current business unit */

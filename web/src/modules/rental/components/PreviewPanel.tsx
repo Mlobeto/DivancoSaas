@@ -4,8 +4,6 @@ import type { QuotationType } from "../types/quotation.types";
 interface PreviewPanelProps {
   quotationType: QuotationType;
   clientName?: string;
-  estimatedStartDate?: string;
-  estimatedEndDate?: string;
   estimatedDays?: number;
   serviceDescription?: string;
   items: any[];
@@ -19,8 +17,6 @@ interface PreviewPanelProps {
 export function PreviewPanel({
   quotationType,
   clientName,
-  estimatedStartDate,
-  estimatedEndDate,
   estimatedDays,
   serviceDescription,
   items,
@@ -30,16 +26,6 @@ export function PreviewPanel({
   total,
   businessUnitName = "DivancoSaas",
 }: PreviewPanelProps) {
-  const formatDate = (dateStr?: string) => {
-    if (!dateStr) return "---";
-    const date = new Date(dateStr);
-    return date.toLocaleDateString("es-ES", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
-
   return (
     <div className="sticky top-4 bg-white border-2 border-gray-200 rounded-xl shadow-lg overflow-hidden">
       {/* Header */}
@@ -90,36 +76,22 @@ export function PreviewPanel({
             </div>
           </div>
 
-          {quotationType === "time_based" &&
-            estimatedStartDate &&
-            estimatedEndDate && (
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center gap-2 text-gray-600">
-                  <Calendar className="w-4 h-4" />
-                  <span>Período Estimado</span>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <span className="text-xs text-gray-500">Inicio</span>
-                    <p className="font-medium text-gray-900">
-                      {formatDate(estimatedStartDate)}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-xs text-gray-500">Fin</span>
-                    <p className="font-medium text-gray-900">
-                      {formatDate(estimatedEndDate)}
-                    </p>
-                  </div>
-                </div>
-                <div className="pt-2 border-t border-gray-200">
-                  <span className="text-xs text-gray-500">Duración</span>
-                  <p className="font-bold text-lg text-blue-600">
-                    {estimatedDays || 0} días
-                  </p>
-                </div>
+          {quotationType === "time_based" && estimatedDays && (
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center gap-2 text-gray-600">
+                <Calendar className="w-4 h-4" />
+                <span>Duración Estimada</span>
               </div>
-            )}
+              <div className="pt-2">
+                <p className="font-bold text-2xl text-blue-600">
+                  {estimatedDays} días
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Sin fechas específicas
+                </p>
+              </div>
+            </div>
+          )}
 
           {quotationType === "service_based" && serviceDescription && (
             <div className="text-sm">

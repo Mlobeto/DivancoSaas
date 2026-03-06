@@ -104,6 +104,12 @@ export class AssetService {
         acquisitionCost: data.acquisitionCost,
         origin: data.origin,
         currentLocation: data.currentLocation,
+        warehouseId: data.warehouseId, // Bodega/Taller asignado
+
+        // Rental status (si ya está alquilado al crear)
+        isCurrentlyRented: data.isCurrentlyRented ?? false,
+        currentRentalContract: data.currentRentalContract,
+
         requiresOperator: data.requiresOperator ?? false,
         requiresTracking: data.requiresTracking ?? false,
         requiresClinic: data.requiresClinic ?? false,
@@ -146,6 +152,9 @@ export class AssetService {
               operatorCostType: data.operatorCostType,
               operatorCostRate: data.operatorCostRate,
               maintenanceCostDaily: data.maintenanceCostDaily,
+              // Campos de tracking configurables
+              trackingFields: data.trackingFields as any,
+              initialValues: data.initialValues as any,
             },
           },
         }),

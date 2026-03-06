@@ -44,11 +44,8 @@ export interface QuotationItem {
   trackingType: "MACHINERY" | "TOOL" | null;
   quantity: number;
   rentalDays: number;
-  startDate: string;
-  endDate: string;
 
-  // v4.0: Nuevos campos
-  rentalPeriodType: RentalPeriodType;
+  // v4.0: Campos de configuración
   standbyHours?: number; // Para MACHINERY
   operatorIncluded: boolean;
   operatorCostType?: OperatorCostType;
@@ -57,9 +54,22 @@ export interface QuotationItem {
   customUnitPrice?: number;
   customOperatorCost?: number;
 
-  // Calculated preview
+  // Calculated preview (legacy - backward compatibility)
   calculatedUnitPrice?: number;
   calculatedOperatorCost?: number;
+
+  // v5.0: Multi-period pricing
+  selectedPeriods?: {
+    daily: boolean;
+    weekly: boolean;
+    monthly: boolean;
+  };
+  pricePerDay?: number;
+  pricePerWeek?: number;
+  pricePerMonth?: number;
+  operatorCostPerDay?: number;
+  operatorCostPerWeek?: number;
+  operatorCostPerMonth?: number;
 }
 
 export function useQuotationForm(options?: UseQuotationFormOptions) {
@@ -73,9 +83,7 @@ export function useQuotationForm(options?: UseQuotationFormOptions) {
   // v4.0: Tipo de cotización
   const [quotationType, setQuotationType] =
     useState<QuotationType>("time_based");
-  const [estimatedStartDate, setEstimatedStartDate] = useState("");
-  const [estimatedEndDate, setEstimatedEndDate] = useState("");
-  const [estimatedDays, setEstimatedDays] = useState(0);
+  const [estimatedDays, setEstimatedDays] = useState(30); // Default 30 días
   const [serviceDescription, setServiceDescription] = useState("");
 
   const [items, setItems] = useState<QuotationItem[]>([]);
@@ -98,17 +106,10 @@ export function useQuotationForm(options?: UseQuotationFormOptions) {
   useEffect(() => {
     if (!existingQuotation) return;
     setSelectedClientId(existingQuotation.clientId ?? "");
-    setQuotationType((existingQuotation.quotationType as QuotationType) ?? "time_based");
-    setEstimatedStartDate(
-      existingQuotation.estimatedStartDate
-        ? String(existingQuotation.estimatedStartDate).slice(0, 10)
-        : "",
+    setQuotationType(
+      (existingQuotation.quotationType as QuotationType) ?? "time_based",
     );
-    setEstimatedEndDate(
-      existingQuotation.estimatedEndDate
-        ? String(existingQuotation.estimatedEndDate).slice(0, 10)
-        : "",
-    );
+    setEstimatedDays(existingQuotation.estimatedDays ?? 30);
     setServiceDescription((existingQuotation as any).serviceDescription ?? "");
     setNotes(existingQuotation.notes ?? "");
     setTerms((existingQuotation as any).termsAndConditions ?? terms);
@@ -125,30 +126,39 @@ export function useQuotationForm(options?: UseQuotationFormOptions) {
       setValidityDays(days);
     }
     // Mapear items del backend al formato del form
-    const mappedItems: QuotationItem[] =
-      (existingQuotation.items ?? []).map((item: any) => ({
+    const mappedItems: QuotationItem[] = (existingQuotation.items ?? []).map(
+      (item: any) => ({
         assetId: item.assetId ?? "",
         assetName: item.description ?? "",
         assetCode: item.asset?.code ?? "",
         trackingType: item.asset?.trackingType ?? null,
         quantity: item.quantity ?? 1,
-        rentalDays: item.rentalDays ?? 0,
-        startDate: item.rentalStartDate ? String(item.rentalStartDate).slice(0, 10) : "",
-        endDate: item.rentalEndDate ? String(item.rentalEndDate).slice(0, 10) : "",
-        rentalPeriodType: (item.rentalPeriodType as RentalPeriodType) ?? "daily",
+        rentalDays: item.rentalDays ?? estimatedDays, // Usar estimatedDays de la cotización
+        startDate: item.rentalStartDate
+          ? String(item.rentalStartDate).slice(0, 10)
+          : "",
+        endDate: item.rentalEndDate
+          ? String(item.rentalEndDate).slice(0, 10)
+          : "",
+        rentalPeriodType:
+          (item.rentalPeriodType as RentalPeriodType) ?? "daily",
         standbyHours: Number(item.standbyHours) || 0,
         operatorIncluded: item.operatorIncluded ?? false,
-        operatorCostType: (item.operatorCostType as OperatorCostType) ?? "PER_DAY",
-        customUnitPrice: item.priceOverridden ? Number(item.unitPrice) : undefined,
+        operatorCostType:
+          (item.operatorCostType as OperatorCostType) ?? "PER_DAY",
+        customUnitPrice: item.priceOverridden
+          ? Number(item.unitPrice)
+          : undefined,
         customOperatorCost:
           item.operatorCost && Number(item.operatorCost) > 0
             ? Number(item.operatorCost)
             : undefined,
         calculatedUnitPrice: Number(item.calculatedUnitPrice) || 0,
         calculatedOperatorCost: Number(item.calculatedOperatorCost) || 0,
-      }));
+      }),
+    );
     setItems(mappedItems);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [existingQuotation]);
 
   // Asset search state
@@ -189,22 +199,6 @@ export function useQuotationForm(options?: UseQuotationFormOptions) {
 
     return () => clearTimeout(timer);
   }, [assetSearch]);
-
-  // v4.0: Calcular automáticamente estimatedDays cuando cambian las fechas
-  useEffect(() => {
-    if (
-      estimatedStartDate &&
-      estimatedEndDate &&
-      quotationType === "time_based"
-    ) {
-      const start = new Date(estimatedStartDate);
-      const end = new Date(estimatedEndDate);
-      const days = Math.ceil(
-        (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24),
-      );
-      setEstimatedDays(days > 0 ? days : 0);
-    }
-  }, [estimatedStartDate, estimatedEndDate, quotationType]);
 
   // Calculate item price preview
   const calculateItemPreview = useCallback(
@@ -458,8 +452,6 @@ export function useQuotationForm(options?: UseQuotationFormOptions) {
       businessUnit,
       items,
       quotationType,
-      estimatedStartDate,
-      estimatedEndDate,
       estimatedDays,
       serviceDescription,
       validityDays,
@@ -481,11 +473,8 @@ export function useQuotationForm(options?: UseQuotationFormOptions) {
     setSelectedClientId,
     quotationType,
     setQuotationType,
-    estimatedStartDate,
-    setEstimatedStartDate,
-    estimatedEndDate,
-    setEstimatedEndDate,
     estimatedDays,
+    setEstimatedDays,
     serviceDescription,
     setServiceDescription,
     items,

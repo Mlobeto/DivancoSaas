@@ -56,6 +56,9 @@ export interface QuotationItemInput {
   operatorIncluded?: boolean; // Si incluir operador en el cálculo
   operatorCostType?: "PER_DAY" | "PER_HOUR"; // Tipo de viáticos
 
+  // v5.0: Multi-period selection
+  selectedPeriods?: { daily: boolean; weekly: boolean; monthly: boolean };
+
   // Override manual
   customUnitPrice?: number; // Override manual del precio unitario
   customOperatorCost?: number; // Override manual del costo del operador
@@ -70,59 +73,78 @@ export interface QuotationItemInput {
 
 export class QuotationService {
   /**
-   * Calcular precio automático de un item desde el asset
+   * Calcular precios en TODAS las modalidades (día/semana/mes)
+   * v5.0 - Multi-period pricing
    */
   private async calculateItemPrice(
     tenantId: string,
     businessUnitId: string,
     item: QuotationItemInput,
   ): Promise<{
+    // Precios legacy (deprecados, mantener por compatibilidad)
     unitPrice: number;
     calculatedUnitPrice: number;
     operatorCost: number;
     calculatedOperatorCost: number;
     priceOverridden: boolean;
     operatorIncluded: boolean;
+    // Nuevos: Precios multi-período
+    pricePerDay: number | null;
+    totalPerDay: number | null;
+    pricePerWeek: number | null;
+    totalPerWeek: number | null;
+    pricePerMonth: number | null;
+    totalPerMonth: number | null;
+    operatorCostPerDay: number | null;
+    operatorCostPerWeek: number | null;
+    operatorCostPerMonth: number | null;
   }> {
-    // Si no hay assetId, usar precio manual
+    // Si no hay assetId, usar precio manual (service-based)
     if (!item.assetId) {
+      const manualPrice = item.customUnitPrice || item.unitPrice || 0;
       return {
-        unitPrice: item.customUnitPrice || item.unitPrice || 0,
+        unitPrice: manualPrice,
         calculatedUnitPrice: 0,
         operatorCost: 0,
         calculatedOperatorCost: 0,
         priceOverridden: false,
         operatorIncluded: false,
+        pricePerDay: null,
+        totalPerDay: null,
+        pricePerWeek: null,
+        totalPerWeek: null,
+        pricePerMonth: null,
+        totalPerMonth: null,
+        operatorCostPerDay: null,
+        operatorCostPerWeek: null,
+        operatorCostPerMonth: null,
       };
     }
 
-    // Obtener asset con precios (incluir rentalProfile para multi-vertical)
+    // Obtener asset con precios
     const asset = await prisma.asset.findFirst({
-      where: {
-        id: item.assetId,
-        tenantId,
-        businessUnitId,
-      },
-      include: {
-        rentalProfile: true, // Extensión opcional para vertical rental
-      },
+      where: { id: item.assetId, tenantId, businessUnitId },
+      include: { rentalProfile: true },
     });
 
     if (!asset) {
       throw new Error(`Asset ${item.assetId} not found`);
     }
 
-    // Determinar trackingType con fallback
     const trackingType =
       asset.rentalProfile?.trackingType || asset.trackingType;
+    const estimatedDays = item.rentalDays || 1;
 
-    // Calcular precio según trackingType y rentalDays
-    let calculatedUnitPrice = 0;
-    let calculatedOperatorCost = 0;
+    // Inicializar precios multi-período
+    let pricePerDay = 0;
+    let pricePerWeek = 0;
+    let pricePerMonth = 0;
+    let operatorPerDay = 0;
+    let operatorPerWeek = 0;
+    let operatorPerMonth = 0;
 
     if (trackingType === "MACHINERY") {
       // MACHINERY: precio por hora con STANDBY
-      // Verificar precio por hora con fallback (rentalProfile primero, luego legacy)
       const pricePerHourValue =
         asset.rentalProfile?.pricePerHour || asset.pricePerHour;
 
@@ -132,9 +154,6 @@ export class QuotationService {
         );
       }
 
-      const rentalDays: number = item.rentalDays || 1;
-
-      // v4.0: Usar standbyHours del item o minDailyHours del asset como fallback
       const minDailyHoursValue =
         asset.rentalProfile?.minDailyHours || asset.minDailyHours;
       const standbyHours: number =
@@ -144,75 +163,102 @@ export class QuotationService {
             ? Number(minDailyHoursValue)
             : 8;
 
-      // Precio = días * standby horas * precio por hora
-      const pricePerHour: number = Number(pricePerHourValue);
-      calculatedUnitPrice = rentalDays * standbyHours * pricePerHour;
+      const pricePerHour = Number(pricePerHourValue);
 
-      // Calcular costo del operador si se incluye
+      // Calcular precio por DÍA (1 día = standbyHours * pricePerHour)
+      pricePerDay = standbyHours * pricePerHour;
+
+      // Calcular precio por SEMANA (7 días)
+      pricePerWeek = 7 * pricePerDay;
+
+      // Calcular precio por MES (30 días)
+      pricePerMonth = 30 * pricePerDay;
+
+      // Calcular costos del operador si se incluye
       const operatorCostRateValue =
         asset.rentalProfile?.operatorCostRate || asset.operatorCostRate;
       if (item.operatorIncluded && operatorCostRateValue) {
-        const operatorRate: number = Number(operatorCostRateValue);
-        // v4.0: Usar operatorCostType del item o del asset como fallback
+        const operatorRate = Number(operatorCostRateValue);
         const operatorCostTypeValue =
           asset.rentalProfile?.operatorCostType || asset.operatorCostType;
         const costType = item.operatorCostType || operatorCostTypeValue;
 
         if (costType === "PER_HOUR") {
-          calculatedOperatorCost = rentalDays * standbyHours * operatorRate;
+          operatorPerDay = standbyHours * operatorRate;
+          operatorPerWeek = 7 * operatorPerDay;
+          operatorPerMonth = 30 * operatorPerDay;
         } else if (costType === "PER_DAY") {
-          calculatedOperatorCost = rentalDays * operatorRate;
+          operatorPerDay = operatorRate;
+          operatorPerWeek = 7 * operatorRate;
+          operatorPerMonth = 30 * operatorRate;
         }
       }
     } else if (trackingType === "TOOL") {
-      // TOOL: precio por día/semana/mes
-      const rentalDays = item.rentalDays || 1;
-
-      // Fallback pattern para cada tipo de precio
-      const pricePerMonthValue =
-        asset.rentalProfile?.pricePerMonth || asset.pricePerMonth;
-      const pricePerWeekValue =
-        asset.rentalProfile?.pricePerWeek || asset.pricePerWeek;
+      // TOOL: usar precios configurados en el asset
       const pricePerDayValue =
         asset.rentalProfile?.pricePerDay || asset.pricePerDay;
+      const pricePerWeekValue =
+        asset.rentalProfile?.pricePerWeek || asset.pricePerWeek;
+      const pricePerMonthValue =
+        asset.rentalProfile?.pricePerMonth || asset.pricePerMonth;
 
-      if (rentalDays >= 30 && pricePerMonthValue) {
-        // Usar precio mensual
-        const months = Math.ceil(rentalDays / 30);
-        calculatedUnitPrice = months * Number(pricePerMonthValue);
-      } else if (rentalDays >= 7 && pricePerWeekValue) {
-        // Usar precio semanal
-        const weeks = Math.ceil(rentalDays / 7);
-        calculatedUnitPrice = weeks * Number(pricePerWeekValue);
-      } else if (pricePerDayValue) {
-        // Usar precio diario
-        calculatedUnitPrice = rentalDays * Number(pricePerDayValue);
-      } else {
+      if (!pricePerDayValue && !pricePerWeekValue && !pricePerMonthValue) {
         throw new Error(`Asset ${asset.code} does not have pricing configured`);
       }
 
-      // TOOL no incluye operador típicamente
-      calculatedOperatorCost = 0;
+      // Usar precios directos del asset
+      pricePerDay = pricePerDayValue ? Number(pricePerDayValue) : 0;
+      pricePerWeek = pricePerWeekValue ? Number(pricePerWeekValue) : 0;
+      pricePerMonth = pricePerMonthValue ? Number(pricePerMonthValue) : 0;
+
+      // Si falta algún precio, calcularlo proporcionalmente
+      if (!pricePerDay && pricePerWeek) pricePerDay = pricePerWeek / 7;
+      if (!pricePerDay && pricePerMonth) pricePerDay = pricePerMonth / 30;
+      if (!pricePerWeek && pricePerDay) pricePerWeek = pricePerDay * 7;
+      if (!pricePerMonth && pricePerDay) pricePerMonth = pricePerDay * 30;
+
+      // TOOL no incluye operador por defecto
+      operatorPerDay = 0;
+      operatorPerWeek = 0;
+      operatorPerMonth = 0;
     }
 
-    // Determinar precio final y si fue overridden
+    // Calcular totales por período (precio + operador) * tiempo estimado
+    const totalPerDay = (pricePerDay + operatorPerDay) * estimatedDays;
+    const totalPerWeek =
+      (pricePerWeek + operatorPerWeek) * Math.ceil(estimatedDays / 7);
+    const totalPerMonth =
+      (pricePerMonth + operatorPerMonth) * Math.ceil(estimatedDays / 30);
+
+    // Legacy: calcular unitPrice/operatorCost para compatibilidad (usar diario por defecto)
+    const legacyUnitPrice = totalPerDay;
+    const legacyOperatorCost = operatorPerDay * estimatedDays;
+
+    // Aplicar custom prices si existen
     const hasCustomPrice = item.customUnitPrice !== undefined;
     const finalUnitPrice = hasCustomPrice
       ? item.customUnitPrice!
-      : calculatedUnitPrice;
-
-    const hasCustomOperatorCost = item.customOperatorCost !== undefined;
-    const finalOperatorCost = hasCustomOperatorCost
-      ? item.customOperatorCost!
-      : calculatedOperatorCost;
+      : legacyUnitPrice;
 
     return {
+      // Legacy (compatibilidad)
       unitPrice: finalUnitPrice,
-      calculatedUnitPrice,
-      operatorCost: finalOperatorCost,
-      calculatedOperatorCost,
+      calculatedUnitPrice: legacyUnitPrice,
+      operatorCost: legacyOperatorCost,
+      calculatedOperatorCost: legacyOperatorCost,
       priceOverridden: hasCustomPrice,
       operatorIncluded: item.operatorIncluded || false,
+
+      // Multi-período (nuevos)
+      pricePerDay: pricePerDay > 0 ? pricePerDay : null,
+      totalPerDay: totalPerDay > 0 ? totalPerDay : null,
+      pricePerWeek: pricePerWeek > 0 ? pricePerWeek : null,
+      totalPerWeek: totalPerWeek > 0 ? totalPerWeek : null,
+      pricePerMonth: pricePerMonth > 0 ? pricePerMonth : null,
+      totalPerMonth: totalPerMonth > 0 ? totalPerMonth : null,
+      operatorCostPerDay: operatorPerDay > 0 ? operatorPerDay : null,
+      operatorCostPerWeek: operatorPerWeek > 0 ? operatorPerWeek : null,
+      operatorCostPerMonth: operatorPerMonth > 0 ? operatorPerMonth : null,
     };
   }
 
@@ -314,7 +360,7 @@ export class QuotationService {
             rentalStartDate: item.rentalStartDate || null,
             rentalEndDate: item.rentalEndDate || null,
 
-            // v4.0: Nuevos campos
+            // v4.0: Nuevos campos legacy
             rentalPeriodType: item.rentalPeriodType,
             standbyHours: item.standbyHours
               ? new Decimal(item.standbyHours)
@@ -329,6 +375,40 @@ export class QuotationService {
               : null,
             discount: item.discount ? new Decimal(item.discount) : null,
             discountReason: item.discountReason,
+
+            // v5.0: Multi-period pricing
+            pricePerDay: item.pricePerDay
+              ? new Decimal(item.pricePerDay)
+              : null,
+            totalPerDay: item.totalPerDay
+              ? new Decimal(item.totalPerDay)
+              : null,
+            pricePerWeek: item.pricePerWeek
+              ? new Decimal(item.pricePerWeek)
+              : null,
+            totalPerWeek: item.totalPerWeek
+              ? new Decimal(item.totalPerWeek)
+              : null,
+            pricePerMonth: item.pricePerMonth
+              ? new Decimal(item.pricePerMonth)
+              : null,
+            totalPerMonth: item.totalPerMonth
+              ? new Decimal(item.totalPerMonth)
+              : null,
+            operatorCostPerDay: item.operatorCostPerDay
+              ? new Decimal(item.operatorCostPerDay)
+              : null,
+            operatorCostPerWeek: item.operatorCostPerWeek
+              ? new Decimal(item.operatorCostPerWeek)
+              : null,
+            operatorCostPerMonth: item.operatorCostPerMonth
+              ? new Decimal(item.operatorCostPerMonth)
+              : null,
+
+            // v5.0: Selected periods (guardar como JSON string)
+            selectedPeriods: item.selectedPeriods
+              ? JSON.stringify(item.selectedPeriods)
+              : null,
 
             sortOrder: index,
           })),
@@ -485,6 +565,41 @@ export class QuotationService {
                 : null,
               discount: item.discount ? new Decimal(item.discount) : null,
               discountReason: item.discountReason,
+
+              // v5.0: Multi-period pricing
+              pricePerDay: item.pricePerDay
+                ? new Decimal(item.pricePerDay)
+                : null,
+              totalPerDay: item.totalPerDay
+                ? new Decimal(item.totalPerDay)
+                : null,
+              pricePerWeek: item.pricePerWeek
+                ? new Decimal(item.pricePerWeek)
+                : null,
+              totalPerWeek: item.totalPerWeek
+                ? new Decimal(item.totalPerWeek)
+                : null,
+              pricePerMonth: item.pricePerMonth
+                ? new Decimal(item.pricePerMonth)
+                : null,
+              totalPerMonth: item.totalPerMonth
+                ? new Decimal(item.totalPerMonth)
+                : null,
+              operatorCostPerDay: item.operatorCostPerDay
+                ? new Decimal(item.operatorCostPerDay)
+                : null,
+              operatorCostPerWeek: item.operatorCostPerWeek
+                ? new Decimal(item.operatorCostPerWeek)
+                : null,
+              operatorCostPerMonth: item.operatorCostPerMonth
+                ? new Decimal(item.operatorCostPerMonth)
+                : null,
+
+              // v5.0: Selected periods (guardar como JSON string)
+              selectedPeriods: item.selectedPeriods
+                ? JSON.stringify(item.selectedPeriods)
+                : null,
+
               sortOrder: index,
             })),
           },
@@ -705,12 +820,76 @@ export class QuotationService {
           calculatedOperatorCost: item.calculatedOperatorCost
             ? Number(item.calculatedOperatorCost)
             : null,
+
+          // v5.0: Multi-period pricing
+          selectedPeriods: item.selectedPeriods
+            ? JSON.parse(item.selectedPeriods as string)
+            : null,
+          pricePerDay: item.pricePerDay ? Number(item.pricePerDay) : null,
+          pricePerWeek: item.pricePerWeek ? Number(item.pricePerWeek) : null,
+          pricePerMonth: item.pricePerMonth ? Number(item.pricePerMonth) : null,
+          operatorCostPerDay: item.operatorCostPerDay
+            ? Number(item.operatorCostPerDay)
+            : null,
+          operatorCostPerWeek: item.operatorCostPerWeek
+            ? Number(item.operatorCostPerWeek)
+            : null,
+          operatorCostPerMonth: item.operatorCostPerMonth
+            ? Number(item.operatorCostPerMonth)
+            : null,
+          totalPerDay: item.totalPerDay ? Number(item.totalPerDay) : null,
+          totalPerWeek: item.totalPerWeek ? Number(item.totalPerWeek) : null,
+          totalPerMonth: item.totalPerMonth ? Number(item.totalPerMonth) : null,
+          assetCode: item.asset?.code || null,
+          trackingType: item.asset?.trackingType || null,
         };
       }
 
       // Para cotizaciones SERVICE_BASED: estructura simple
       return baseItem;
     });
+
+    // v5.0: Calcular totales por modalidad para time-based quotations
+    let totalsByPeriod = null;
+    if (isTimeBased) {
+      const daily = { subtotal: 0, tax: 0, total: 0, hasItems: false };
+      const weekly = { subtotal: 0, tax: 0, total: 0, hasItems: false };
+      const monthly = { subtotal: 0, tax: 0, total: 0, hasItems: false };
+
+      itemsData.forEach((item: any) => {
+        if (item.selectedPeriods) {
+          const taxRate = Number(quotation.taxRate) / 100;
+
+          if (item.selectedPeriods.daily && item.totalPerDay) {
+            const subtotal = Number(item.totalPerDay) * item.quantity;
+            daily.subtotal += subtotal;
+            daily.hasItems = true;
+          }
+
+          if (item.selectedPeriods.weekly && item.totalPerWeek) {
+            const subtotal = Number(item.totalPerWeek) * item.quantity;
+            weekly.subtotal += subtotal;
+            weekly.hasItems = true;
+          }
+
+          if (item.selectedPeriods.monthly && item.totalPerMonth) {
+            const subtotal = Number(item.totalPerMonth) * item.quantity;
+            monthly.subtotal += subtotal;
+            monthly.hasItems = true;
+          }
+        }
+      });
+
+      // Calcular impuestos y totales
+      daily.tax = daily.subtotal * (Number(quotation.taxRate) / 100);
+      daily.total = daily.subtotal + daily.tax;
+      weekly.tax = weekly.subtotal * (Number(quotation.taxRate) / 100);
+      weekly.total = weekly.subtotal + weekly.tax;
+      monthly.tax = monthly.subtotal * (Number(quotation.taxRate) / 100);
+      monthly.total = monthly.subtotal + monthly.tax;
+
+      totalsByPeriod = { daily, weekly, monthly };
+    }
 
     // Preparar datos para renderizado según tipo
     const templateData = {
@@ -739,12 +918,15 @@ export class QuotationService {
       items: itemsData,
       itemCount: itemsData.length,
 
-      // Totales
+      // Totales (legacy, para compatibilidad)
       subtotal: Number(quotation.subtotal),
       taxRate: Number(quotation.taxRate),
       taxAmount: Number(quotation.taxAmount),
       totalAmount: Number(quotation.totalAmount),
       currency: quotation.currency,
+
+      // v5.0: Totales por modalidad (solo para time-based)
+      totals: totalsByPeriod,
 
       // Notas y términos
       notes: quotation.notes,

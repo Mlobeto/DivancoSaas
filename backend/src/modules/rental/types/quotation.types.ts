@@ -101,14 +101,27 @@ export interface UpdateQuotationItemPriceDTO {
 
 /**
  * Resultado del cálculo de precio de un item
+ * v5.0 - Multi-period pricing
  */
 export interface CalculatedItemPrice {
+  // Legacy (compatibilidad)
   unitPrice: number; // Precio final (calculado o custom)
   calculatedUnitPrice: number; // Precio calculado original
   operatorCost: number; // Costo del operador final
   calculatedOperatorCost: number; // Costo del operador calculado
   priceOverridden: boolean; // Si el precio fue modificado manualmente
   operatorIncluded: boolean; // Si incluye operador
+
+  // v5.0: Multi-period pricing (todas las modalidades)
+  pricePerDay: number | null; // Precio por 1 día
+  totalPerDay: number | null; // Total por período estimado (diario)
+  pricePerWeek: number | null; // Precio por 1 semana
+  totalPerWeek: number | null; // Total por período estimado (semanal)
+  pricePerMonth: number | null; // Precio por 1 mes
+  totalPerMonth: number | null; // Total por período estimado (mensual)
+  operatorCostPerDay: number | null; // Costo operador por día
+  operatorCostPerWeek: number | null; // Costo operador por semana
+  operatorCostPerMonth: number | null; // Costo operador por mes
 }
 
 /**

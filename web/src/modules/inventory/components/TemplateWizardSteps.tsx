@@ -48,7 +48,7 @@ const GROUP_DEFS: {
     key: "vehicle",
     icon: "🚛",
     label: "Vehículo",
-    desc: "Camiones, camionetas y motos usados para transporte o alquiler",
+    desc: "Camiones, camionetas, montacargas y motos para transporte o alquiler",
   },
   {
     key: "supply",
@@ -135,6 +135,11 @@ export function CategorySelectionStep({
         ...formData,
         category: AssetCategory.VEHICLE,
         managementType: "UNIT",
+        // Vehículos siempre requieren operario
+        rentalRules: {
+          ...(formData.rentalRules || {}),
+          requiresOperator: true,
+        },
       });
     }
   };
@@ -280,6 +285,9 @@ interface CapTag {
   off: any;
 }
 
+// Tag especial para operario (usa rentalRules.requiresOperator)
+const OPERATOR_TAG_KEY = "operator";
+
 const EQUIPMENT_TAGS: CapTag[] = [
   {
     key: "maintenance",
@@ -300,11 +308,11 @@ const EQUIPMENT_TAGS: CapTag[] = [
     off: false,
   },
   {
-    key: "operator",
+    key: OPERATOR_TAG_KEY,
     icon: "👷",
     label: "Requiere operario",
     desc: "El equipo se alquila con operador incluido",
-    field: "requiresPreventiveMaintenance", // placeholder — saved via rentalRules
+    field: "requiresDocumentation", // dummy — se maneja especialmente
     on: true,
     off: false,
   },
@@ -355,21 +363,56 @@ export function BasicInfoStep({
     getDefaultManagementType(formData.category);
   const isBulk = currentMgmt === "BULK";
 
-  const ALL_TAGS = isSupply ? SUPPLY_TAGS : EQUIPMENT_TAGS;
+  // Vehículos siempre tienen operario, no mostrar en tags
+  const isVehicle = formData.category === AssetCategory.VEHICLE;
 
-  // Which tags are currently active (field === on)
-  const activeTags = ALL_TAGS.filter((t) => formData[t.field] === t.on);
-  const availableTags = ALL_TAGS.filter((t) => formData[t.field] !== t.on);
+  const ALL_TAGS = isSupply
+    ? SUPPLY_TAGS
+    : isVehicle
+      ? EQUIPMENT_TAGS.filter((t) => t.key !== OPERATOR_TAG_KEY)
+      : EQUIPMENT_TAGS;
+
+  // Helper: check if a tag is active
+  const isTagActive = (tag: CapTag): boolean => {
+    if (tag.key === OPERATOR_TAG_KEY) {
+      return formData.rentalRules?.requiresOperator === true;
+    }
+    return formData[tag.field] === tag.on;
+  };
+
+  // Which tags are currently active
+  const activeTags = ALL_TAGS.filter((t) => isTagActive(t));
+  const availableTags = ALL_TAGS.filter((t) => !isTagActive(t));
 
   const [draggingKey, setDraggingKey] = useState<string | null>(null);
   const [dropOver, setDropOver] = useState<"active" | "available" | null>(null);
 
   const activateTag = (tag: CapTag) => {
-    setFormData({ ...formData, [tag.field]: tag.on });
+    if (tag.key === OPERATOR_TAG_KEY) {
+      setFormData({
+        ...formData,
+        rentalRules: {
+          ...formData.rentalRules,
+          requiresOperator: true,
+        },
+      });
+    } else {
+      setFormData({ ...formData, [tag.field]: tag.on });
+    }
   };
 
   const deactivateTag = (tag: CapTag) => {
-    setFormData({ ...formData, [tag.field]: tag.off });
+    if (tag.key === OPERATOR_TAG_KEY) {
+      setFormData({
+        ...formData,
+        rentalRules: {
+          ...formData.rentalRules,
+          requiresOperator: false,
+        },
+      });
+    } else {
+      setFormData({ ...formData, [tag.field]: tag.off });
+    }
   };
 
   // Drag handlers
@@ -400,6 +443,26 @@ export function BasicInfoStep({
       <h2 className="text-xl font-semibold text-white border-b border-dark-700 pb-3 flex items-center gap-2">
         <FileText className="w-5 h-5" /> Información Básica
       </h2>
+
+      {/* Info box: reglas de peso y stock */}
+      <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg text-sm space-y-1">
+        <p className="text-blue-300">
+          <span className="font-semibold">⚖️ Peso:</span> Todos los activos
+          requieren peso. Se solicitará al crear cada unidad.
+        </p>
+        {formData.category === AssetCategory.IMPLEMENT && (
+          <p className="text-blue-300">
+            <span className="font-semibold">📦 Stock mínimo:</span> Los
+            implementos deben especificar stock mínimo de alerta.
+          </p>
+        )}
+        {formData.category === AssetCategory.VEHICLE && (
+          <p className="text-blue-300">
+            <span className="font-semibold">👷 Operario:</span> Los vehículos
+            siempre se alquilan con operario incluido.
+          </p>
+        )}
+      </div>
 
       {/* Name + Description */}
       <div className="grid grid-cols-1 gap-4">
@@ -482,13 +545,17 @@ export function BasicInfoStep({
         </p>
       </div>
 
-      {/* Stock mínimo — solo BULK */}
-      {isBulk && (
+      {/* Stock mínimo — BULK e IMPLEMENT */}
+      {(isBulk || formData.category === AssetCategory.IMPLEMENT) && (
         <div className="flex items-end gap-3">
           <div>
             <label className="label">
               Stock Mínimo de Alerta
-              <span className="ml-1 text-dark-500 font-normal">(opcional)</span>
+              <span className="ml-1 text-dark-500 font-normal">
+                {formData.category === AssetCategory.IMPLEMENT
+                  ? "(recomendado)"
+                  : "(opcional)"}
+              </span>
             </label>
             <div className="flex gap-2 items-center">
               <input
@@ -705,7 +772,7 @@ interface SpecPoolItem {
 const SPEC_POOL_EQUIPMENT: SpecPoolItem[] = [
   { key: "Color", icon: "🎨" },
   { key: "Capacidad de carga", icon: "🏗️" },
-  { key: "Peso bruto", icon: "📦" },
+  { key: "Peso (kg)", icon: "⚖️" },
   { key: "Altura de elevación", icon: "📏" },
   { key: "Longitud", icon: "↔️" },
   { key: "Ancho", icon: "↕️" },
@@ -715,12 +782,6 @@ const SPEC_POOL_EQUIPMENT: SpecPoolItem[] = [
   { key: "Combustible", icon: "⛽" },
   { key: "Capacidad hidráulica", icon: "💧" },
   { key: "Año de fabricación", icon: "📅" },
-  {
-    key: "__weight__",
-    icon: "⚖️",
-    label: "Registrar peso (kg)",
-    isWeightFlag: true,
-  },
 ];
 
 export function TechnicalSpecsStep({
@@ -741,47 +802,28 @@ export function TechnicalSpecsStep({
 
   // Pool: items not yet active
   const poolItems = SPEC_POOL_EQUIPMENT.filter((item) => {
-    if (item.isWeightFlag) return !formData.requiresWeight;
     return !(item.key in specs);
   });
 
-  // Active items: specs + weight flag
+  // Active items: only specs (no weight flag needed)
   const activeItems: SpecPoolItem[] = [
     ...Object.keys(specs).map((k) => {
       const def = SPEC_POOL_EQUIPMENT.find((p) => p.key === k);
       return { key: k, icon: def?.icon ?? "📋" };
     }),
-    ...(formData.requiresWeight
-      ? [
-          {
-            key: "__weight__",
-            icon: "⚖️",
-            label: "Registrar peso (kg)",
-            isWeightFlag: true as const,
-          },
-        ]
-      : []),
   ];
 
   const addToActive = (item: SpecPoolItem) => {
-    if (item.isWeightFlag) {
-      setFormData({ ...formData, requiresWeight: true });
-    } else {
-      setFormData({
-        ...formData,
-        technicalSpecs: { ...specs, [item.key]: "" },
-      });
-    }
+    setFormData({
+      ...formData,
+      technicalSpecs: { ...specs, [item.key]: "" },
+    });
   };
 
   const removeFromActive = (key: string) => {
-    if (key === "__weight__") {
-      setFormData({ ...formData, requiresWeight: false });
-    } else {
-      const next = { ...specs };
-      delete next[key];
-      setFormData({ ...formData, technicalSpecs: next });
-    }
+    const next = { ...specs };
+    delete next[key];
+    setFormData({ ...formData, technicalSpecs: next });
   };
 
   const handleDropActive = () => {
@@ -815,6 +857,16 @@ export function TechnicalSpecsStep({
       <h2 className="text-xl font-semibold text-white border-b border-dark-700 pb-3">
         Especificaciones Técnicas
       </h2>
+
+      {isEquipOrVehicle && (
+        <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg text-sm">
+          <p className="text-blue-300">
+            <span className="font-semibold">ℹ️ Peso siempre incluido:</span>{" "}
+            Todos los activos requieren registro de peso. Se solicitará
+            automáticamente al crear cada activo.
+          </p>
+        </div>
+      )}
 
       {isEquipOrVehicle ? (
         /* ── Drag-and-drop two columns ──────────────────────────────── */
@@ -913,11 +965,6 @@ export function TechnicalSpecsStep({
                     <span className="text-xs text-primary-300 font-medium w-32 shrink-0 truncate">
                       {item.label ?? item.key}
                     </span>
-                    {item.isWeightFlag && (
-                      <span className="text-xs text-primary-500/60 italic flex-1">
-                        Se pedirá al crear cada activo
-                      </span>
-                    )}
                     <button
                       onClick={() => removeFromActive(item.key)}
                       className="opacity-0 group-hover:opacity-100 text-dark-500 hover:text-red-400 transition-all shrink-0"
@@ -1316,55 +1363,110 @@ export function RentalPricingStep({
           <h3 className="font-medium text-white">Operario</h3>
         </div>
 
-        <label className="flex items-center gap-3 cursor-pointer">
-          <input
-            type="checkbox"
-            className="w-4 h-4 accent-primary-500"
-            checked={rules.requiresOperator}
-            onChange={(e) => {
-              updateRule("requiresOperator", e.target.checked);
-              if (!e.target.checked)
-                updateRule("operatorBillingType", undefined);
-            }}
-          />
-          <span className="text-sm text-white">
-            Este tipo de activo puede incluir operario
-          </span>
-        </label>
-
-        {rules.requiresOperator && (
-          <div className="pl-7">
-            <label className="block text-sm text-dark-400 mb-1">
-              ¿Cómo se cobra el operario?
-            </label>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => updateRule("operatorBillingType", "PER_DAY")}
-                className={`px-3 py-1.5 text-sm rounded-lg border transition ${
-                  rules.operatorBillingType === "PER_DAY"
-                    ? "bg-primary-600 border-primary-500 text-white"
-                    : "bg-dark-700 border-dark-600 text-dark-300 hover:border-dark-500"
-                }`}
-              >
-                Por día
-              </button>
-              <button
-                type="button"
-                onClick={() => updateRule("operatorBillingType", "PER_HOUR")}
-                className={`px-3 py-1.5 text-sm rounded-lg border transition ${
-                  rules.operatorBillingType === "PER_HOUR"
-                    ? "bg-primary-600 border-primary-500 text-white"
-                    : "bg-dark-700 border-dark-600 text-dark-300 hover:border-dark-500"
-                }`}
-              >
-                Por hora
-              </button>
+        {formData.category === AssetCategory.VEHICLE ? (
+          /* Vehículos SIEMPRE requieren operario */
+          <div className="p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
+            <div className="flex items-start gap-2">
+              <Check className="w-5 h-5 text-green-400 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm text-green-300 font-medium">
+                  Operario siempre incluido
+                </p>
+                <p className="text-xs text-green-400/70 mt-0.5">
+                  Los vehículos (camiones, montacargas, etc.) siempre se
+                  alquilan con operario.
+                </p>
+              </div>
             </div>
-            <p className="text-xs text-dark-500 mt-1">
-              El precio del operario se define en cada activo.
-            </p>
+            <div className="mt-3">
+              <label className="block text-sm text-dark-400 mb-1">
+                ¿Cómo se cobra el operario?
+              </label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => updateRule("operatorBillingType", "PER_DAY")}
+                  className={`px-3 py-1.5 text-sm rounded-lg border transition ${
+                    rules.operatorBillingType === "PER_DAY"
+                      ? "bg-primary-600 border-primary-500 text-white"
+                      : "bg-dark-700 border-dark-600 text-dark-300 hover:border-dark-500"
+                  }`}
+                >
+                  Por día
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateRule("operatorBillingType", "PER_HOUR")}
+                  className={`px-3 py-1.5 text-sm rounded-lg border transition ${
+                    rules.operatorBillingType === "PER_HOUR"
+                      ? "bg-primary-600 border-primary-500 text-white"
+                      : "bg-dark-700 border-dark-600 text-dark-300 hover:border-dark-500"
+                  }`}
+                >
+                  Por hora
+                </button>
+              </div>
+              <p className="text-xs text-dark-500 mt-1">
+                El precio del operario se define en cada activo.
+              </p>
+            </div>
           </div>
+        ) : (
+          /* Otros activos: operario opcional */
+          <>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                className="w-4 h-4 accent-primary-500"
+                checked={rules.requiresOperator}
+                onChange={(e) => {
+                  updateRule("requiresOperator", e.target.checked);
+                  if (!e.target.checked)
+                    updateRule("operatorBillingType", undefined);
+                }}
+              />
+              <span className="text-sm text-white">
+                Este tipo de activo puede incluir operario
+              </span>
+            </label>
+
+            {rules.requiresOperator && (
+              <div className="pl-7">
+                <label className="block text-sm text-dark-400 mb-1">
+                  ¿Cómo se cobra el operario?
+                </label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => updateRule("operatorBillingType", "PER_DAY")}
+                    className={`px-3 py-1.5 text-sm rounded-lg border transition ${
+                      rules.operatorBillingType === "PER_DAY"
+                        ? "bg-primary-600 border-primary-500 text-white"
+                        : "bg-dark-700 border-dark-600 text-dark-300 hover:border-dark-500"
+                    }`}
+                  >
+                    Por día
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      updateRule("operatorBillingType", "PER_HOUR")
+                    }
+                    className={`px-3 py-1.5 text-sm rounded-lg border transition ${
+                      rules.operatorBillingType === "PER_HOUR"
+                        ? "bg-primary-600 border-primary-500 text-white"
+                        : "bg-dark-700 border-dark-600 text-dark-300 hover:border-dark-500"
+                    }`}
+                  >
+                    Por hora
+                  </button>
+                </div>
+                <p className="text-xs text-dark-500 mt-1">
+                  El precio del operario se define en cada activo.
+                </p>
+              </div>
+            )}
+          </>
         )}
       </div>
 

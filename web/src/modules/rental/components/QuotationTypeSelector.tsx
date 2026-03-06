@@ -1,14 +1,11 @@
-import { Calendar, Briefcase } from "lucide-react";
+import { Calendar, Briefcase, Clock } from "lucide-react";
 import type { QuotationType } from "../types/quotation.types";
 
 interface QuotationTypeSelectorProps {
   quotationType: QuotationType;
   onTypeChange: (type: QuotationType) => void;
-  estimatedStartDate: string;
-  onStartDateChange: (date: string) => void;
-  estimatedEndDate: string;
-  onEndDateChange: (date: string) => void;
   estimatedDays: number;
+  onEstimatedDaysChange: (days: number) => void;
   serviceDescription: string;
   onServiceDescriptionChange: (desc: string) => void;
 }
@@ -16,11 +13,8 @@ interface QuotationTypeSelectorProps {
 export function QuotationTypeSelector({
   quotationType,
   onTypeChange,
-  estimatedStartDate,
-  onStartDateChange,
-  estimatedEndDate,
-  onEndDateChange,
   estimatedDays,
+  onEstimatedDaysChange,
   serviceDescription,
   onServiceDescriptionChange,
 }: QuotationTypeSelectorProps) {
@@ -54,7 +48,7 @@ export function QuotationTypeSelector({
             </span>
           </div>
           <p className="text-sm text-gray-600 text-left">
-            Proyecto con fechas de inicio y fin definidas
+            Alquiler con duración estimada en días
           </p>
         </button>
 
@@ -89,44 +83,37 @@ export function QuotationTypeSelector({
       {/* Conditional fields based on quotation type */}
       {quotationType === "time_based" && (
         <div className="space-y-4 p-4 bg-blue-50/50 rounded-lg border border-blue-100">
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Fecha Inicio <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="date"
-                value={estimatedStartDate}
-                onChange={(e) => onStartDateChange(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Fecha Fin <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="date"
-                value={estimatedEndDate}
-                onChange={(e) => onEndDateChange(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Días Estimados
+          <div className="flex items-start gap-3">
+            <Clock className="w-5 h-5 text-blue-600 mt-2" />
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Duración Estimada (días) <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"
+                min="1"
                 value={estimatedDays}
-                readOnly
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600"
+                onChange={(e) =>
+                  onEstimatedDaysChange(parseInt(e.target.value) || 1)
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                placeholder="Ej: 30"
+                required
               />
+              <p className="text-xs text-gray-500 mt-1">
+                Ingresa la duración estimada del alquiler. El sistema calculará
+                los precios para todas las modalidades (día, semana, mes).
+              </p>
             </div>
+          </div>
+          <div className="bg-blue-100 border border-blue-200 rounded-lg p-3">
+            <p className="text-sm text-blue-900 font-medium mb-1">
+              💡 Cotización Multi-Período
+            </p>
+            <p className="text-xs text-blue-700">
+              El cliente recibirá una tabla comparativa con precios por día,
+              semana y mes, y podrá elegir el período que prefiera al aprobar.
+            </p>
           </div>
         </div>
       )}
