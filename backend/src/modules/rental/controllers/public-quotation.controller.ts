@@ -55,22 +55,119 @@ export class PublicQuotationController {
       return;
     }
 
-    const total = Number(quotation.totalAmount).toLocaleString("es-MX", {
-      minimumFractionDigits: 2,
-    });
     const validUntil = quotation.validUntil.toLocaleDateString("es-MX");
 
-    const itemsHtml = quotation.items
-      .map(
-        (i) =>
-          `<tr>
+    // Detect multi-period pricing on items
+    const periodFlags = { daily: false, weekly: false, monthly: false };
+    const itemsWithPeriods = quotation.items.map((i) => {
+      let periods = { daily: false, weekly: false, monthly: false };
+      if (i.selectedPeriods) {
+        try {
+          periods = JSON.parse(i.selectedPeriods as string);
+        } catch {}
+      }
+      if (periods.daily) periodFlags.daily = true;
+      if (periods.weekly) periodFlags.weekly = true;
+      if (periods.monthly) periodFlags.monthly = true;
+      return { ...i, periods };
+    });
+    const enabledPeriods = [
+      periodFlags.daily,
+      periodFlags.weekly,
+      periodFlags.monthly,
+    ].filter(Boolean).length;
+    const isMultiPeriod = enabledPeriods > 1;
+
+    const fmt = (n: any) =>
+      Number(n).toLocaleString("es-MX", { minimumFractionDigits: 2 });
+    const cur = quotation.currency;
+
+    // Build items table
+    let itemsHtml: string;
+    if (isMultiPeriod) {
+      // Multi-period table: one row per item per period type
+      const rows = itemsWithPeriods
+        .map((i) => {
+          const parts: string[] = [];
+          if (i.periods.daily) {
+            const base = fmt(i.pricePerDay ?? 0);
+            const opCost = Number(i.operatorCostPerDay ?? 0);
+            const total = fmt(i.totalPerDay ?? 0);
+            const opCell = opCost > 0 ? `+ ${cur} ${fmt(opCost)} op.` : "—";
+            parts.push(`<tr data-period="daily">
             <td style="padding:8px 4px">${i.description}</td>
             <td style="padding:8px 4px;text-align:center">${i.quantity}</td>
-            <td style="padding:8px 4px;text-align:right">${quotation.currency} ${Number(i.unitPrice).toLocaleString("es-MX", { minimumFractionDigits: 2 })}</td>
-            <td style="padding:8px 4px;text-align:right">${quotation.currency} ${Number(i.total).toLocaleString("es-MX", { minimumFractionDigits: 2 })}</td>
-          </tr>`,
-      )
-      .join("");
+            <td style="padding:8px 4px;text-align:center"><span style="background:#dbeafe;color:#1d4ed8;padding:2px 8px;border-radius:12px;font-size:12px;font-weight:600">Diario</span></td>
+            <td style="padding:8px 4px;text-align:right">${cur} ${base}</td>
+            <td style="padding:8px 4px;text-align:right;color:#6b7280;font-size:13px">${opCell}</td>
+            <td style="padding:8px 4px;text-align:right;font-weight:600">${cur} ${total}</td>
+          </tr>`);
+          }
+          if (i.periods.weekly) {
+            const base = fmt(i.pricePerWeek ?? 0);
+            const opCost = Number(i.operatorCostPerWeek ?? 0);
+            const total = fmt(i.totalPerWeek ?? 0);
+            const opCell = opCost > 0 ? `+ ${cur} ${fmt(opCost)} op.` : "—";
+            parts.push(`<tr data-period="weekly">
+            <td style="padding:8px 4px">${i.description}</td>
+            <td style="padding:8px 4px;text-align:center">${i.quantity}</td>
+            <td style="padding:8px 4px;text-align:center"><span style="background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:12px;font-size:12px;font-weight:600">Semanal</span></td>
+            <td style="padding:8px 4px;text-align:right">${cur} ${base}</td>
+            <td style="padding:8px 4px;text-align:right;color:#6b7280;font-size:13px">${opCell}</td>
+            <td style="padding:8px 4px;text-align:right;font-weight:600">${cur} ${total}</td>
+          </tr>`);
+          }
+          if (i.periods.monthly) {
+            const base = fmt(i.pricePerMonth ?? 0);
+            const opCost = Number(i.operatorCostPerMonth ?? 0);
+            const total = fmt(i.totalPerMonth ?? 0);
+            const opCell = opCost > 0 ? `+ ${cur} ${fmt(opCost)} op.` : "—";
+            parts.push(`<tr data-period="monthly">
+            <td style="padding:8px 4px">${i.description}</td>
+            <td style="padding:8px 4px;text-align:center">${i.quantity}</td>
+            <td style="padding:8px 4px;text-align:center"><span style="background:#ede9fe;color:#5b21b6;padding:2px 8px;border-radius:12px;font-size:12px;font-weight:600">Mensual</span></td>
+            <td style="padding:8px 4px;text-align:right">${cur} ${base}</td>
+            <td style="padding:8px 4px;text-align:right;color:#6b7280;font-size:13px">${opCell}</td>
+            <td style="padding:8px 4px;text-align:right;font-weight:600">${cur} ${total}</td>
+          </tr>`);
+          }
+          return parts.join("");
+        })
+        .join("");
+      itemsHtml = `<table>
+        <thead><tr>
+          <th>Descripción</th>
+          <th style="text-align:center">Cant.</th>
+          <th style="text-align:center">Modalidad</th>
+          <th style="text-align:right">Precio Base</th>
+          <th style="text-align:right">Operario</th>
+          <th style="text-align:right">Total Unit.</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+    } else {
+      // Simple table for single-period or fixed-price quotations
+      const total = fmt(quotation.totalAmount);
+      const rows = quotation.items
+        .map(
+          (i) =>
+            `<tr>
+          <td style="padding:8px 4px">${i.description}</td>
+          <td style="padding:8px 4px;text-align:center">${i.quantity}</td>
+          <td style="padding:8px 4px;text-align:right">${cur} ${fmt(i.unitPrice)}</td>
+          <td style="padding:8px 4px;text-align:right">${cur} ${fmt(i.total)}</td>
+        </tr>`,
+        )
+        .join("");
+      const taxRow =
+        Number(quotation.taxAmount) > 0
+          ? `<tr><td colspan="3" style="padding:8px 4px;text-align:right;color:#718096">Impuesto (${quotation.taxRate}%)</td><td style="padding:8px 4px;text-align:right">${cur} ${fmt(quotation.taxAmount)}</td></tr>`
+          : "";
+      itemsHtml = `<table>
+        <thead><tr><th>Descripción</th><th style="text-align:center">Cant.</th><th style="text-align:right">P. Unit.</th><th style="text-align:right">Total</th></tr></thead>
+        <tbody>${rows}${taxRow}<tr class="total-row"><td colspan="3" style="padding:10px 4px;text-align:right">TOTAL</td><td style="padding:10px 4px;text-align:right">${cur} ${total}</td></tr></tbody>
+      </table>`;
+    }
 
     const changesWarning =
       quotation.clientResponse === "changes_requested"
@@ -87,27 +184,33 @@ export class PublicQuotationController {
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:#f0f4f8;min-height:100vh;padding:24px 16px}
-    .card{background:white;border-radius:16px;padding:32px;box-shadow:0 8px 32px rgba(0,0,0,.12);max-width:620px;margin:0 auto}
+    .card{background:white;border-radius:16px;padding:32px;box-shadow:0 8px 32px rgba(0,0,0,.12);max-width:700px;margin:0 auto}
     h1{font-size:22px;color:#1a202c;margin-bottom:6px}
     .sub{color:#718096;font-size:14px;margin-bottom:24px}
     .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px}
     .info-item{background:#f7fafc;padding:12px;border-radius:8px}
     .info-item label{font-size:11px;text-transform:uppercase;color:#a0aec0;font-weight:600}
     .info-item p{font-size:15px;color:#1a202c;font-weight:600;margin-top:2px}
-    table{width:100%;border-collapse:collapse;font-size:14px;margin-bottom:20px}
-    thead th{background:#f7fafc;padding:8px 4px;text-align:left;color:#718096;font-weight:600;font-size:12px;text-transform:uppercase}
+    table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:20px}
+    thead th{background:#f7fafc;padding:8px 4px;text-align:left;color:#718096;font-weight:600;font-size:11px;text-transform:uppercase}
     tbody tr:nth-child(even){background:#f7fafc}
+    tbody tr.hidden-row{display:none}
     .total-row{background:#ebf8ff!important;font-weight:700}
     .divider{border:none;border-top:1px solid #e2e8f0;margin:20px 0}
-    .btn-approve{width:100%;padding:16px;background:#38a169;color:white;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;transition:.2s;margin-bottom:12px}
-    .btn-approve:hover{background:#2f855a}
-    .divider{border:none;border-top:1px solid #e2e8f0;margin:20px 0}
+    .period-selector{background:#f0fdf4;border:2px solid #bbf7d0;border-radius:12px;padding:16px 20px;margin-bottom:20px}
+    .period-selector h3{font-size:15px;color:#166534;margin-bottom:12px;font-weight:700}
+    .period-options{display:flex;gap:10px;flex-wrap:wrap}
+    .period-option{flex:1;min-width:120px;cursor:pointer}
+    .period-option input[type=radio]{display:none}
+    .period-option label{display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px;border:2px solid #e2e8f0;border-radius:10px;cursor:pointer;transition:.15s;background:white;font-size:13px;font-weight:600;color:#4a5568}
+    .period-option input[type=radio]:checked + label{border-color:#38a169;background:#f0fdf4;color:#166534}
+    .period-option label:hover{border-color:#a7f3d0}
+    .period-option .period-icon{font-size:22px}
     details{margin-top:0;border:2px solid #e2e8f0;border-radius:10px;overflow:hidden}
     details summary{padding:14px 16px;font-size:15px;font-weight:600;color:#4a5568;cursor:pointer;list-style:none}
     details summary::-webkit-details-marker{display:none}
     textarea{width:100%;height:120px;padding:12px;border:2px solid #e2e8f0;border-radius:8px;font-size:15px;resize:vertical;font-family:inherit;background:white}
     textarea:focus{outline:none;border-color:#3182ce}
-    .footer{text-align:center;margin-top:24px;color:#a0aec0;font-size:12px}
   </style>
 </head>
 <body>
@@ -120,25 +223,31 @@ export class PublicQuotationController {
     <div class="info-grid">
       <div class="info-item"><label>Cliente</label><p>${quotation.client.name}</p></div>
       <div class="info-item"><label>Válida hasta</label><p>${validUntil}</p></div>
-      ${quotation.estimatedStartDate ? `<div class="info-item"><label>Fecha inicio</label><p>${quotation.estimatedStartDate.toLocaleDateString("es-MX")}</p></div>` : ""}
-      ${quotation.estimatedEndDate ? `<div class="info-item"><label>Fecha fin</label><p>${quotation.estimatedEndDate.toLocaleDateString("es-MX")}</p></div>` : ""}
+      ${(quotation as any).estimatedDays ? `<div class="info-item"><label>Días estimados</label><p>${(quotation as any).estimatedDays} días</p></div>` : ""}
     </div>
 
-    <table>
-      <thead><tr><th>Descripción</th><th style="text-align:center">Cant.</th><th style="text-align:right">P. Unit.</th><th style="text-align:right">Total</th></tr></thead>
-      <tbody>
-        ${itemsHtml}
-        ${Number(quotation.taxAmount) > 0 ? `<tr><td colspan="3" style="padding:8px 4px;text-align:right;color:#718096">Impuesto (${quotation.taxRate}%)</td><td style="padding:8px 4px;text-align:right">${quotation.currency} ${Number(quotation.taxAmount).toLocaleString("es-MX", { minimumFractionDigits: 2 })}</td></tr>` : ""}
-        <tr class="total-row"><td colspan="3" style="padding:10px 4px;text-align:right">TOTAL</td><td style="padding:10px 4px;text-align:right">${quotation.currency} $${total}</td></tr>
-      </tbody>
-    </table>
+    ${itemsHtml}
 
     ${quotation.notes ? `<div style="background:#f7fafc;padding:12px 16px;border-radius:8px;font-size:14px;margin-bottom:20px"><strong>Notas:</strong> ${quotation.notes}</div>` : ""}
 
     <hr class="divider">
-    <p style="color:#4a5568;font-size:14px;margin-bottom:16px">Revise los detalles de su cotización:</p>
+    <p style="color:#4a5568;font-size:14px;margin-bottom:16px">Revise los detalles de su cotización y, si está de acuerdo, apruébela:</p>
 
-    <form method="POST" action="/api/v1/public/quotations/${token}/approve" style="margin-bottom:12px">
+    <form id="approveForm" method="POST" action="/api/v1/public/quotations/${token}/approve" style="margin-bottom:12px">
+      ${
+        isMultiPeriod
+          ? `
+      <div class="period-selector">
+        <h3>💰 Seleccione la modalidad de renta que prefiere:</h3>
+        <div class="period-options">
+          ${periodFlags.daily ? `<div class="period-option"><input type="radio" name="selectedPeriodType" id="p-daily" value="daily" required><label for="p-daily"><span class="period-icon">📅</span>Diario</label></div>` : ""}
+          ${periodFlags.weekly ? `<div class="period-option"><input type="radio" name="selectedPeriodType" id="p-weekly" value="weekly" required><label for="p-weekly"><span class="period-icon">📆</span>Semanal</label></div>` : ""}
+          ${periodFlags.monthly ? `<div class="period-option"><input type="radio" name="selectedPeriodType" id="p-monthly" value="monthly" required><label for="p-monthly"><span class="period-icon">🗓️</span>Mensual</label></div>` : ""}
+        </div>
+      </div>
+      `
+          : ""
+      }
       <button type="submit" style="width:100%;padding:16px;background:#38a169;color:white;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer">✅ Aprobar Cotización</button>
     </form>
 
@@ -147,7 +256,7 @@ export class PublicQuotationController {
       <div style="padding:16px;background:#f7fafc">
         <form method="POST" action="/api/v1/public/quotations/${token}/request-changes">
           <p style="font-size:14px;color:#4a5568;margin-bottom:8px">Explique brevemente qué cambios necesita:</p>
-          <textarea name="message" required style="width:100%;height:120px;padding:12px;border:2px solid #e2e8f0;border-radius:8px;font-size:15px;resize:vertical;font-family:inherit" placeholder="Ej: Necesito reducir la cantidad del ítem 2 y agregar 3 días más al periodo..."></textarea>
+          <textarea name="message" required placeholder="Ej: Necesito reducir la cantidad del ítem 2 y agregar 3 días más al periodo..."></textarea>
           <button type="submit" style="width:100%;padding:14px;background:#3182ce;color:white;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;margin-top:12px">📩 Enviar solicitud de cambios</button>
         </form>
       </div>
@@ -155,6 +264,20 @@ export class PublicQuotationController {
 
     <p style="text-align:center;margin-top:24px;color:#a0aec0;font-size:12px">© ${new Date().getFullYear()} ${quotation.businessUnit.name}</p>
   </div>
+  ${
+    isMultiPeriod
+      ? `<script>
+    document.querySelectorAll('input[name="selectedPeriodType"]').forEach(function(radio) {
+      radio.addEventListener('change', function() {
+        var selected = this.value;
+        document.querySelectorAll('tr[data-period]').forEach(function(row) {
+          row.classList.toggle('hidden-row', row.getAttribute('data-period') !== selected);
+        });
+      });
+    });
+  </script>`
+      : ""
+  }
 </body></html>`);
   }
 
@@ -164,11 +287,21 @@ export class PublicQuotationController {
    */
   async approveAction(req: Request, res: Response): Promise<void> {
     const { token } = req.params;
+    const { selectedPeriodType } = req.body;
     try {
-      const result = await approveQuotationAsClient(token);
-      res.send(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>¡Cotización Aprobada!</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:#f0f4f8;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px}.card{background:white;border-radius:16px;padding:40px 32px;box-shadow:0 8px 32px rgba(0,0,0,.12);max-width:520px;width:100%;text-align:center}</style></head><body><div class="card"><div style="font-size:72px;margin-bottom:20px">🎉</div><h1 style="color:#38a169;font-size:26px;margin-bottom:12px">¡Cotización aprobada!</h1><p style="color:#4a5568;font-size:16px;line-height:1.6">Hemos generado su contrato <strong>${result.contractCode}</strong>.<br>Recibirá un email con los detalles y el enlace para subir su comprobante de pago.</p></div></body></html>`);
+      const result = await approveQuotationAsClient(
+        token,
+        selectedPeriodType || undefined,
+      );
+      res.send(
+        `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>¡Cotización Aprobada!</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:#f0f4f8;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px}.card{background:white;border-radius:16px;padding:40px 32px;box-shadow:0 8px 32px rgba(0,0,0,.12);max-width:520px;width:100%;text-align:center}</style></head><body><div class="card"><div style="font-size:72px;margin-bottom:20px">🎉</div><h1 style="color:#38a169;font-size:26px;margin-bottom:12px">¡Cotización aprobada!</h1><p style="color:#4a5568;font-size:16px;line-height:1.6">Hemos generado su contrato <strong>${result.contractCode}</strong>.<br>Recibirá un email con los detalles y el enlace para subir su comprobante de pago.</p></div></body></html>`,
+      );
     } catch (err: any) {
-      res.status(400).send(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Error</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:#f0f4f8;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px}.card{background:white;border-radius:16px;padding:40px 32px;box-shadow:0 8px 32px rgba(0,0,0,.12);max-width:520px;width:100%;text-align:center}</style></head><body><div class="card"><div style="font-size:72px;margin-bottom:20px">❌</div><h1 style="color:#c53030;font-size:22px;margin-bottom:12px">No se pudo procesar</h1><p style="color:#4a5568;font-size:15px">${err.message || "Error al aprobar la cotización"}</p><a href="javascript:history.back()" style="display:inline-block;margin-top:20px;padding:12px 24px;background:#3182ce;color:white;border-radius:8px;text-decoration:none;font-weight:600">← Volver</a></div></body></html>`);
+      res
+        .status(400)
+        .send(
+          `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Error</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:#f0f4f8;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px}.card{background:white;border-radius:16px;padding:40px 32px;box-shadow:0 8px 32px rgba(0,0,0,.12);max-width:520px;width:100%;text-align:center}</style></head><body><div class="card"><div style="font-size:72px;margin-bottom:20px">❌</div><h1 style="color:#c53030;font-size:22px;margin-bottom:12px">No se pudo procesar</h1><p style="color:#4a5568;font-size:15px">${err.message || "Error al aprobar la cotización"}</p><a href="javascript:history.back()" style="display:inline-block;margin-top:20px;padding:12px 24px;background:#3182ce;color:white;border-radius:8px;text-decoration:none;font-weight:600">← Volver</a></div></body></html>`,
+        );
     }
   }
 
@@ -180,14 +313,24 @@ export class PublicQuotationController {
     const { token } = req.params;
     const { message } = req.body;
     if (!message?.trim()) {
-      res.status(400).send(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Error</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:#f0f4f8;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px}.card{background:white;border-radius:16px;padding:40px 32px;box-shadow:0 8px 32px rgba(0,0,0,.12);max-width:520px;width:100%;text-align:center}</style></head><body><div class="card"><div style="font-size:64px;margin-bottom:16px">⚠️</div><h1 style="color:#c53030;font-size:20px;margin-bottom:12px">El mensaje es requerido</h1><a href="javascript:history.back()" style="display:inline-block;margin-top:20px;padding:12px 24px;background:#3182ce;color:white;border-radius:8px;text-decoration:none;font-weight:600">← Volver</a></div></body></html>`);
+      res
+        .status(400)
+        .send(
+          `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Error</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:#f0f4f8;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px}.card{background:white;border-radius:16px;padding:40px 32px;box-shadow:0 8px 32px rgba(0,0,0,.12);max-width:520px;width:100%;text-align:center}</style></head><body><div class="card"><div style="font-size:64px;margin-bottom:16px">⚠️</div><h1 style="color:#c53030;font-size:20px;margin-bottom:12px">El mensaje es requerido</h1><a href="javascript:history.back()" style="display:inline-block;margin-top:20px;padding:12px 24px;background:#3182ce;color:white;border-radius:8px;text-decoration:none;font-weight:600">← Volver</a></div></body></html>`,
+        );
       return;
     }
     try {
       await requestChangesAsClient(token, message.trim());
-      res.send(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Solicitud enviada</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:#f0f4f8;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px}.card{background:white;border-radius:16px;padding:40px 32px;box-shadow:0 8px 32px rgba(0,0,0,.12);max-width:520px;width:100%;text-align:center}</style></head><body><div class="card"><div style="font-size:72px;margin-bottom:20px">✅</div><h1 style="color:#2b6cb0;font-size:24px;margin-bottom:12px">Solicitud enviada</h1><p style="color:#4a5568;font-size:16px;line-height:1.6">Nuestro equipo revisará sus comentarios y se pondrá en contacto con usted a la brevedad.</p></div></body></html>`);
+      res.send(
+        `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Solicitud enviada</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:#f0f4f8;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px}.card{background:white;border-radius:16px;padding:40px 32px;box-shadow:0 8px 32px rgba(0,0,0,.12);max-width:520px;width:100%;text-align:center}</style></head><body><div class="card"><div style="font-size:72px;margin-bottom:20px">✅</div><h1 style="color:#2b6cb0;font-size:24px;margin-bottom:12px">Solicitud enviada</h1><p style="color:#4a5568;font-size:16px;line-height:1.6">Nuestro equipo revisará sus comentarios y se pondrá en contacto con usted a la brevedad.</p></div></body></html>`,
+      );
     } catch (err: any) {
-      res.status(400).send(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Error</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:#f0f4f8;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px}.card{background:white;border-radius:16px;padding:40px 32px;box-shadow:0 8px 32px rgba(0,0,0,.12);max-width:520px;width:100%;text-align:center}</style></head><body><div class="card"><div style="font-size:72px;margin-bottom:20px">❌</div><h1 style="color:#c53030;font-size:22px;margin-bottom:12px">No se pudo enviar</h1><p style="color:#4a5568;font-size:15px">${err.message || "Error al guardar"}</p><a href="javascript:history.back()" style="display:inline-block;margin-top:20px;padding:12px 24px;background:#3182ce;color:white;border-radius:8px;text-decoration:none;font-weight:600">← Volver</a></div></body></html>`);
+      res
+        .status(400)
+        .send(
+          `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Error</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:#f0f4f8;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px}.card{background:white;border-radius:16px;padding:40px 32px;box-shadow:0 8px 32px rgba(0,0,0,.12);max-width:520px;width:100%;text-align:center}</style></head><body><div class="card"><div style="font-size:72px;margin-bottom:20px">❌</div><h1 style="color:#c53030;font-size:22px;margin-bottom:12px">No se pudo enviar</h1><p style="color:#4a5568;font-size:15px">${err.message || "Error al guardar"}</p><a href="javascript:history.back()" style="display:inline-block;margin-top:20px;padding:12px 24px;background:#3182ce;color:white;border-radius:8px;text-decoration:none;font-weight:600">← Volver</a></div></body></html>`,
+        );
     }
   }
 
@@ -270,19 +413,38 @@ export class PublicQuotationController {
       <body><div class="card">${body}</div></body></html>`;
 
     if (!quotation) {
-      res.status(404).send(HTML_BASE("Error", "<h2 style='color:#c62828'>⚠️ Enlace no válido o expirado</h2><p>Por favor contacte a su proveedor.</p>"));
+      res
+        .status(404)
+        .send(
+          HTML_BASE(
+            "Error",
+            "<h2 style='color:#c62828'>⚠️ Enlace no válido o expirado</h2><p>Por favor contacte a su proveedor.</p>",
+          ),
+        );
       return;
     }
 
     const meta = (quotation.metadata as any) || {};
     if (meta.paymentReceiptUrl) {
-      res.send(HTML_BASE("✅ Comprobante recibido", "<h2 style='color:#2e7d32'>✅ Comprobante ya recibido</h2><p>Ya recibimos tu comprobante para la cotización <strong>${quotation.code}</strong>.</p>"));
+      res.send(
+        HTML_BASE(
+          "✅ Comprobante recibido",
+          "<h2 style='color:#2e7d32'>✅ Comprobante ya recibido</h2><p>Ya recibimos tu comprobante para la cotización <strong>${quotation.code}</strong>.</p>",
+        ),
+      );
       return;
     }
 
     const file = req.file;
     if (!file) {
-      res.status(400).send(HTML_BASE("Error", "<h2 style='color:#c62828'>❌ No se recibió ningún archivo</h2><p>Por favor vuelva a intentarlo.</p>"));
+      res
+        .status(400)
+        .send(
+          HTML_BASE(
+            "Error",
+            "<h2 style='color:#c62828'>❌ No se recibió ningún archivo</h2><p>Por favor vuelva a intentarlo.</p>",
+          ),
+        );
       return;
     }
 

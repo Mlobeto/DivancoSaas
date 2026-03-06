@@ -266,18 +266,20 @@ export class AccountService {
     // Si el balance está por debajo del monto de alerta y no se ha alertado
     if (balance <= alertAmount && !account.alertTriggered) {
       // Obtener businessUnitId del cliente para timezone
-      const clientWithBU = await prisma.client.findUnique({
-        where: { id: account.clientId },
+      const clientBU = await prisma.clientBusinessUnit.findFirst({
+        where: { clientId: account.clientId },
         select: { businessUnitId: true },
       });
 
-      if (!clientWithBU) return;
+      const alertTimestamp = clientBU
+        ? await nowInBUTimezone(clientBU.businessUnitId)
+        : new Date();
 
       await prisma.clientAccount.update({
         where: { id: accountId },
         data: {
           alertTriggered: true,
-          lastAlertSent: await nowInBUTimezone(clientWithBU.businessUnitId),
+          lastAlertSent: alertTimestamp,
         },
       });
 

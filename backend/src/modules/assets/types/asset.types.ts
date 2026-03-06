@@ -53,6 +53,10 @@ export interface CreateAssetDTO {
   // Costos de mantenimiento diario
   maintenanceCostDaily?: number; // ej: 50 ($/día)
 
+  // Campos de tracking configurables (RENTAL VERTICAL)
+  trackingFields?: Record<string, boolean>; // ej: { hourometer: true, odometer: true }
+  initialValues?: Record<string, number>; // ej: { hourometer: 1500, odometer: 25000 }
+
   // Relación de partes (únicos)
   machineParts?: any[];
 }

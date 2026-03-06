@@ -73,6 +73,7 @@ export async function approveQuotationAsAdmin(
  */
 export async function approveQuotationAsClient(
   clientReviewToken: string,
+  selectedPeriodType?: string,
 ): Promise<{ contractId: string; contractCode: string }> {
   const quotation = await prisma.quotation.findUnique({
     where: { clientReviewToken },
@@ -85,6 +86,26 @@ export async function approveQuotationAsClient(
   if (quotation.clientResponse === "approved")
     throw new Error("Ya aprobaste esta cotización");
 
+  // Determinar si la cotización tiene precios multi-período
+  const hasMultiPeriod = quotation.items.some((item) => {
+    if (!item.selectedPeriods) return false;
+    try {
+      const periods = JSON.parse(item.selectedPeriods as string);
+      const count = [periods.daily, periods.weekly, periods.monthly].filter(
+        Boolean,
+      ).length;
+      return count > 1;
+    } catch {
+      return false;
+    }
+  });
+
+  if (hasMultiPeriod && !selectedPeriodType) {
+    throw new Error(
+      "Debe seleccionar una modalidad de precio (diario, semanal o mensual)",
+    );
+  }
+
   // Marcar cotización como aprobada
   await prisma.quotation.update({
     where: { id: quotation.id },
@@ -92,6 +113,7 @@ export async function approveQuotationAsClient(
       status: "approved",
       clientResponse: "approved",
       clientRespondedAt: new Date(),
+      ...(selectedPeriodType ? { selectedPeriodType } : {}),
     },
   });
 

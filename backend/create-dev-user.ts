@@ -23,7 +23,7 @@ async function createDevUser() {
 
       // Actualizar contraseña
       await prisma.user.update({
-        where: { email },
+        where: { id: existing.id },
         data: { password: hashedPassword },
       });
 

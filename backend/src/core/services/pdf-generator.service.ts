@@ -86,10 +86,14 @@ class PDFGeneratorService {
       // Wait briefly for external images (e.g. branding logo) to load
       await Promise.race([
         page.evaluate(async () => {
-          const images = Array.from(document.images || []);
+          // Runs in browser context via Puppeteer — document is available there
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const images: any[] = Array.from(
+            (globalThis as any).document?.images ?? [],
+          );
           await Promise.all(
             images.map(
-              (img) =>
+              (img: any) =>
                 new Promise<void>((resolve) => {
                   if (img.complete) {
                     resolve();
