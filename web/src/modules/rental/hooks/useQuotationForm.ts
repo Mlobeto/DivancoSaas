@@ -44,8 +44,11 @@ export interface QuotationItem {
   trackingType: "MACHINERY" | "TOOL" | null;
   quantity: number;
   rentalDays: number;
+  startDate?: string;
+  endDate?: string;
 
   // v4.0: Campos de configuración
+  rentalPeriodType?: RentalPeriodType;
   standbyHours?: number; // Para MACHINERY
   operatorIncluded: boolean;
   operatorCostType?: OperatorCostType;
@@ -84,6 +87,8 @@ export function useQuotationForm(options?: UseQuotationFormOptions) {
   const [quotationType, setQuotationType] =
     useState<QuotationType>("time_based");
   const [estimatedDays, setEstimatedDays] = useState(30); // Default 30 días
+  const [estimatedStartDate, setEstimatedStartDate] = useState("");
+  const [estimatedEndDate, setEstimatedEndDate] = useState("");
   const [serviceDescription, setServiceDescription] = useState("");
 
   const [items, setItems] = useState<QuotationItem[]>([]);
@@ -110,6 +115,16 @@ export function useQuotationForm(options?: UseQuotationFormOptions) {
       (existingQuotation.quotationType as QuotationType) ?? "time_based",
     );
     setEstimatedDays(existingQuotation.estimatedDays ?? 30);
+    setEstimatedStartDate(
+      (existingQuotation as any).estimatedStartDate
+        ? String((existingQuotation as any).estimatedStartDate).slice(0, 10)
+        : "",
+    );
+    setEstimatedEndDate(
+      (existingQuotation as any).estimatedEndDate
+        ? String((existingQuotation as any).estimatedEndDate).slice(0, 10)
+        : "",
+    );
     setServiceDescription((existingQuotation as any).serviceDescription ?? "");
     setNotes(existingQuotation.notes ?? "");
     setTerms((existingQuotation as any).termsAndConditions ?? terms);
@@ -319,8 +334,11 @@ export function useQuotationForm(options?: UseQuotationFormOptions) {
         updated[index] = { ...updated[index], [field]: value };
 
         // Recalculate end date if start date or rental days change
-        if (field === "startDate" || field === "rentalDays") {
-          const start = new Date(updated[index].startDate);
+        if (
+          (field === "startDate" || field === "rentalDays") &&
+          updated[index].startDate
+        ) {
+          const start = new Date(updated[index].startDate!);
           const end = new Date(start);
           end.setDate(end.getDate() + updated[index].rentalDays);
           updated[index].endDate = end.toISOString().split("T")[0];
@@ -453,6 +471,8 @@ export function useQuotationForm(options?: UseQuotationFormOptions) {
       items,
       quotationType,
       estimatedDays,
+      estimatedStartDate,
+      estimatedEndDate,
       serviceDescription,
       validityDays,
       taxRate,
@@ -475,6 +495,10 @@ export function useQuotationForm(options?: UseQuotationFormOptions) {
     setQuotationType,
     estimatedDays,
     setEstimatedDays,
+    estimatedStartDate,
+    setEstimatedStartDate,
+    estimatedEndDate,
+    setEstimatedEndDate,
     serviceDescription,
     setServiceDescription,
     items,
