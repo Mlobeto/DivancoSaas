@@ -18,7 +18,11 @@ import type {
   BrandingConfig,
   BusinessUnitInfo,
 } from "../services/document-builder.service";
-import type { DocumentFormat, DocumentType } from "../types/branding.types";
+import type {
+  DocumentFormat,
+  DocumentType,
+  UpdateBrandingDTO,
+} from "../types/branding.types";
 
 class BrandingController {
   /**
@@ -125,10 +129,12 @@ class BrandingController {
         documentType = "quotation",
         format = "A4",
         sampleData,
+        branding: brandingOverrides,
       } = req.body as {
         documentType?: DocumentType;
         format?: DocumentFormat;
         sampleData?: any;
+        branding?: UpdateBrandingDTO;
       };
 
       console.log("[BrandingController] Generating preview:", {
@@ -138,22 +144,72 @@ class BrandingController {
       });
 
       // Get branding
-      const branding = await brandingService.getOrCreateDefault(businessUnitId);
+      const persistedBranding =
+        await brandingService.getOrCreateDefault(businessUnitId);
       console.log("[BrandingController] Branding loaded:", {
-        id: branding.id,
-        hasLogo: !!branding.logoUrl,
-        businessUnit: branding.businessUnit.name,
+        id: persistedBranding.id,
+        hasLogo: !!persistedBranding.logoUrl,
+        businessUnit: persistedBranding.businessUnit.name,
       });
 
-      // Build branding config
+      const mergedHeaderConfig = {
+        ...(brandingOverrides?.headerConfig || {}),
+      };
+
+      const mergedFooterConfig = {
+        ...(brandingOverrides?.footerConfig || {}),
+      };
+
+      // Build branding config (persisted + runtime overrides from UI)
       const brandingConfig: BrandingConfig = {
-        logoUrl: branding.logoUrl || undefined,
-        primaryColor: branding.primaryColor,
-        secondaryColor: branding.secondaryColor,
-        fontFamily: branding.fontFamily,
-        contactInfo: branding.contactInfo,
-        headerConfig: branding.headerConfig,
-        footerConfig: branding.footerConfig,
+        logoUrl:
+          (brandingOverrides?.logoUrl ?? persistedBranding.logoUrl) ||
+          undefined,
+        primaryColor:
+          brandingOverrides?.primaryColor ?? persistedBranding.primaryColor,
+        secondaryColor:
+          brandingOverrides?.secondaryColor ?? persistedBranding.secondaryColor,
+        fontFamily:
+          brandingOverrides?.fontFamily ?? persistedBranding.fontFamily,
+        contactInfo: {
+          ...(persistedBranding.contactInfo || {}),
+          ...(brandingOverrides?.contactInfo || {}),
+        },
+        headerConfig: {
+          showLogo:
+            mergedHeaderConfig.showLogo ??
+            persistedBranding.headerConfig.showLogo,
+          logoAlign:
+            mergedHeaderConfig.logoAlign ??
+            persistedBranding.headerConfig.logoAlign,
+          logoMaxHeight:
+            mergedHeaderConfig.logoMaxHeight ??
+            persistedBranding.headerConfig.logoMaxHeight,
+          showBusinessName:
+            mergedHeaderConfig.showBusinessName ??
+            persistedBranding.headerConfig.showBusinessName,
+          showTaxInfo:
+            mergedHeaderConfig.showTaxInfo ??
+            persistedBranding.headerConfig.showTaxInfo,
+          height:
+            mergedHeaderConfig.height ?? persistedBranding.headerConfig.height,
+        },
+        footerConfig: {
+          showContactInfo:
+            mergedFooterConfig.showContactInfo ??
+            persistedBranding.footerConfig.showContactInfo,
+          showDisclaimer:
+            mergedFooterConfig.showDisclaimer ??
+            persistedBranding.footerConfig.showDisclaimer,
+          disclaimerText:
+            mergedFooterConfig.disclaimerText ??
+            persistedBranding.footerConfig.disclaimerText,
+          textAlign:
+            mergedFooterConfig.textAlign ??
+            persistedBranding.footerConfig.textAlign,
+          height:
+            mergedFooterConfig.height ?? persistedBranding.footerConfig.height,
+        },
       };
 
       console.log("[BrandingController] Footer config:", {
@@ -168,10 +224,13 @@ class BrandingController {
       });
 
       // Build business unit info from branding contactInfo
-      const contactInfo = branding.contactInfo || {};
+      const contactInfo = {
+        ...(persistedBranding.contactInfo || {}),
+        ...(brandingOverrides?.contactInfo || {}),
+      };
       const businessUnitInfo: BusinessUnitInfo = {
-        name: branding.businessUnit.name,
-        taxId: (branding.businessUnit.settings as any)?.taxId,
+        name: persistedBranding.businessUnit.name,
+        taxId: (persistedBranding.businessUnit.settings as any)?.taxId,
         email: contactInfo.email,
         phone: contactInfo.phone,
         address: contactInfo.address,

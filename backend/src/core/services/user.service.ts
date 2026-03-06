@@ -10,7 +10,7 @@ import { emailService } from "./email.service";
 
 interface CreateUserInput {
   email: string;
-  password?: string;
+  password: string;
   firstName: string;
   lastName: string;
   businessUnitId: string;
@@ -254,12 +254,8 @@ export class UserService {
       return updatedUser;
     }
 
-    // Usuario nuevo - crear con password temporal
-    const temporaryPassword =
-      data.password || `Temp${Math.random().toString(36).slice(-8)}!`;
-
     // Hash password
-    const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
+    const hashedPassword = await bcrypt.hash(data.password, 10);
 
     // Crear usuario y asignar a BU con rol
     const user = await prisma.user.create({

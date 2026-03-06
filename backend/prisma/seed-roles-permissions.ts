@@ -123,6 +123,11 @@ const PERMISSIONS = [
   { resource: "clients", action: "create", description: "Crear clientes" },
   { resource: "clients", action: "read", description: "Ver clientes" },
   { resource: "clients", action: "update", description: "Editar clientes" },
+  {
+    resource: "clients",
+    action: "update-credit-limit",
+    description: "Subir/editar límite de crédito de cliente",
+  },
 
   // Facturación y finanzas
   {
@@ -165,6 +170,28 @@ const PERMISSIONS = [
     resource: "operators",
     action: "delete",
     description: "Eliminar operarios",
+  },
+  {
+    resource: "operators",
+    action: "assign",
+    description: "Asignar operarios a contratos y activos",
+  },
+  {
+    resource: "operators",
+    action: "approve_expenses",
+    description: "Aprobar o rechazar viáticos de operarios",
+  },
+
+  // Acceso a canales
+  {
+    resource: "chat",
+    action: "access",
+    description: "Acceso al chat interno",
+  },
+  {
+    resource: "mobile",
+    action: "access",
+    description: "Acceso a funcionalidades de la aplicación móvil",
   },
 
   // Staff / Usuarios
@@ -219,11 +246,15 @@ const BUSINESS_ROLES: Array<{
       "settings:manage",
       "reports:read",
       "clients:read",
+      "clients:update-credit-limit",
       "quotations:read",
       "contracts:read",
       "inventory:read",
       "purchase-orders:read",
       "operators:read",
+      "operators:assign",
+      "operators:approve_expenses",
+      "chat:access",
     ],
   },
   {
@@ -237,6 +268,7 @@ const BUSINESS_ROLES: Array<{
       "quotations:update",
       "clients:read",
       "inventory:read",
+      "chat:access",
     ],
   },
   {
@@ -256,6 +288,7 @@ const BUSINESS_ROLES: Array<{
       "clients:update",
       "billing:read",
       "inventory:read",
+      "chat:access",
     ],
   },
   {
@@ -271,9 +304,11 @@ const BUSINESS_ROLES: Array<{
       "billing:read",
       "billing:discount",
       "billing:manage",
+      "clients:update-credit-limit",
       "purchase-orders:read",
       "purchase-orders:approve",
       "reports:read",
+      "chat:access",
     ],
   },
   {
@@ -286,6 +321,8 @@ const BUSINESS_ROLES: Array<{
       "inventory:authorize-dispatch",
       "contracts:read",
       "operators:read",
+      "chat:access",
+      "mobile:access",
     ],
   },
   {
@@ -298,6 +335,7 @@ const BUSINESS_ROLES: Array<{
       "purchase-orders:update",
       "inventory:read",
       "inventory:load",
+      "chat:access",
     ],
   },
   {
@@ -309,13 +347,19 @@ const BUSINESS_ROLES: Array<{
       "maintenance:manage",
       "inventory:read",
       "inventory:load",
+      "chat:access",
     ],
   },
   {
     id: "role-operario",
     name: "Operario",
     description: "Acceso básico — reportes diarios desde app móvil",
-    permissions: ["inventory:read", "operators:read"],
+    permissions: [
+      "inventory:read",
+      "operators:read",
+      "chat:access",
+      "mobile:access",
+    ],
   },
 ];
 

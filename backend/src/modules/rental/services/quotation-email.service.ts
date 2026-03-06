@@ -8,8 +8,62 @@ import { quotationService } from "./quotation.service";
 import { azureBlobStorageService } from "@shared/storage/azure-blob-storage.service";
 import { ensureClientReviewToken } from "./quotation-approval.service";
 import prisma from "@config/database";
+import { brandingService } from "@core/services/branding.service";
+import Handlebars from "handlebars";
 
 export class QuotationEmailService {
+  private compileTemplate(template: string, data: Record<string, any>): string {
+    const compiled = Handlebars.compile(template);
+    return compiled(data);
+  }
+
+  private injectBrandingInEmailHtml(
+    htmlContent: string,
+    options: {
+      businessUnitName: string;
+      logoUrl?: string;
+      primaryColor: string;
+      secondaryColor: string;
+      fontFamily: string;
+    },
+  ): string {
+    const headerBlock = `
+      <div style="background:${options.primaryColor};color:#fff;padding:18px 20px;text-align:center;border-radius:8px 8px 0 0;">
+        ${
+          options.logoUrl
+            ? `<img src="${options.logoUrl}" alt="${options.businessUnitName}" style="max-height:56px;max-width:220px;object-fit:contain;margin-bottom:10px;" />`
+            : ""
+        }
+        <div style="font-size:18px;font-weight:700;">${options.businessUnitName}</div>
+      </div>
+    `;
+
+    const footerBlock = `
+      <div style="background:${options.secondaryColor};color:#fff;padding:14px 20px;text-align:center;font-size:12px;border-radius:0 0 8px 8px;">
+        © ${new Date().getFullYear()} ${options.businessUnitName}
+      </div>
+    `;
+
+    const hasHtmlTag = /<html[\s>]/i.test(htmlContent);
+    const hasBodyTag = /<body[\s>]/i.test(htmlContent);
+
+    if (hasHtmlTag && hasBodyTag) {
+      return htmlContent
+        .replace(/<body([^>]*)>/i, (match, bodyAttrs) => {
+          return `<body${bodyAttrs} style="font-family:${options.fontFamily},Arial,sans-serif;">${headerBlock}`;
+        })
+        .replace(/<\/body>/i, `${footerBlock}</body>`);
+    }
+
+    return `
+      <div style="max-width:680px;margin:0 auto;font-family:${options.fontFamily},Arial,sans-serif;line-height:1.6;color:#333;">
+        ${headerBlock}
+        <div style="padding:24px 20px;background:#f9f9f9;">${htmlContent}</div>
+        ${footerBlock}
+      </div>
+    `;
+  }
+
   /**
    * Enviar cotización por email al cliente
    */
@@ -41,6 +95,23 @@ export class QuotationEmailService {
     if (!quotation.pdfUrl) {
       throw new Error("PDF must be generated before sending email");
     }
+
+    const branding = await brandingService.getOrCreateDefault(
+      quotation.businessUnitId,
+    );
+    const primaryColor = branding.primaryColor || "#0066cc";
+    const secondaryColor = branding.secondaryColor || "#333333";
+    const logoUrl = branding.logoUrl || "";
+    const emailFont = branding.fontFamily || "Arial";
+
+    const emailTemplate = await prisma.emailTemplate.findFirst({
+      where: {
+        businessUnitId: quotation.businessUnitId,
+        emailType: "quotation_sent",
+        isActive: true,
+      },
+      orderBy: [{ isDefault: "desc" }, { updatedAt: "desc" }],
+    });
 
     // Generar token único de revisión para el cliente (approve/request-changes)
     const clientReviewToken = await ensureClientReviewToken(quotationId);
@@ -74,20 +145,20 @@ export class QuotationEmailService {
     const pdfBuffer = Buffer.from(await pdfResponse.arrayBuffer());
 
     // 3. Preparar email
-    const subject = `Cotización ${quotation.code} - ${quotation.businessUnit.name}`;
+    const fallbackSubject = `Cotización ${quotation.code} - ${quotation.businessUnit.name}`;
 
-    const html = `
+    const fallbackHtml = `
       <!DOCTYPE html>
       <html>
         <head>
           <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            body { font-family: ${emailFont}, Arial, sans-serif; line-height: 1.6; color: #333; }
             .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: #0066cc; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+            .header { background: ${primaryColor}; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
             .content { background: #f9f9f9; padding: 30px; }
-            .footer { background: #333; color: white; padding: 15px; text-align: center; font-size: 12px; border-radius: 0 0 8px 8px; }
+            .footer { background: ${secondaryColor}; color: white; padding: 15px; text-align: center; font-size: 12px; border-radius: 0 0 8px 8px; }
             .button { 
-              background: #0066cc; 
+              background: ${primaryColor}; 
               color: white; 
               padding: 12px 30px; 
               text-decoration: none; 
@@ -99,7 +170,7 @@ export class QuotationEmailService {
             .item-list { background: white; padding: 20px; border-radius: 5px; margin: 15px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
             .badge { 
               background: #e3f2fd; 
-              color: #1976d2; 
+              color: ${primaryColor}; 
               padding: 4px 12px; 
               border-radius: 12px; 
               font-size: 12px; 
@@ -113,6 +184,11 @@ export class QuotationEmailService {
         <body>
           <div class="container">
             <div class="header">
+              ${
+                logoUrl
+                  ? `<img src="${logoUrl}" alt="${quotation.businessUnit.name}" style="max-height: 56px; max-width: 220px; object-fit: contain; margin-bottom: 12px;" />`
+                  : ""
+              }
               <h1 style="margin: 0;">📋 Nueva Cotización</h1>
               <h2 style="margin: 10px 0 0 0;">${quotation.code}</h2>
               ${
@@ -139,7 +215,7 @@ export class QuotationEmailService {
               }
               
               <div class="item-list">
-                <h3 style="margin-top: 0; color: #0066cc;">📊 Resumen de la Cotización</h3>
+                <h3 style="margin-top: 0; color: ${primaryColor};">📊 Resumen de la Cotización</h3>
                 <table style="width: 100%; border-collapse: collapse;">
                   <tr>
                     <td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Código:</strong></td>
@@ -169,7 +245,7 @@ export class QuotationEmailService {
                   </tr>
                   <tr style="background: #f0f8ff;">
                     <td style="padding: 12px 0; font-size: 18px;"><strong>TOTAL:</strong></td>
-                    <td style="padding: 12px 0; text-align: right; font-size: 18px; color: #0066cc; font-weight: bold;">
+                    <td style="padding: 12px 0; text-align: right; font-size: 18px; color: ${primaryColor}; font-weight: bold;">
                       ${quotation.currency} ${Number(quotation.totalAmount).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                   </tr>
@@ -260,6 +336,76 @@ export class QuotationEmailService {
       </html>
     `;
 
+    const templateData = {
+      quotation,
+      client: quotation.client,
+      businessUnit: quotation.businessUnit,
+      reviewUrl,
+      year: new Date().getFullYear(),
+      logoUrl,
+      primaryColor,
+      secondaryColor,
+      fontFamily: emailFont,
+      quotationCode: quotation.code,
+      quotationType: quotation.quotationType,
+      quotationDate: new Date(quotation.quotationDate).toLocaleDateString(
+        "es-MX",
+      ),
+      validUntil: new Date(quotation.validUntil).toLocaleDateString("es-MX"),
+      totalAmount: Number(quotation.totalAmount).toLocaleString("es-MX", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }),
+      currency: quotation.currency,
+      itemCount: quotation.items.length,
+      notes: quotation.notes,
+      customMessage: options?.customMessage,
+    };
+
+    let subject = fallbackSubject;
+    let html = fallbackHtml;
+    let text = `Cotización ${quotation.code} adjunta. Total: ${quotation.currency} ${quotation.totalAmount}`;
+
+    if (emailTemplate) {
+      const customColors =
+        emailTemplate.customColors &&
+        typeof emailTemplate.customColors === "object"
+          ? (emailTemplate.customColors as Record<string, any>)
+          : {};
+
+      const templatePrimaryColor =
+        emailTemplate.useBranding === false
+          ? customColors.primary || primaryColor
+          : primaryColor;
+      const templateSecondaryColor =
+        emailTemplate.useBranding === false
+          ? customColors.secondary || secondaryColor
+          : secondaryColor;
+
+      const themedData = {
+        ...templateData,
+        primaryColor: templatePrimaryColor,
+        secondaryColor: templateSecondaryColor,
+      };
+
+      subject = this.compileTemplate(emailTemplate.subject, themedData);
+      const renderedHtml = this.compileTemplate(
+        emailTemplate.htmlContent,
+        themedData,
+      );
+      html = this.injectBrandingInEmailHtml(renderedHtml, {
+        businessUnitName: quotation.businessUnit.name,
+        logoUrl,
+        primaryColor: templatePrimaryColor,
+        secondaryColor: templateSecondaryColor,
+        fontFamily: emailFont,
+      });
+
+      if (emailTemplate.textContent) {
+        text = this.compileTemplate(emailTemplate.textContent, themedData);
+      }
+    }
+
     // 4. Enviar email con PDF adjunto via EmailService (con fallback a consola en dev)
     if (!quotation.client.email) {
       throw new Error(
@@ -271,7 +417,8 @@ export class QuotationEmailService {
       cc: options?.cc,
       subject: subject,
       html: html,
-      text: `Cotización ${quotation.code} adjunta. Total: ${quotation.currency} ${quotation.totalAmount}`,
+      text,
+      skipBranding: true,
       attachments: [
         {
           filename: `${quotation.code}.pdf`,

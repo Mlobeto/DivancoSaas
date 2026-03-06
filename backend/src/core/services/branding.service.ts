@@ -15,6 +15,17 @@ import type {
 const prisma = new PrismaClient();
 
 class BrandingService {
+  private normalizeHeaderConfig(config: HeaderConfig): HeaderConfig {
+    const defaultLogoMaxHeight = Math.max(40, (config.height || 80) - 8);
+    return {
+      ...config,
+      logoMaxHeight:
+        typeof config.logoMaxHeight === "number"
+          ? config.logoMaxHeight
+          : defaultLogoMaxHeight,
+    };
+  }
+
   /**
    * Get branding for a business unit
    */
@@ -46,7 +57,9 @@ class BrandingService {
     return {
       ...branding,
       contactInfo: branding.contactInfo as unknown as ContactInfo,
-      headerConfig: branding.headerConfig as unknown as HeaderConfig,
+      headerConfig: this.normalizeHeaderConfig(
+        branding.headerConfig as unknown as HeaderConfig,
+      ),
       footerConfig,
     };
   }
@@ -72,6 +85,7 @@ class BrandingService {
     const defaultHeaderConfig: HeaderConfig = {
       showLogo: true,
       logoAlign: "left",
+      logoMaxHeight: 72,
       showBusinessName: true,
       showTaxInfo: false,
       height: 80,
@@ -91,6 +105,10 @@ class BrandingService {
       ...data.headerConfig,
     };
 
+    const normalizedHeaderConfig = this.normalizeHeaderConfig(
+      headerConfig as HeaderConfig,
+    );
+
     const footerConfig = {
       ...defaultFooterConfig,
       ...data.footerConfig,
@@ -104,7 +122,7 @@ class BrandingService {
         secondaryColor: data.secondaryColor || "#64748B",
         fontFamily: data.fontFamily || "Inter",
         contactInfo: (data.contactInfo || {}) as any,
-        headerConfig: headerConfig as any,
+        headerConfig: normalizedHeaderConfig as any,
         footerConfig: footerConfig as any,
       },
       include: {
@@ -122,7 +140,9 @@ class BrandingService {
     return {
       ...branding,
       contactInfo: branding.contactInfo as unknown as ContactInfo,
-      headerConfig: branding.headerConfig as unknown as HeaderConfig,
+      headerConfig: this.normalizeHeaderConfig(
+        branding.headerConfig as unknown as HeaderConfig,
+      ),
       footerConfig: branding.footerConfig as unknown as FooterConfig,
     };
   }
@@ -142,6 +162,10 @@ class BrandingService {
     const headerConfig = data.headerConfig
       ? { ...current.headerConfig, ...data.headerConfig }
       : current.headerConfig;
+
+    const normalizedHeaderConfig = this.normalizeHeaderConfig(
+      headerConfig as HeaderConfig,
+    );
 
     const footerConfig = data.footerConfig
       ? { ...current.footerConfig, ...data.footerConfig }
@@ -166,7 +190,7 @@ class BrandingService {
         fontFamily:
           data.fontFamily !== undefined ? data.fontFamily : current.fontFamily,
         contactInfo: contactInfo as any,
-        headerConfig: headerConfig as any,
+        headerConfig: normalizedHeaderConfig as any,
         footerConfig: footerConfig as any,
       },
       include: {
@@ -184,7 +208,9 @@ class BrandingService {
     return {
       ...updated,
       contactInfo: updated.contactInfo as unknown as ContactInfo,
-      headerConfig: updated.headerConfig as unknown as HeaderConfig,
+      headerConfig: this.normalizeHeaderConfig(
+        updated.headerConfig as unknown as HeaderConfig,
+      ),
       footerConfig: updated.footerConfig as unknown as FooterConfig,
     };
   }

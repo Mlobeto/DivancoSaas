@@ -671,30 +671,35 @@ router.post(
 // Obtener mi perfil (Mobile)
 router.get(
   "/operators/my/profile",
+  authorize("mobile:access"),
   operatorController.getMyProfile.bind(operatorController),
 );
 
 // Crear reporte diario (Mobile)
 router.post(
   "/operators/my/daily-reports",
+  authorize("mobile:access"),
   operatorController.createDailyReport.bind(operatorController),
 );
 
 // Obtener mis reportes
 router.get(
   "/operators/my/daily-reports",
+  authorize("mobile:access"),
   operatorController.getMyDailyReports.bind(operatorController),
 );
 
 // Crear viático (Mobile)
 router.post(
   "/operators/my/expenses",
+  authorize("mobile:access"),
   operatorController.createExpense.bind(operatorController),
 );
 
 // Obtener mis viáticos
 router.get(
   "/operators/my/expenses",
+  authorize("mobile:access"),
   operatorController.getMyExpenses.bind(operatorController),
 );
 

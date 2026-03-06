@@ -23,6 +23,7 @@ import {
   Building2,
   Settings,
   Palette,
+  Clock3,
 } from "lucide-react";
 
 /**
@@ -38,6 +39,7 @@ const iconMap: Record<string, React.ReactNode> = {
   building: <Building2 className="w-5 h-5" />,
   settings: <Settings className="w-5 h-5" />,
   palette: <Palette className="w-5 h-5" />,
+  clock: <Clock3 className="w-5 h-5" />,
 };
 
 /**
@@ -307,6 +309,12 @@ export default function DynamicNavigation({
         label: "Branding",
         path: "/settings/branding",
         icon: "palette",
+      },
+      {
+        id: "timezone",
+        label: "Zona horaria",
+        path: "/settings/timezone",
+        icon: "clock",
       },
     ];
 

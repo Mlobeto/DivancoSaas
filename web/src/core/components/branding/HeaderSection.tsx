@@ -19,6 +19,13 @@ export function HeaderSection({ config, onChange }: HeaderSectionProps) {
     }
   };
 
+  const handleLogoMaxHeightChange = (value: string) => {
+    const parsed = parseInt(value, 10);
+    if (!isNaN(parsed) && parsed >= 24 && parsed <= 240) {
+      onChange({ logoMaxHeight: parsed });
+    }
+  };
+
   return (
     <div className="space-y-3">
       <label className="flex items-center gap-2">
@@ -82,6 +89,22 @@ export function HeaderSection({ config, onChange }: HeaderSectionProps) {
           step="10"
         />
         <p className="text-xs text-dark-400 mt-1">Entre 40 y 200 píxeles</p>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium mb-1">
+          Tamaño máximo del logo (px)
+        </label>
+        <input
+          type="number"
+          value={config.logoMaxHeight ?? 72}
+          onChange={(e) => handleLogoMaxHeightChange(e.target.value)}
+          className="input w-full"
+          min="24"
+          max="240"
+          step="4"
+        />
+        <p className="text-xs text-dark-400 mt-1">Entre 24 y 240 píxeles</p>
       </div>
     </div>
   );

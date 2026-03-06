@@ -96,12 +96,17 @@ router.use(authenticate);
  *         application/json:
  *           schema:
  *             type: object
- *             required: [email, firstName, lastName, businessUnitId, roleId]
+ *             required: [email, password, firstName, lastName, businessUnitId, roleId]
  *             properties:
  *               email:
  *                 type: string
  *                 format: email
  *                 example: "usuario@empresa.com"
+ *               password:
+ *                 type: string
+ *                 minLength: 8
+ *                 example: "TempPass123"
+ *                 description: Debe contener mayúscula, minúscula y número
  *               firstName:
  *                 type: string
  *                 minLength: 2
@@ -171,6 +176,13 @@ router.get("/", authorize("users:read"), async (req, res, next) => {
 
 const createUserSchema = z.object({
   email: z.string().email(),
+  password: z
+    .string()
+    .min(8)
+    .regex(
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+      "Password must contain uppercase, lowercase and number",
+    ),
   firstName: z.string().min(2),
   lastName: z.string().min(2),
   businessUnitId: z.string().uuid(),

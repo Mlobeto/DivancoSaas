@@ -51,6 +51,7 @@ const DEFAULT_FORM_DATA: UpdateBrandingDTO = {
   headerConfig: {
     showLogo: true,
     logoAlign: "left",
+    logoMaxHeight: 72,
     showBusinessName: true,
     showTaxInfo: false,
     height: 80,
@@ -255,6 +256,7 @@ export function useBranding(
       const blob = await brandingApi.preview(businessUnitId, {
         documentType: docType,
         format,
+        branding: formData,
       });
 
       console.log("[useBranding] Blob received:", {

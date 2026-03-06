@@ -9,11 +9,12 @@
  */
 
 import { Router, Request, Response } from "express";
-import { authenticate } from "@core/middlewares/auth.middleware";
+import { authenticate, authorize } from "@core/middlewares/auth.middleware";
 import { chatService } from "@core/services/chat.service";
 
 const router = Router();
 router.use(authenticate);
+router.use(authorize("chat:access"));
 
 // Listar salas del usuario actual
 router.get("/rooms", async (req: Request, res: Response) => {

@@ -1,6 +1,6 @@
 /**
  * PDF Generation Service using Playwright
- * Supports A4 and ticket (receipt) formats
+ * Supports A4, Letter and ticket (receipt) formats
  */
 
 import { chromium, Browser } from "playwright";
@@ -83,8 +83,33 @@ class PDFGeneratorService {
         timeout: 15_000,
       });
 
+      // Wait briefly for external images (e.g. branding logo) to load
+      await Promise.race([
+        page.evaluate(async () => {
+          const images = Array.from(document.images || []);
+          await Promise.all(
+            images.map(
+              (img) =>
+                new Promise<void>((resolve) => {
+                  if (img.complete) {
+                    resolve();
+                    return;
+                  }
+                  img.addEventListener("load", () => resolve(), {
+                    once: true,
+                  });
+                  img.addEventListener("error", () => resolve(), {
+                    once: true,
+                  });
+                }),
+            ),
+          );
+        }),
+        page.waitForTimeout(4000),
+      ]);
+
       // Give inline scripts / web fonts a brief moment to settle
-      await page.waitForTimeout(300);
+      await page.waitForTimeout(250);
 
       console.log("[PDFGenerator] Content set, generating PDF...");
 
@@ -104,6 +129,20 @@ class PDFGeneratorService {
             right: "5mm",
             bottom: "5mm",
             left: "5mm",
+          },
+        });
+      } else if (format === "Letter") {
+        console.log("[PDFGenerator] Using Letter format");
+        // Letter format (US standard document)
+        pdfBuffer = await page.pdf({
+          format: "Letter",
+          printBackground: true,
+          landscape: options.landscape || false,
+          margin: {
+            top: "10mm",
+            right: "10mm",
+            bottom: "10mm",
+            left: "10mm",
           },
         });
       } else {

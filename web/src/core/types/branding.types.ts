@@ -12,6 +12,7 @@ export interface ContactInfo {
 export interface HeaderConfig {
   showLogo: boolean;
   logoAlign: "left" | "center" | "right";
+  logoMaxHeight?: number;
   showBusinessName: boolean;
   showTaxInfo: boolean;
   height: number;
@@ -74,10 +75,11 @@ export type DocumentType =
   | "report"
   | "receipt";
 
-export type DocumentFormat = "A4" | "ticket";
+export type DocumentFormat = "A4" | "Letter" | "ticket";
 
 export interface PreviewOptions {
   documentType?: DocumentType;
   format?: DocumentFormat;
   sampleData?: any;
+  branding?: UpdateBrandingDTO;
 }

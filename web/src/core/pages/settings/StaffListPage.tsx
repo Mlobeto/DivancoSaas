@@ -30,6 +30,20 @@ interface UserBusinessUnit {
   roleName: string;
 }
 
+interface RawUserBusinessUnit {
+  businessUnitId?: string;
+  businessUnitName?: string;
+  roleName?: string;
+  businessUnit?: {
+    id?: string;
+    name?: string;
+  };
+  role?: {
+    id?: string;
+    name?: string;
+  };
+}
+
 interface StaffUser {
   id: string;
   email: string;
@@ -38,6 +52,10 @@ interface StaffUser {
   status: "ACTIVE" | "INACTIVE" | "SUSPENDED";
   createdAt: string;
   businessUnits: UserBusinessUnit[];
+}
+
+interface RawStaffUser extends Omit<StaffUser, "businessUnits"> {
+  businessUnits?: RawUserBusinessUnit[];
 }
 
 const STATUS_CONFIG = {
@@ -70,6 +88,27 @@ export function StaffListPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
 
+  const normalizeUser = (user: RawStaffUser): StaffUser => {
+    const normalizedBusinessUnits: UserBusinessUnit[] =
+      (user.businessUnits || []).map((bu, index) => ({
+        businessUnitId:
+          bu.businessUnitId || bu.businessUnit?.id || `bu-${user.id}-${index}`,
+        businessUnitName:
+          bu.businessUnitName || bu.businessUnit?.name || "Sin unidad",
+        roleName: bu.roleName || bu.role?.name || "Sin rol",
+      })) || [];
+
+    return {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      status: user.status,
+      createdAt: user.createdAt,
+      businessUnits: normalizedBusinessUnits,
+    };
+  };
+
   // Fetch users
   useEffect(() => {
     const fetchUsers = async () => {
@@ -85,7 +124,10 @@ export function StaffListPage() {
         }
 
         const response = await api.get("/users", { params });
-        setUsers(response.data.users || []);
+        const normalizedUsers = (
+          (response.data.users || []) as RawStaffUser[]
+        ).map(normalizeUser);
+        setUsers(normalizedUsers);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Error desconocido");
       } finally {

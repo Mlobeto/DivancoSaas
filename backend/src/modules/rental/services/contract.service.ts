@@ -8,6 +8,12 @@ import { Decimal } from "@prisma/client/runtime/library";
 import { accountService } from "./account.service";
 import { digitalSignatureResolver } from "@integrations/adapters/digital-signature/digital-signature.resolver";
 import type { SignerInfo } from "@core/contracts/digital-signature.provider";
+import { brandingService } from "@core/services/branding.service";
+import {
+  buildDocument,
+  type BrandingConfig,
+  type BusinessUnitInfo,
+} from "@core/services/document-builder.service";
 
 export interface CreateContractParams {
   tenantId: string;
@@ -688,10 +694,47 @@ export class ContractService {
           tenantId: contract.tenantId,
         });
 
+        const branding = await brandingService.getOrCreateDefault(
+          contract.businessUnitId,
+        );
+
+        const brandingConfig: BrandingConfig = {
+          logoUrl: branding.logoUrl || undefined,
+          primaryColor: branding.primaryColor,
+          secondaryColor: branding.secondaryColor,
+          fontFamily: branding.fontFamily,
+          contactInfo: branding.contactInfo,
+          headerConfig: branding.headerConfig,
+          footerConfig: branding.footerConfig,
+        };
+
+        const contactInfo = branding.contactInfo || {};
+        const businessUnitInfo: BusinessUnitInfo = {
+          name: contract.businessUnit.name,
+          taxId: (contract.businessUnit.settings as any)?.taxId,
+          email: contactInfo.email,
+          phone: contactInfo.phone,
+          address: contactInfo.address,
+          website: contactInfo.website,
+        };
+
+        const styleBlocks = html.match(/<style[\s\S]*?<\/style>/gi) || [];
+        const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+        const bodyContent = bodyMatch ? bodyMatch[1] : html;
+        const contentWithStyles = `${styleBlocks.join("\n")}${bodyContent}`;
+
+        const brandedHtml = buildDocument(
+          brandingConfig,
+          businessUnitInfo,
+          contentWithStyles,
+          "contract",
+          `Contrato ${contract.code}`,
+        );
+
         // Generar PDF
         const { pdfGeneratorService } =
           await import("@core/services/pdf-generator.service");
-        return pdfGeneratorService.generatePDF(html, { format: "A4" });
+        return pdfGeneratorService.generatePDF(brandedHtml, { format: "A4" });
       } catch (error) {
         console.warn(
           "Failed to use contract template service, falling back to legacy:",

@@ -82,14 +82,14 @@ export function BrandingPreview({
       {isDirty && (
         <div className="mb-4 p-3 bg-amber-900/20 border border-amber-800 rounded-lg flex items-center gap-2 text-amber-400 text-sm">
           <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-          <p>Tienes cambios sin guardar</p>
+          <p>Tienes cambios sin guardar (la vista previa sí los incluirá)</p>
         </div>
       )}
 
       {/* A4 Preview Simulation */}
       <div
         className={`border-2 border-dark-700 rounded-lg overflow-auto bg-white ${
-          previewFormat === "A4" ? "aspect-[1/1.414]" : "w-80 h-96"
+          previewFormat === "ticket" ? "w-80 h-96" : "aspect-[1/1.35]"
         }`}
       >
         <div
@@ -117,7 +117,10 @@ export function BrandingPreview({
               <img
                 src={formData.logoUrl}
                 alt="Logo"
-                className="h-12 mb-2 object-contain"
+                className="mb-2 object-contain"
+                style={{
+                  maxHeight: `${formData.headerConfig?.logoMaxHeight ?? 72}px`,
+                }}
               />
             )}
             {formData.headerConfig?.showBusinessName && (
@@ -215,6 +218,7 @@ export function BrandingPreview({
               className="input w-full"
             >
               <option value="A4">A4 (Documento)</option>
+              <option value="Letter">Letter (Documento)</option>
               <option value="ticket">Ticket (Recibo)</option>
             </select>
           </div>
@@ -222,9 +226,9 @@ export function BrandingPreview({
 
         <button
           onClick={handleGeneratePreview}
-          disabled={generating || isDirty}
+          disabled={generating}
           className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-          title={isDirty ? "Guarda los cambios antes de generar el PDF" : ""}
+          title="Generar PDF con la configuración actual"
         >
           {generating ? (
             <>
@@ -243,7 +247,7 @@ export function BrandingPreview({
         {import.meta.env.DEV && (
           <button
             onClick={handleTestHTML}
-            disabled={testingHTML || isDirty}
+            disabled={testingHTML}
             className="btn-secondary w-full flex items-center justify-center gap-2 text-sm disabled:opacity-50"
             title="Ver HTML generado (debug)"
           >
@@ -259,12 +263,6 @@ export function BrandingPreview({
               </>
             )}
           </button>
-        )}
-
-        {isDirty && (
-          <p className="text-xs text-amber-400 text-center">
-            Guarda los cambios antes de generar el PDF
-          </p>
         )}
       </div>
     </div>

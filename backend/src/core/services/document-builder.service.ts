@@ -37,12 +37,25 @@ export function buildHeader(
   businessUnit: BusinessUnitInfo,
 ): string {
   const { headerConfig } = branding;
-  const alignClass =
+  const logoMaxHeight = Math.max(
+    32,
+    typeof headerConfig.logoMaxHeight === "number"
+      ? headerConfig.logoMaxHeight
+      : headerConfig.height - 8,
+  );
+  const textAlign =
     headerConfig.logoAlign === "center"
-      ? "justify-center"
+      ? "center"
       : headerConfig.logoAlign === "right"
-        ? "justify-end"
-        : "justify-start";
+        ? "right"
+        : "left";
+
+  const alignItems =
+    headerConfig.logoAlign === "center"
+      ? "center"
+      : headerConfig.logoAlign === "right"
+        ? "flex-end"
+        : "flex-start";
 
   return `
     <div class="document-header" style="
@@ -51,17 +64,18 @@ export function buildHeader(
       border-bottom: 2px solid ${branding.primaryColor};
       background: linear-gradient(to bottom, ${branding.primaryColor}08, transparent);
       display: flex;
-      align-items: center;
-      ${headerConfig.logoAlign === "center" ? "justify-content: center;" : ""}
-      ${headerConfig.logoAlign === "right" ? "justify-content: flex-end;" : ""}
-      gap: 20px;
+      flex-direction: column;
+      justify-content: center;
+      align-items: ${alignItems};
+      text-align: ${textAlign};
+      gap: 8px;
     ">
       ${
         headerConfig.showLogo && branding.logoUrl
           ? `
         <div class="header-logo">
           <img src="${branding.logoUrl}" alt="${businessUnit.name}" style="
-            max-height: ${headerConfig.height - 40}px;
+            max-height: ${logoMaxHeight}px;
             max-width: 200px;
             object-fit: contain;
           " />
@@ -70,7 +84,7 @@ export function buildHeader(
           : ""
       }
       
-      <div class="header-info" style="flex: 1;">
+      <div class="header-info" style="width: 100%; text-align: ${textAlign};">
         ${
           headerConfig.showBusinessName
             ? `

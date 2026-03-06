@@ -38,11 +38,11 @@ export interface UserListResponse {
 
 export interface CreateUserData {
   email: string;
+  password: string;
   firstName: string;
   lastName: string;
   businessUnitId: string;
   roleId: string;
-  password?: string;
 }
 
 export interface UpdateUserData {

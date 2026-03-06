@@ -16,7 +16,7 @@
 
 import { useAuthStore } from "@/store/auth.store";
 import { Layout } from "@/core/components/Layout";
-import { GeneralBrandingTab } from "./tabs";
+import { EmailLayoutTab, GeneralBrandingTab } from "./tabs";
 import { AlertCircle } from "lucide-react";
 import { useBranding } from "@/core/hooks/useBranding";
 
@@ -70,11 +70,15 @@ export function BrandingPage() {
           </div>
         )}
 
-        {/* Direct rendering - no tabs needed */}
+        {/* General branding config */}
         <GeneralBrandingTab
           businessUnitId={businessUnit.id}
           businessUnitName={businessUnit.name}
         />
+
+        <div className="mt-10 pt-8 border-t border-dark-700">
+          <EmailLayoutTab businessUnitId={businessUnit.id} />
+        </div>
       </div>
     </Layout>
   );

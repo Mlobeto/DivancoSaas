@@ -82,6 +82,12 @@ const StaffFormPage = lazy(() =>
   })),
 );
 
+const TimezonePage = lazy(() =>
+  import("@/core/pages/settings").then((m) => ({
+    default: m.TimezonePage,
+  })),
+);
+
 //================================================================
 // CORE ROUTE DEFINITIONS
 //================================================================
@@ -169,6 +175,16 @@ const coreProtectedRoutes: DynamicRouteDefinition[] = [
     permissions: ["users:update"],
     meta: {
       title: "Editar Usuario",
+    },
+  },
+  {
+    path: "/settings/timezone",
+    element: TimezonePage,
+    protection: RouteProtection.AUTHENTICATED,
+    layout: RouteLayout.APP,
+    meta: {
+      title: "Zona horaria",
+      icon: "clock",
     },
   },
 ];
