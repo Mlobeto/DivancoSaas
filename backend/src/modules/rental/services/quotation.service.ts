@@ -12,6 +12,11 @@ import {
   SignatureRequest,
 } from "@core/contracts/digital-signature.provider";
 import { Decimal } from "@prisma/client/runtime/library";
+import {
+  nowInBUTimezone,
+  parseDateInBUTimezone,
+  addDaysInBUTimezone,
+} from "@core/utils/timezone-utils";
 
 export interface CreateQuotationParams {
   tenantId: string;
@@ -306,12 +311,8 @@ export class QuotationService {
                 ? new Decimal(item.calculatedOperatorCost)
                 : null,
             rentalDays: item.rentalDays,
-            rentalStartDate: item.rentalStartDate
-              ? new Date(item.rentalStartDate)
-              : null,
-            rentalEndDate: item.rentalEndDate
-              ? new Date(item.rentalEndDate)
-              : null,
+            rentalStartDate: item.rentalStartDate || null,
+            rentalEndDate: item.rentalEndDate || null,
 
             // v4.0: Nuevos campos
             rentalPeriodType: item.rentalPeriodType,
@@ -440,7 +441,9 @@ export class QuotationService {
           metadata: {
             ...((quotation.metadata as any) || {}),
             lastUpdatedBy: params.updatedBy,
-            lastUpdatedAt: new Date().toISOString(),
+            lastUpdatedAt: (
+              await nowInBUTimezone(quotation.businessUnitId)
+            ).toISOString(),
           },
 
           items: {
@@ -466,12 +469,8 @@ export class QuotationService {
                   ? new Decimal(item.calculatedOperatorCost)
                   : null,
               rentalDays: item.rentalDays,
-              rentalStartDate: item.rentalStartDate
-                ? new Date(item.rentalStartDate)
-                : null,
-              rentalEndDate: item.rentalEndDate
-                ? new Date(item.rentalEndDate)
-                : null,
+              rentalStartDate: item.rentalStartDate || null,
+              rentalEndDate: item.rentalEndDate || null,
               rentalPeriodType: item.rentalPeriodType,
               standbyHours: item.standbyHours
                 ? new Decimal(item.standbyHours)
@@ -880,7 +879,7 @@ export class QuotationService {
       data: {
         signatureStatus: "signed",
         signedPdfUrl: uploadResult.url,
-        signedAt: new Date(),
+        signedAt: await nowInBUTimezone(quotation.businessUnitId),
         status: "signed",
       },
     });
@@ -923,10 +922,16 @@ export class QuotationService {
     );
 
     // Calcular fechas del contrato
-    const startDate = quotation.items[0]?.rentalStartDate || new Date();
+    const startDate =
+      quotation.items[0]?.rentalStartDate ||
+      (await nowInBUTimezone(quotation.businessUnitId));
     const endDate =
       quotation.items[0]?.rentalEndDate ||
-      new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+      (await addDaysInBUTimezone(
+        await nowInBUTimezone(quotation.businessUnitId),
+        30,
+        quotation.businessUnitId,
+      ));
 
     // Detectar si es un contrato de alquiler (tiene items con assetId)
     const hasRentalAssets = quotation.items.some((item) => item.assetId);
@@ -1678,7 +1683,7 @@ export class QuotationService {
     tenantId: string,
     businessUnitId: string,
   ): Promise<string> {
-    const year = new Date().getFullYear();
+    const year = (await nowInBUTimezone(businessUnitId)).getFullYear();
     const count = await prisma.quotation.count({
       where: {
         tenantId,
@@ -1695,7 +1700,7 @@ export class QuotationService {
     tenantId: string,
     businessUnitId: string,
   ): Promise<string> {
-    const year = new Date().getFullYear();
+    const year = (await nowInBUTimezone(businessUnitId)).getFullYear();
     const count = await prisma.quotationContract.count({
       where: {
         tenantId,

@@ -4,7 +4,7 @@
  */
 
 import { Router } from "express";
-import { authenticate } from "@core/middlewares/auth.middleware";
+import { authenticate, authorize } from "@core/middlewares/auth.middleware";
 import {
   AssetTemplateService,
   AssetCategory,
@@ -203,7 +203,7 @@ const listQuerySchema = z.object({
  *       200:
  *         description: Lista de plantillas
  */
-router.get("/", async (req, res, next) => {
+router.get("/", authorize("asset-templates:read"), async (req, res, next) => {
   try {
     const businessUnitId = (req as any).context.businessUnitId;
     const options = listQuerySchema.parse(req.query);
@@ -228,15 +228,19 @@ router.get("/", async (req, res, next) => {
  *       200:
  *         description: Estadísticas de plantillas
  */
-router.get("/stats", async (req, res, next) => {
-  try {
-    const businessUnitId = (req as any).context.businessUnitId;
-    const stats = await templateService.getTemplateStats(businessUnitId);
-    res.json({ success: true, data: stats });
-  } catch (error) {
-    next(error);
-  }
-});
+router.get(
+  "/stats",
+  authorize("asset-templates:read"),
+  async (req, res, next) => {
+    try {
+      const businessUnitId = (req as any).context.businessUnitId;
+      const stats = await templateService.getTemplateStats(businessUnitId);
+      res.json({ success: true, data: stats });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 
 /**
  * @openapi
@@ -260,17 +264,24 @@ router.get("/stats", async (req, res, next) => {
  *       404:
  *         description: Plantilla no encontrada
  */
-router.get("/:id", async (req, res, next) => {
-  try {
-    const businessUnitId = (req as any).context.businessUnitId;
-    const { id } = req.params;
+router.get(
+  "/:id",
+  authorize("asset-templates:read"),
+  async (req, res, next) => {
+    try {
+      const businessUnitId = (req as any).context.businessUnitId;
+      const { id } = req.params;
 
-    const template = await templateService.getTemplateById(id, businessUnitId);
-    res.json({ success: true, data: template });
-  } catch (error) {
-    next(error);
-  }
-});
+      const template = await templateService.getTemplateById(
+        id,
+        businessUnitId,
+      );
+      res.json({ success: true, data: template });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 
 /**
  * @openapi
@@ -315,17 +326,24 @@ router.get("/:id", async (req, res, next) => {
  *       409:
  *         description: Ya existe una plantilla con ese nombre
  */
-router.post("/", async (req, res, next) => {
-  try {
-    const businessUnitId = (req as any).context.businessUnitId;
-    const data = createTemplateSchema.parse(req.body);
+router.post(
+  "/",
+  authorize("asset-templates:create"),
+  async (req, res, next) => {
+    try {
+      const businessUnitId = (req as any).context.businessUnitId;
+      const data = createTemplateSchema.parse(req.body);
 
-    const template = await templateService.createTemplate(data, businessUnitId);
-    res.status(201).json({ success: true, data: template });
-  } catch (error) {
-    next(error);
-  }
-});
+      const template = await templateService.createTemplate(
+        data,
+        businessUnitId,
+      );
+      res.status(201).json({ success: true, data: template });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 
 /**
  * @openapi
@@ -355,22 +373,26 @@ router.post("/", async (req, res, next) => {
  *       404:
  *         description: Plantilla no encontrada
  */
-router.put("/:id", async (req, res, next) => {
-  try {
-    const businessUnitId = (req as any).context.businessUnitId;
-    const { id } = req.params;
-    const data = updateTemplateSchema.parse(req.body);
+router.put(
+  "/:id",
+  authorize("asset-templates:update"),
+  async (req, res, next) => {
+    try {
+      const businessUnitId = (req as any).context.businessUnitId;
+      const { id } = req.params;
+      const data = updateTemplateSchema.parse(req.body);
 
-    const template = await templateService.updateTemplate(
-      id,
-      data,
-      businessUnitId,
-    );
-    res.json({ success: true, data: template });
-  } catch (error) {
-    next(error);
-  }
-});
+      const template = await templateService.updateTemplate(
+        id,
+        data,
+        businessUnitId,
+      );
+      res.json({ success: true, data: template });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 
 /**
  * @openapi
@@ -403,22 +425,26 @@ router.put("/:id", async (req, res, next) => {
  *       201:
  *         description: Plantilla duplicada
  */
-router.post("/:id/duplicate", async (req, res, next) => {
-  try {
-    const businessUnitId = (req as any).context.businessUnitId;
-    const { id } = req.params;
-    const { name } = z.object({ name: z.string().min(2) }).parse(req.body);
+router.post(
+  "/:id/duplicate",
+  authorize("asset-templates:create"),
+  async (req, res, next) => {
+    try {
+      const businessUnitId = (req as any).context.businessUnitId;
+      const { id } = req.params;
+      const { name } = z.object({ name: z.string().min(2) }).parse(req.body);
 
-    const template = await templateService.duplicateTemplate(
-      id,
-      name,
-      businessUnitId,
-    );
-    res.status(201).json({ success: true, data: template });
-  } catch (error) {
-    next(error);
-  }
-});
+      const template = await templateService.duplicateTemplate(
+        id,
+        name,
+        businessUnitId,
+      );
+      res.status(201).json({ success: true, data: template });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 
 /**
  * @openapi
@@ -444,16 +470,20 @@ router.post("/:id/duplicate", async (req, res, next) => {
  *       404:
  *         description: Plantilla no encontrada
  */
-router.delete("/:id", async (req, res, next) => {
-  try {
-    const businessUnitId = (req as any).context.businessUnitId;
-    const { id } = req.params;
+router.delete(
+  "/:id",
+  authorize("asset-templates:delete"),
+  async (req, res, next) => {
+    try {
+      const businessUnitId = (req as any).context.businessUnitId;
+      const { id } = req.params;
 
-    const result = await templateService.deleteTemplate(id, businessUnitId);
-    res.json({ success: true, ...result });
-  } catch (error) {
-    next(error);
-  }
-});
+      const result = await templateService.deleteTemplate(id, businessUnitId);
+      res.json({ success: true, ...result });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 
 export default router;

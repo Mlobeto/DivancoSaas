@@ -14,6 +14,7 @@ import {
   type BrandingConfig,
   type BusinessUnitInfo,
 } from "@core/services/document-builder.service";
+import { nowInBUTimezone } from "@core/utils/timezone-utils";
 
 export interface CreateContractParams {
   tenantId: string;
@@ -167,7 +168,7 @@ export class ContractService {
       data: {
         contractId: params.contractId,
         assetId: params.assetId,
-        withdrawalDate: new Date(),
+        withdrawalDate: await nowInBUTimezone(contract.businessUnitId),
         expectedReturnDate: params.expectedReturnDate,
         trackingType: trackingType,
 
@@ -384,7 +385,7 @@ export class ContractService {
       where: { id: contractId },
       data: {
         status: "completed",
-        actualEndDate: new Date(),
+        actualEndDate: await nowInBUTimezone(contract.businessUnitId),
       },
     });
   }
@@ -421,7 +422,7 @@ export class ContractService {
     tenantId: string,
     businessUnitId: string,
   ): Promise<string> {
-    const year = new Date().getFullYear();
+    const year = (await nowInBUTimezone(businessUnitId)).getFullYear();
     const lastContract = await prisma.rentalContract.findFirst({
       where: {
         tenantId,

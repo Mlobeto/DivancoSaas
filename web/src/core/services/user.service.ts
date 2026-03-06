@@ -119,4 +119,13 @@ export const userService = {
   ): Promise<void> {
     await apiClient.post(`${BASE_URL}/${userId}/change-password`, data);
   },
+
+  /**
+   * Admin reset password - Cambiar contraseña de otro usuario (requiere permiso users:change-password)
+   */
+  async adminResetPassword(userId: string, newPassword: string): Promise<void> {
+    await apiClient.post(`${BASE_URL}/${userId}/reset-password`, {
+      newPassword,
+    });
+  },
 };

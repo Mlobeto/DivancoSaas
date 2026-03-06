@@ -7,6 +7,7 @@
 import prisma from "@config/database";
 import { Expo, ExpoPushMessage } from "expo-server-sdk";
 import type { Server as SocketServer } from "socket.io";
+import { nowInBUTimezone } from "@core/utils/timezone-utils";
 
 export interface CreateNotificationParams {
   tenantId: string;
@@ -84,21 +85,40 @@ class NotificationService {
 
   /** Marcar notificación como leída */
   async markRead(notificationId: string, userId: string): Promise<void> {
+    // Obtener la notificación para acceder al businessUnitId
+    const notification = await prisma.notification.findFirst({
+      where: { id: notificationId, userId },
+      select: { businessUnitId: true },
+    });
+
+    if (!notification) return;
+
+    // Usar timezone del businessUnit si existe, sino usar el tenant default
+    const businessUnitId = notification.businessUnitId;
+    const readAt = businessUnitId
+      ? await nowInBUTimezone(businessUnitId)
+      : new Date();
+
     await prisma.notification.updateMany({
       where: { id: notificationId, userId },
-      data: { isRead: true, readAt: new Date() },
+      data: { isRead: true, readAt },
     });
   }
 
   /** Marcar todas las notificaciones del usuario como leídas */
   async markAllRead(userId: string, businessUnitId?: string): Promise<void> {
+    // Usar timezone del businessUnit si existe, sino usar fecha actual
+    const readAt = businessUnitId
+      ? await nowInBUTimezone(businessUnitId)
+      : new Date();
+
     await prisma.notification.updateMany({
       where: {
         userId,
         isRead: false,
         ...(businessUnitId ? { businessUnitId } : {}),
       },
-      data: { isRead: true, readAt: new Date() },
+      data: { isRead: true, readAt },
     });
   }
 

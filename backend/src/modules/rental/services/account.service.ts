@@ -5,6 +5,7 @@
 
 import prisma from "@config/database";
 import { Decimal } from "@prisma/client/runtime/library";
+import { nowInBUTimezone } from "@core/utils/timezone-utils";
 
 export interface CreateAccountParams {
   tenantId: string;
@@ -252,6 +253,9 @@ export class AccountService {
   async checkAlerts(accountId: string) {
     const account = await prisma.clientAccount.findUnique({
       where: { id: accountId },
+      include: {
+        client: true,
+      },
     });
 
     if (!account) return;
@@ -261,11 +265,19 @@ export class AccountService {
 
     // Si el balance está por debajo del monto de alerta y no se ha alertado
     if (balance <= alertAmount && !account.alertTriggered) {
+      // Obtener businessUnitId del cliente para timezone
+      const clientWithBU = await prisma.client.findUnique({
+        where: { id: account.clientId },
+        select: { businessUnitId: true },
+      });
+
+      if (!clientWithBU) return;
+
       await prisma.clientAccount.update({
         where: { id: accountId },
         data: {
           alertTriggered: true,
-          lastAlertSent: new Date(),
+          lastAlertSent: await nowInBUTimezone(clientWithBU.businessUnitId),
         },
       });
 

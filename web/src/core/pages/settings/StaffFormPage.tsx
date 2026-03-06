@@ -8,6 +8,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Layout } from "@/core/components/Layout";
+import { PermissionsDragDrop } from "@/core/components/PermissionsDragDrop";
 import api from "@/lib/api";
 import {
   Save,
@@ -26,7 +27,12 @@ import {
   Wand2,
   Copy,
   Check,
+  Key,
+  ChevronDown,
+  Eye,
+  EyeOff,
 } from "lucide-react";
+import { userService } from "@/core/services/user.service";
 
 // ---------- Types ----------
 
@@ -52,14 +58,6 @@ interface BusinessUnit {
   code: string;
 }
 
-interface RoleCard {
-  id: string;
-  label: string;
-  description: string;
-  icon: string;
-  colorClasses: string;
-}
-
 interface OperatorData {
   document: string;
   phone: string;
@@ -80,59 +78,6 @@ interface OperatorDoc {
 }
 
 // ---------- Static config ----------
-
-const ROLE_CARDS: RoleCard[] = [
-  {
-    id: "role-admin",
-    label: "Administrativo",
-    description: "Gestión de usuarios, configuración y reportes internos",
-    icon: "🏢",
-    colorClasses: "border-blue-600 bg-blue-900/10 hover:bg-blue-900/25",
-  },
-  {
-    id: "role-comercial",
-    label: "Comercial",
-    description: "Cotizaciones, contratos y gestión de clientes",
-    icon: "💼",
-    colorClasses:
-      "border-emerald-600 bg-emerald-900/10 hover:bg-emerald-900/25",
-  },
-  {
-    id: "role-contable",
-    label: "Contable",
-    description: "Facturación, aprobaciones y reportes financieros",
-    icon: "📊",
-    colorClasses: "border-violet-600 bg-violet-900/10 hover:bg-violet-900/25",
-  },
-  {
-    id: "role-operaciones",
-    label: "Operaciones",
-    description: "Control de inventario, entregas y logística",
-    icon: "🔄",
-    colorClasses: "border-orange-600 bg-orange-900/10 hover:bg-orange-900/25",
-  },
-  {
-    id: "role-compras",
-    label: "Compras",
-    description: "Órdenes de compra y carga de inventario",
-    icon: "🛒",
-    colorClasses: "border-yellow-600 bg-yellow-900/10 hover:bg-yellow-900/25",
-  },
-  {
-    id: "role-mantenimiento",
-    label: "Mantenimiento",
-    description: "Gestión de mantenimiento preventivo y correctivo",
-    icon: "🔧",
-    colorClasses: "border-red-600 bg-red-900/10 hover:bg-red-900/25",
-  },
-  {
-    id: "role-operario",
-    label: "Operario",
-    description: "Acceso básico operativo (sin gestión administrativa)",
-    icon: "⚙️",
-    colorClasses: "border-slate-500 bg-slate-900/10 hover:bg-slate-900/25",
-  },
-];
 
 const OPERATOR_DOC_TYPES: { type: string; label: string; icon: string }[] = [
   { type: "DRIVERS_LICENSE", label: "Licencia / Habilitación", icon: "🪪" },
@@ -199,38 +144,6 @@ const generateSecurePassword = (length = 14): string => {
   return passwordArray.join("");
 };
 
-const normalizeRoleValue = (value: string): string =>
-  value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim();
-
-const ROLE_MATCH_ALIASES: Record<string, string[]> = {
-  "role-admin": ["admin", "administrativo", "administrator"],
-  "role-comercial": ["comercial", "sales", "vendedor"],
-  "role-contable": ["contable", "finance", "finanzas", "contador"],
-  "role-operaciones": ["operaciones", "operations", "logistica"],
-  "role-compras": ["compras", "purchase", "procurement"],
-  "role-mantenimiento": ["mantenimiento", "maintenance"],
-  "role-operario": ["operario", "operator"],
-};
-
-const ROLE_ID_FALLBACKS: Record<string, string[]> = {
-  "role-admin": ["role-admin", "role-owner"],
-  "role-comercial": [
-    "role-comercial",
-    "role-vendedor",
-    "role-manager",
-    "role-employee",
-  ],
-  "role-contable": ["role-contable", "role-manager", "role-admin"],
-  "role-operaciones": ["role-operaciones", "role-manager", "role-employee"],
-  "role-compras": ["role-compras", "role-manager", "role-employee"],
-  "role-mantenimiento": ["role-mantenimiento", "role-manager", "role-employee"],
-  "role-operario": ["role-operario", "role-employee"],
-};
-
 // ---------- Component ----------
 
 export function StaffFormPage() {
@@ -273,6 +186,15 @@ export function StaffFormPage() {
   const [operatorDocs, setOperatorDocs] = useState<OperatorDoc[]>(
     makeDefaultOperatorDocs(),
   );
+
+  // Password reset (admin only, when editing)
+  const [showPasswordReset, setShowPasswordReset] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [resetPasswordLoading, setResetPasswordLoading] = useState(false);
+  const [userHasOwnerRole, setUserHasOwnerRole] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Load options
   useEffect(() => {
@@ -349,6 +271,12 @@ export function StaffFormPage() {
         setBusinessUnitId(firstBU?.businessUnitId || "");
         setRoleId(firstBU?.roleId || "");
         setStatus(u.status || "ACTIVE");
+
+        // Check if user has OWNER role (protection against password reset)
+        const hasOwnerRole = u.businessUnits?.some(
+          (bu: any) => bu.role?.name === "OWNER" || bu.roleId === "role-owner",
+        );
+        setUserHasOwnerRole(hasOwnerRole || false);
       } catch (err) {
         setError(
           "Error al cargar usuario: " +
@@ -429,115 +357,28 @@ export function StaffFormPage() {
     }
   };
 
-  const resolveRoleForCard = (card: RoleCard): Role | undefined => {
-    const byId = dynamicRoles.find((role) => role.id === card.id);
-    if (byId) return byId;
+  const handleRoleChange = (newRoleId: string) => {
+    setRoleId(newRoleId);
+    setError(null);
 
-    const byName = dynamicRoles.find(
-      (role) =>
-        normalizeRoleValue(role.name) === normalizeRoleValue(card.label),
-    );
-    if (byName) return byName;
+    // Reset operator profile if switching away from employee role
+    const selectedRole = dynamicRoles.find((r) => r.id === newRoleId);
+    const isEmployeeRole =
+      selectedRole?.id === "role-employee" ||
+      selectedRole?.name?.toLowerCase().includes("employee") ||
+      selectedRole?.name?.toLowerCase().includes("operario");
 
-    const aliases = ROLE_MATCH_ALIASES[card.id] || [];
-    if (aliases.length > 0) {
-      const byAlias = dynamicRoles.find((role) => {
-        const normalizedRoleId = normalizeRoleValue(role.id);
-        const normalizedRoleName = normalizeRoleValue(role.name);
-        return aliases.some((alias) => {
-          const normalizedAlias = normalizeRoleValue(alias);
-          return (
-            normalizedRoleId.includes(normalizedAlias) ||
-            normalizedRoleName.includes(normalizedAlias)
-          );
-        });
-      });
-      if (byAlias) return byAlias;
-    }
-
-    const fallbackRoleIds = ROLE_ID_FALLBACKS[card.id] || [];
-    for (const fallbackRoleId of fallbackRoleIds) {
-      const matchByFallbackId = dynamicRoles.find(
-        (role) =>
-          normalizeRoleValue(role.id) === normalizeRoleValue(fallbackRoleId),
-      );
-      if (matchByFallbackId) return matchByFallbackId;
-    }
-
-    for (const fallbackRoleId of fallbackRoleIds) {
-      const fallbackToken = normalizeRoleValue(
-        fallbackRoleId.replace(/^role-/, ""),
-      );
-      const matchByFallbackToken = dynamicRoles.find((role) => {
-        const normalizedRoleId = normalizeRoleValue(role.id);
-        const normalizedRoleName = normalizeRoleValue(role.name);
-        return (
-          normalizedRoleId.includes(fallbackToken) ||
-          normalizedRoleName.includes(fallbackToken)
-        );
-      });
-      if (matchByFallbackToken) return matchByFallbackToken;
-    }
-
-    return undefined;
-  };
-
-  const resolveRoleIdForCard = (card: RoleCard): string =>
-    resolveRoleForCard(card)?.id || "";
-
-  const handleRoleSelect = (card: RoleCard) => {
-    const nextResolvedRoleId = resolveRoleIdForCard(card);
-
-    if (!nextResolvedRoleId) {
-      setError(
-        `⚠️ El rol "${card.label}" no existe en la base de datos actual. Ejecuta el seed de roles o elige un rol disponible.`,
-      );
-      return;
-    }
-
-    setError((prev) =>
-      prev?.includes("no existe en la base de datos") ? null : prev,
-    );
-
-    const currentSelectedCard = ROLE_CARDS.find(
-      (roleCard) => resolveRoleIdForCard(roleCard) === roleId,
-    );
-    const wasOperarioRole = currentSelectedCard?.id === OPERARIO_ROLE_ID;
-    const isSwitchingFromOperarioToAnotherRole =
-      wasOperarioRole && card.id !== OPERARIO_ROLE_ID;
-
-    setRoleId(nextResolvedRoleId);
-
-    if (isSwitchingFromOperarioToAnotherRole) {
+    if (!isEmployeeRole && isOperario) {
       setIsOperario(false);
     }
 
     if (import.meta.env.DEV) {
       console.log("[StaffForm][role-select]", {
-        cardId: card.id,
-        cardLabel: card.label,
-        resolvedRoleId: nextResolvedRoleId,
-        availableRoles: dynamicRoles.map((r) => ({ id: r.id, name: r.name })),
+        roleId: newRoleId,
+        roleName: selectedRole?.name || "unknown",
+        isEmployeeRole,
       });
     }
-  };
-
-  const handleDynamicRoleSelect = (nextRoleId: string) => {
-    const currentSelectedCard = ROLE_CARDS.find(
-      (roleCard) => resolveRoleIdForCard(roleCard) === roleId,
-    );
-    const nextSelectedCard = ROLE_CARDS.find(
-      (roleCard) => resolveRoleIdForCard(roleCard) === nextRoleId,
-    );
-
-    const wasOperarioRole = currentSelectedCard?.id === OPERARIO_ROLE_ID;
-    const nextIsOperarioRole = nextSelectedCard?.id === OPERARIO_ROLE_ID;
-
-    if (wasOperarioRole && !nextIsOperarioRole) {
-      setIsOperario(false);
-    }
-
-    setRoleId(nextRoleId);
   };
 
   const toggleAdditionalPermission = (permissionId: string) => {
@@ -546,6 +387,61 @@ export function StaffFormPage() {
         ? prev.filter((id) => id !== permissionId)
         : [...prev, permissionId],
     );
+  };
+
+  const handleResetPassword = async () => {
+    if (!id) return;
+
+    // Validaciones
+    if (!newPassword || !confirmNewPassword) {
+      setError("⚠️ Debes ingresar la nueva contraseña y confirmarla");
+      return;
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      setError("⚠️ Las contraseñas no coinciden");
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      setError("⚠️ La contraseña debe tener al menos 8 caracteres");
+      return;
+    }
+
+    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(newPassword)) {
+      setError("⚠️ La contraseña debe incluir mayúscula, minúscula y número");
+      return;
+    }
+
+    try {
+      setResetPasswordLoading(true);
+      setError(null);
+
+      await userService.adminResetPassword(id, newPassword);
+
+      // Success - reset form
+      setNewPassword("");
+      setConfirmNewPassword("");
+      setShowPasswordReset(false);
+      setShowNewPassword(false);
+      setShowConfirmPassword(false);
+      alert("✅ Contraseña cambiada exitosamente");
+    } catch (err: any) {
+      if (err.response?.data?.error?.code === "CANNOT_RESET_OWNER_PASSWORD") {
+        setError(
+          "🔒 No se puede cambiar la contraseña de usuarios con rol OWNER. El propietario debe cambiar su contraseña usando su perfil.",
+        );
+      } else {
+        setError(
+          "❌ Error al cambiar contraseña: " +
+            (err.response?.data?.error?.message ||
+              err.message ||
+              "Error desconocido"),
+        );
+      }
+    } finally {
+      setResetPasswordLoading(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -694,34 +590,15 @@ export function StaffFormPage() {
     }
   };
 
-  const selectedRoleByResolvedId = ROLE_CARDS.find(
-    (card) => resolveRoleIdForCard(card) === roleId,
-  );
   const selectedRole = dynamicRoles.find((role) => role.id === roleId);
   const rolePermissionIds = new Set(
     (selectedRole?.permissions || []).map((permission) => permission.id),
   );
-  const groupedPermissions = allPermissions.reduce<
-    Record<string, Permission[]>
-  >((acc, permission) => {
-    if (!acc[permission.resource]) {
-      acc[permission.resource] = [];
-    }
-    acc[permission.resource].push(permission);
-    return acc;
-  }, {});
-  const mappedRoleIds = new Set(
-    ROLE_CARDS.map((card) => resolveRoleIdForCard(card)).filter(Boolean),
-  );
-  const unmappedDynamicRoles = dynamicRoles.filter(
-    (role) => !mappedRoleIds.has(role.id),
-  );
-  const selectedDynamicRole = dynamicRoles.find((role) => role.id === roleId);
-  const editingRoleName =
-    isEditing && (dynamicRoles.find((r) => r.id === roleId)?.name || roleId);
+  const shouldCreateOperatorProfile = isOperario;
   const isOperarioRoleSelected =
-    selectedRoleByResolvedId?.id === OPERARIO_ROLE_ID;
-  const shouldCreateOperatorProfile = isOperarioRoleSelected || isOperario;
+    roleId === OPERARIO_ROLE_ID ||
+    roleId === "role-operario" ||
+    selectedRole?.name?.toLowerCase().includes("operario");
 
   return (
     <Layout
@@ -972,6 +849,195 @@ export function StaffFormPage() {
                 )}
               </div>
 
+              {/* ── Password Reset (Admin only, when editing) ── */}
+              {isEditing && !userHasOwnerRole && (
+                <div className="card border-amber-700/30 bg-amber-900/10">
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswordReset(!showPasswordReset)}
+                    className="w-full flex items-center justify-between text-left"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Key className="w-5 h-5 text-amber-400" />
+                      <h2 className="font-semibold text-dark-100">
+                        Cambiar Contraseña
+                      </h2>
+                    </div>
+                    <ChevronDown
+                      className={`w-5 h-5 text-dark-400 transition-transform ${
+                        showPasswordReset ? "rotate-180" : ""
+                      }`}
+                    />
+                  </button>
+
+                  {showPasswordReset && (
+                    <div className="mt-4 pt-4 border-t border-amber-700/20 space-y-4">
+                      <div className="bg-amber-900/20 border border-amber-700/30 rounded-lg p-3 text-xs text-amber-200">
+                        <p className="font-medium mb-1">⚠️ Importante:</p>
+                        <ul className="list-disc list-inside space-y-1 text-amber-300/80">
+                          <li>
+                            El usuario recibirá su nueva contraseña por email
+                          </li>
+                          <li>
+                            No se puede cambiar la contraseña de usuarios con
+                            rol OWNER
+                          </li>
+                          <li>
+                            La contraseña debe tener al menos 8 caracteres e
+                            incluir mayúscula, minúscula y número
+                          </li>
+                        </ul>
+                      </div>
+
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const generated = generateSecurePassword();
+                            setNewPassword(generated);
+                            setConfirmNewPassword(generated);
+                            setShowNewPassword(true);
+                            setShowConfirmPassword(true);
+                          }}
+                          className="btn-secondary flex items-center gap-2 text-sm"
+                        >
+                          <Wand2 className="w-4 h-4" />
+                          Generar contraseña segura
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-dark-200 mb-1">
+                            <Lock className="w-4 h-4 inline mr-1" />
+                            Nueva Contraseña *
+                          </label>
+                          <div className="relative">
+                            <input
+                              type={showNewPassword ? "text" : "password"}
+                              value={newPassword}
+                              onChange={(e) => setNewPassword(e.target.value)}
+                              className="input pr-10"
+                              placeholder="Mínimo 8 caracteres"
+                              minLength={8}
+                            />
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setShowNewPassword(!showNewPassword)
+                              }
+                              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-dark-400 hover:text-dark-200 transition-colors"
+                              title={
+                                showNewPassword
+                                  ? "Ocultar contraseña"
+                                  : "Mostrar contraseña"
+                              }
+                            >
+                              {showNewPassword ? (
+                                <EyeOff className="w-4 h-4" />
+                              ) : (
+                                <Eye className="w-4 h-4" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-dark-200 mb-1">
+                            <Lock className="w-4 h-4 inline mr-1" />
+                            Confirmar Contraseña *
+                          </label>
+                          <div className="relative">
+                            <input
+                              type={showConfirmPassword ? "text" : "password"}
+                              value={confirmNewPassword}
+                              onChange={(e) =>
+                                setConfirmNewPassword(e.target.value)
+                              }
+                              className="input pr-10"
+                              placeholder="Confirma la contraseña"
+                              minLength={8}
+                            />
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setShowConfirmPassword(!showConfirmPassword)
+                              }
+                              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-dark-400 hover:text-dark-200 transition-colors"
+                              title={
+                                showConfirmPassword
+                                  ? "Ocultar contraseña"
+                                  : "Mostrar contraseña"
+                              }
+                            >
+                              {showConfirmPassword ? (
+                                <EyeOff className="w-4 h-4" />
+                              ) : (
+                                <Eye className="w-4 h-4" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowPasswordReset(false);
+                            setNewPassword("");
+                            setConfirmNewPassword("");
+                            setShowNewPassword(false);
+                            setShowConfirmPassword(false);
+                            setError(null);
+                          }}
+                          className="btn-secondary"
+                          disabled={resetPasswordLoading}
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleResetPassword}
+                          className="btn-primary flex items-center gap-2"
+                          disabled={resetPasswordLoading}
+                        >
+                          {resetPasswordLoading ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                              Cambiando...
+                            </>
+                          ) : (
+                            <>
+                              <Key className="w-4 h-4" />
+                              Cambiar Contraseña
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ── Owner Role Protection Message ── */}
+              {isEditing && userHasOwnerRole && (
+                <div className="card border-emerald-700/30 bg-emerald-900/10">
+                  <div className="flex items-start gap-3">
+                    <Shield className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                      <h3 className="font-semibold text-emerald-200">
+                        Usuario Protegido (OWNER)
+                      </h3>
+                      <p className="text-sm text-emerald-300/80">
+                        Este usuario tiene rol de propietario (OWNER). Por
+                        seguridad, solo puede cambiar su propia contraseña desde
+                        su perfil de usuario.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* ── Role Selection ── */}
               <div className="card space-y-4">
                 <h2 className="font-semibold text-dark-100 flex items-center gap-2">
@@ -979,142 +1045,51 @@ export function StaffFormPage() {
                   Rol en el Sistema
                 </h2>
 
-                {isEditing ? (
-                  <>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {ROLE_CARDS.map((card) => {
-                        const resolvedRoleId = resolveRoleIdForCard(card);
-                        const isSelected = roleId === resolvedRoleId;
-                        return (
-                          <button
-                            key={card.id}
-                            type="button"
-                            onClick={() => handleRoleSelect(card)}
-                            className={`text-left p-4 rounded-lg border-2 transition-all ${card.colorClasses} ${
-                              isSelected
-                                ? "ring-2 ring-primary-500 ring-offset-1 ring-offset-dark-900"
-                                : ""
-                            }`}
-                          >
-                            <div className="text-2xl mb-2">{card.icon}</div>
-                            <p className="font-semibold text-sm text-dark-100">
-                              {card.label}
-                            </p>
-                            <p className="text-xs text-dark-400 mt-1 leading-snug">
-                              {card.description}
-                            </p>
-                          </button>
-                        );
-                      })}
-                    </div>
-                    <p className="text-xs text-dark-400 bg-dark-800 p-3 rounded">
-                      💡 Cambiar el rol aquí actualizará el rol principal del
-                      usuario.
+                <div>
+                  <label className="block text-sm font-medium text-dark-200 mb-1">
+                    Rol *
+                  </label>
+                  {loadingOptions ? (
+                    <p className="text-sm text-dark-400">Cargando roles...</p>
+                  ) : (
+                    <select
+                      value={roleId}
+                      onChange={(e) => handleRoleChange(e.target.value)}
+                      required
+                      className="input"
+                    >
+                      <option value="">Selecciona un rol</option>
+                      {dynamicRoles.map((role) => (
+                        <option key={role.id} value={role.id}>
+                          {role.name}{" "}
+                          {role.description ? `- ${role.description}` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  {selectedRole && (
+                    <p className="text-xs text-primary-400 mt-2">
+                      ✓ Rol seleccionado: <strong>{selectedRole.name}</strong>
+                      {selectedRole.description && (
+                        <span className="text-dark-400">
+                          {" "}
+                          - {selectedRole.description}
+                        </span>
+                      )}
                     </p>
-
-                    {unmappedDynamicRoles.length > 0 && (
-                      <div className="space-y-2">
-                        <p className="text-xs text-dark-400">
-                          Roles adicionales disponibles en la base de datos
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          {unmappedDynamicRoles.map((role) => {
-                            const isSelected = roleId === role.id;
-                            return (
-                              <button
-                                key={role.id}
-                                type="button"
-                                onClick={() => handleDynamicRoleSelect(role.id)}
-                                className={`px-3 py-1.5 rounded-md border text-xs transition-all ${
-                                  isSelected
-                                    ? "border-primary-500 text-primary-300 bg-primary-900/20"
-                                    : "border-dark-600 text-dark-300 hover:border-dark-500"
-                                }`}
-                              >
-                                {role.name}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-                  </>
-                ) : loadingOptions ? (
-                  <p className="text-sm text-dark-400">Cargando roles...</p>
-                ) : (
-                  <>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {ROLE_CARDS.map((card) => {
-                        const resolvedRoleId = resolveRoleIdForCard(card);
-                        const isSelected = roleId === resolvedRoleId;
-                        return (
-                          <button
-                            key={card.id}
-                            type="button"
-                            onClick={() => handleRoleSelect(card)}
-                            className={`text-left p-4 rounded-lg border-2 transition-all ${card.colorClasses} ${
-                              isSelected
-                                ? "ring-2 ring-primary-500 ring-offset-1 ring-offset-dark-900"
-                                : ""
-                            }`}
-                          >
-                            <div className="text-2xl mb-2">{card.icon}</div>
-                            <p className="font-semibold text-sm text-dark-100">
-                              {card.label}
-                            </p>
-                            <p className="text-xs text-dark-400 mt-1 leading-snug">
-                              {card.description}
-                            </p>
-                          </button>
-                        );
-                      })}
-                    </div>
-                    {!roleId && (
-                      <p className="text-xs text-amber-400">
-                        ⚠ Selecciona un rol para continuar
-                      </p>
-                    )}
-                    {selectedRoleByResolvedId && (
-                      <p className="text-xs text-primary-400">
-                        ✓ Rol seleccionado:{" "}
-                        <strong>{selectedRoleByResolvedId.label}</strong>
-                      </p>
-                    )}
-                    {!selectedRoleByResolvedId && selectedDynamicRole && (
-                      <p className="text-xs text-primary-400">
-                        ✓ Rol seleccionado:{" "}
-                        <strong>{selectedDynamicRole.name}</strong>
-                      </p>
-                    )}
-
-                    {unmappedDynamicRoles.length > 0 && (
-                      <div className="space-y-2">
-                        <p className="text-xs text-dark-400">
-                          Roles adicionales disponibles en la base de datos
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          {unmappedDynamicRoles.map((role) => {
-                            const isSelected = roleId === role.id;
-                            return (
-                              <button
-                                key={role.id}
-                                type="button"
-                                onClick={() => handleDynamicRoleSelect(role.id)}
-                                className={`px-3 py-1.5 rounded-md border text-xs transition-all ${
-                                  isSelected
-                                    ? "border-primary-500 text-primary-300 bg-primary-900/20"
-                                    : "border-dark-600 text-dark-300 hover:border-dark-500"
-                                }`}
-                              >
-                                {role.name}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
+                  )}
+                  {!roleId && !loadingOptions && (
+                    <p className="text-xs text-amber-400 mt-2">
+                      ⚠ Selecciona un rol para continuar
+                    </p>
+                  )}
+                  {isEditing && (
+                    <p className="text-xs text-dark-400 bg-dark-800 p-3 rounded mt-2">
+                      💡 Cambiar el rol actualizará el rol principal del usuario
+                      en todas sus unidades de negocio.
+                    </p>
+                  )}
+                </div>
               </div>
 
               <div className="card space-y-4">
@@ -1123,99 +1098,28 @@ export function StaffFormPage() {
                   Permisos Específicos
                 </h2>
 
-                <div className="rounded-lg border border-dark-700 bg-dark-900/40 p-3 text-xs text-dark-300">
-                  {isEditing
-                    ? "Ajusta permisos adicionales del usuario (se suman al rol actual)."
-                    : "Los permisos del rol se asignan automáticamente. Aquí puedes agregar o quitar permisos adicionales específicos del usuario."}
-                </div>
-
                 {loadingAdditionalPermissions ? (
                   <p className="text-xs text-dark-400">
                     Cargando permisos adicionales del usuario...
                   </p>
                 ) : !roleId ? (
                   <p className="text-xs text-amber-400">
-                    ⚠ Selecciona un rol para ver sus permisos base.
+                    ⚠ Selecciona un rol para ver los permisos disponibles.
                   </p>
                 ) : allPermissions.length === 0 ? (
                   <p className="text-xs text-dark-400">
                     No hay permisos disponibles para configurar.
                   </p>
                 ) : (
-                  <div className="space-y-4">
-                    {Object.entries(groupedPermissions)
-                      .sort(([a], [b]) => a.localeCompare(b))
-                      .map(([resource, permissions]) => (
-                        <div
-                          key={resource}
-                          className="rounded-lg border border-dark-700 p-3"
-                        >
-                          <p className="text-sm font-semibold text-dark-100 mb-2 capitalize">
-                            {resource}
-                          </p>
-                          <div className="grid sm:grid-cols-2 gap-2">
-                            {permissions
-                              .slice()
-                              .sort((a, b) =>
-                                `${a.action}`.localeCompare(`${b.action}`),
-                              )
-                              .map((permission) => {
-                                const inheritedByRole = rolePermissionIds.has(
-                                  permission.id,
-                                );
-                                const isSelectedAdditional =
-                                  selectedAdditionalPermissionIds.includes(
-                                    permission.id,
-                                  );
-
-                                return (
-                                  <label
-                                    key={permission.id}
-                                    className={`flex items-start gap-2 rounded-md border p-2 text-xs ${
-                                      inheritedByRole
-                                        ? "border-emerald-700/50 bg-emerald-900/10"
-                                        : "border-dark-700"
-                                    }`}
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={
-                                        inheritedByRole || isSelectedAdditional
-                                      }
-                                      disabled={inheritedByRole}
-                                      onChange={() =>
-                                        toggleAdditionalPermission(
-                                          permission.id,
-                                        )
-                                      }
-                                      className="mt-0.5"
-                                    />
-                                    <span className="flex-1">
-                                      <span className="font-medium text-dark-100">
-                                        {permission.action}
-                                      </span>
-                                      {inheritedByRole ? (
-                                        <span className="ml-2 text-emerald-400">
-                                          (por rol)
-                                        </span>
-                                      ) : isSelectedAdditional ? (
-                                        <span className="ml-2 text-primary-400">
-                                          (adicional)
-                                        </span>
-                                      ) : null}
-                                      {permission.description && (
-                                        <p className="text-dark-400 mt-0.5">
-                                          {permission.description}
-                                        </p>
-                                      )}
-                                    </span>
-                                  </label>
-                                );
-                              })}
-                          </div>
-                        </div>
-                      ))}
-                  </div>
+                  <PermissionsDragDrop
+                    allPermissions={allPermissions}
+                    rolePermissionIds={rolePermissionIds}
+                    selectedAdditionalPermissionIds={
+                      selectedAdditionalPermissionIds
+                    }
+                    onTogglePermission={toggleAdditionalPermission}
+                    roleName={selectedRole?.name || "el rol seleccionado"}
+                  />
                 )}
               </div>
 

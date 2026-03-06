@@ -91,6 +91,67 @@ export const businessUnitService = {
   },
 
   /**
+   * Actualiza configuración de rental (timezone, currency)
+   */
+  async updateRentalSettings(
+    businessUnitId: string,
+    data: {
+      timezone?: string;
+      defaultCurrency?: string;
+      secondaryCurrency?: string;
+    },
+  ): Promise<{
+    businessUnitId: string;
+    timezone: string;
+    defaultCurrency: string;
+    secondaryCurrency: string;
+  }> {
+    const response = await api.put<
+      ApiResponse<{
+        businessUnitId: string;
+        timezone: string;
+        defaultCurrency: string;
+        secondaryCurrency: string;
+      }>
+    >(`/business-units/${businessUnitId}/rental-settings`, data);
+
+    if (!response.data.success) {
+      throw new Error(
+        response.data.error?.message || "Failed to update rental settings",
+      );
+    }
+
+    return response.data.data!;
+  },
+
+  /**
+   * Obtiene configuración de rental (timezone, currency)
+   */
+  async getRentalSettings(businessUnitId: string): Promise<{
+    businessUnitId: string;
+    timezone: string;
+    defaultCurrency: string;
+    secondaryCurrency: string;
+  }> {
+    const response = await api.get<
+      ApiResponse<{
+        businessUnitId: string;
+        timezone: string;
+        defaultCurrency: string;
+        secondaryCurrency: string;
+      }>
+    >(`/business-units/${businessUnitId}/rental-settings`);
+
+    if (!response.data.success) {
+      throw new Error(
+        response.data.error?.message || "Failed to fetch rental settings",
+      );
+    }
+
+    return response.data.data!;
+  },
+
+  /**
    * Elimina una Business Unit (y todos sus datos)
    */
   async delete(businessUnitId: string): Promise<void> {

@@ -410,6 +410,110 @@ router.delete("/:id", authorize("users:delete"), async (req, res, next) => {
 
 /**
  * @openapi
+ * /users/{id}/reset-password:
+ *   post:
+ *     tags: [Users]
+ *     summary: Reset user password (Admin only)
+ *     description: |
+ *       Permite a administradores resetear la contraseña de otros usuarios.
+ *       RESTRICCIONES DE SEGURIDAD:
+ *       - No se puede cambiar la contraseña de usuarios con rol OWNER
+ *       - Requiere el permiso users:change-password
+ *       - No se puede usar para cambiar la propia contraseña
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID del usuario
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [newPassword]
+ *             properties:
+ *               newPassword:
+ *                 type: string
+ *                 minLength: 8
+ *                 example: "NewSecurePass123!"
+ *                 description: Nueva contraseña (mínimo 8 caracteres, debe incluir mayúscula, minúscula y número)
+ *     responses:
+ *       200:
+ *         description: Contraseña reseteada exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 message: { type: string, example: "Password reset successfully" }
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     userId: { type: string, format: uuid }
+ *                     email: { type: string }
+ *       400:
+ *         description: Datos inválidos o intentando cambiar su propia contraseña
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       403:
+ *         description: Intentando cambiar la contraseña de un usuario OWNER
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Usuario no encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+
+const resetPasswordSchema = z.object({
+  newPassword: z
+    .string()
+    .min(8, "Password must be at least 8 characters")
+    .regex(
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+      "Password must contain uppercase, lowercase and number",
+    ),
+});
+
+router.post(
+  "/:id/reset-password",
+  authorize("users:change-password"),
+  async (req, res, next) => {
+    try {
+      const tenantId = (req as any).context.tenantId;
+      const adminUserId = (req as any).context.userId;
+      const { id: targetUserId } = req.params;
+      const { newPassword } = resetPasswordSchema.parse(req.body);
+
+      const result = await userService.adminResetPassword(
+        targetUserId,
+        newPassword,
+        adminUserId,
+        tenantId,
+      );
+
+      res.json({ success: true, ...result });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+/**
+ * @openapi
  * /users/{id}/business-units:
  *   post:
  *     tags: [Users]

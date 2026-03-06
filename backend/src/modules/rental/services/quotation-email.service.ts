@@ -10,6 +10,10 @@ import { ensureClientReviewToken } from "./quotation-approval.service";
 import prisma from "@config/database";
 import { brandingService } from "@core/services/branding.service";
 import Handlebars from "handlebars";
+import {
+  formatDateOnlyForUser,
+  nowInBUTimezone,
+} from "@core/utils/timezone-utils";
 
 export class QuotationEmailService {
   private compileTemplate(template: string, data: Record<string, any>): string {
@@ -17,16 +21,17 @@ export class QuotationEmailService {
     return compiled(data);
   }
 
-  private injectBrandingInEmailHtml(
+  private async injectBrandingInEmailHtml(
     htmlContent: string,
     options: {
       businessUnitName: string;
+      businessUnitId: string;
       logoUrl?: string;
       primaryColor: string;
       secondaryColor: string;
       fontFamily: string;
     },
-  ): string {
+  ): Promise<string> {
     const headerBlock = `
       <div style="background:${options.primaryColor};color:#fff;padding:18px 20px;text-align:center;border-radius:8px 8px 0 0;">
         ${
@@ -40,7 +45,7 @@ export class QuotationEmailService {
 
     const footerBlock = `
       <div style="background:${options.secondaryColor};color:#fff;padding:14px 20px;text-align:center;font-size:12px;border-radius:0 0 8px 8px;">
-        © ${new Date().getFullYear()} ${options.businessUnitName}
+        © ${(await nowInBUTimezone(options.businessUnitId)).getFullYear()} ${options.businessUnitName}
       </div>
     `;
 
@@ -230,13 +235,13 @@ export class QuotationEmailService {
                   <tr>
                     <td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Fecha:</strong></td>
                     <td style="padding: 8px 0; border-bottom: 1px solid #eee; text-align: right;">
-                      ${new Date(quotation.quotationDate).toLocaleDateString("es-MX")}
+                      ${await formatDateOnlyForUser(new Date(quotation.quotationDate), quotation.businessUnitId)}
                     </td>
                   </tr>
                   <tr>
                     <td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Válida hasta:</strong></td>
                     <td style="padding: 8px 0; border-bottom: 1px solid #eee; text-align: right;">
-                      ${new Date(quotation.validUntil).toLocaleDateString("es-MX")}
+                      ${await formatDateOnlyForUser(new Date(quotation.validUntil), quotation.businessUnitId)}
                     </td>
                   </tr>
                   <tr>
@@ -259,8 +264,8 @@ export class QuotationEmailService {
                     <strong>📅 Período Estimado:</strong> ${quotation.estimatedDays} días
                     <br>
                     <small style="color: #666;">
-                      Del ${new Date(quotation.estimatedStartDate!).toLocaleDateString("es-MX")} 
-                      al ${new Date(quotation.estimatedEndDate!).toLocaleDateString("es-MX")}
+                      Del ${await formatDateOnlyForUser(new Date(quotation.estimatedStartDate!), quotation.businessUnitId)} 
+                      al ${await formatDateOnlyForUser(new Date(quotation.estimatedEndDate!), quotation.businessUnitId)}
                     </small>
                   </div>
                 `
@@ -329,7 +334,7 @@ export class QuotationEmailService {
             
             <div class="footer">
               <p style="margin: 5px 0;">Este es un email automático generado por DivancoSaas</p>
-              <p style="margin: 5px 0;">© ${new Date().getFullYear()} ${quotation.businessUnit.name} - Todos los derechos reservados</p>
+              <p style="margin: 5px 0;">© ${(await nowInBUTimezone(quotation.businessUnitId)).getFullYear()} ${quotation.businessUnit.name} - Todos los derechos reservados</p>
             </div>
           </div>
         </body>
@@ -348,10 +353,14 @@ export class QuotationEmailService {
       fontFamily: emailFont,
       quotationCode: quotation.code,
       quotationType: quotation.quotationType,
-      quotationDate: new Date(quotation.quotationDate).toLocaleDateString(
-        "es-MX",
+      quotationDate: await formatDateOnlyForUser(
+        new Date(quotation.quotationDate),
+        quotation.businessUnitId,
       ),
-      validUntil: new Date(quotation.validUntil).toLocaleDateString("es-MX"),
+      validUntil: await formatDateOnlyForUser(
+        new Date(quotation.validUntil),
+        quotation.businessUnitId,
+      ),
       totalAmount: Number(quotation.totalAmount).toLocaleString("es-MX", {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
@@ -393,8 +402,9 @@ export class QuotationEmailService {
         emailTemplate.htmlContent,
         themedData,
       );
-      html = this.injectBrandingInEmailHtml(renderedHtml, {
+      html = await this.injectBrandingInEmailHtml(renderedHtml, {
         businessUnitName: quotation.businessUnit.name,
+        businessUnitId: quotation.businessUnitId,
         logoUrl,
         primaryColor: templatePrimaryColor,
         secondaryColor: templateSecondaryColor,
@@ -433,7 +443,7 @@ export class QuotationEmailService {
       where: { id: quotationId },
       data: {
         status: "sent",
-        updatedAt: new Date(),
+        updatedAt: await nowInBUTimezone(quotation.businessUnitId),
       },
     });
 

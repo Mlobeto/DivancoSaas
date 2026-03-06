@@ -516,6 +516,72 @@ export class UserService {
 
     return { message: "User removed from business unit successfully" };
   }
+
+  /**
+   * Admin reset password - Permite a administradores cambiar contraseñas de otros usuarios
+   * PROTECCION: No se puede cambiar la contraseña de usuarios con rol OWNER
+   */
+  async adminResetPassword(
+    targetUserId: string,
+    newPassword: string,
+    adminUserId: string,
+    tenantId: string,
+  ) {
+    // 1. Verificar que el usuario objetivo existe y pertenece al tenant
+    const targetUser = await prisma.user.findFirst({
+      where: { id: targetUserId, tenantId },
+      include: {
+        businessUnits: {
+          include: {
+            role: {
+              select: { id: true, name: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!targetUser) {
+      throw new AppError(404, "USER_NOT_FOUND", "User not found");
+    }
+
+    // 2. SEGURIDAD: No permitir cambiar contraseña de usuarios con rol OWNER
+    const hasOwnerRole = targetUser.businessUnits.some(
+      (bu) => bu.role.name === "OWNER" || bu.roleId === "role-owner",
+    );
+
+    if (hasOwnerRole) {
+      throw new AppError(
+        403,
+        "CANNOT_RESET_OWNER_PASSWORD",
+        "Cannot reset password for users with OWNER role. Owner users must reset their own password.",
+      );
+    }
+
+    // 3. No permitir que un usuario cambie su propia contraseña por este endpoint
+    if (targetUserId === adminUserId) {
+      throw new AppError(
+        400,
+        "USE_CHANGE_PASSWORD",
+        "Use /auth/change-password endpoint to change your own password",
+      );
+    }
+
+    // 4. Hash nueva password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // 5. Actualizar password
+    await prisma.user.update({
+      where: { id: targetUserId },
+      data: { password: hashedPassword },
+    });
+
+    return {
+      message: "Password reset successfully",
+      userId: targetUserId,
+      email: targetUser.email,
+    };
+  }
 }
 
 export const userService = new UserService();

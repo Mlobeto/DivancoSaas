@@ -21,6 +21,7 @@ import { RentalController } from "./controllers/rental.controller";
 import { SupplyController } from "./controllers/supply.controller";
 import { IncidentController } from "./controllers/incident.controller";
 import { StockLevelController } from "./controllers/stock-level.controller";
+import { authorize } from "@core/middlewares/auth.middleware";
 import assetTemplateRoutes from "./routes/asset-template.routes";
 
 export class AssetsModule implements ModuleContract {
@@ -38,203 +39,409 @@ export class AssetsModule implements ModuleContract {
     router.use("/templates", assetTemplateRoutes);
 
     // ========== STOCK LEVELS (BULK INVENTORY) ==========
-    router.get("/stock-levels/stats", StockLevelController.getStockStats); // Before :templateId
-    router.get("/stock-levels", StockLevelController.listStockLevels);
-    router.get("/stock-levels/:templateId", StockLevelController.getStockLevel);
+    router.get(
+      "/stock-levels/stats",
+      authorize("assets:read"),
+      StockLevelController.getStockStats,
+    ); // Before :templateId
+    router.get(
+      "/stock-levels",
+      authorize("assets:read"),
+      StockLevelController.listStockLevels,
+    );
+    router.get(
+      "/stock-levels/:templateId",
+      authorize("assets:read"),
+      StockLevelController.getStockLevel,
+    );
     router.patch(
       "/stock-levels/:templateId",
+      authorize("assets:update"),
       StockLevelController.updateStockLevel,
     );
     router.get(
       "/stock-levels/:templateId/movements",
+      authorize("assets:read"),
       StockLevelController.getStockMovements,
     );
-    router.post("/stock-levels/add", StockLevelController.addStock);
-    router.post("/stock-levels/reserve", StockLevelController.reserveStock);
-    router.post("/stock-levels/unreserve", StockLevelController.unreserveStock);
-    router.post("/stock-levels/rent", StockLevelController.rentOutStock);
-    router.post("/stock-levels/return", StockLevelController.returnStock);
-    router.post("/stock-levels/adjust", StockLevelController.adjustStock);
+    router.post(
+      "/stock-levels/add",
+      authorize("assets:update"),
+      StockLevelController.addStock,
+    );
+    router.post(
+      "/stock-levels/reserve",
+      authorize("assets:update"),
+      StockLevelController.reserveStock,
+    );
+    router.post(
+      "/stock-levels/unreserve",
+      authorize("assets:update"),
+      StockLevelController.unreserveStock,
+    );
+    router.post(
+      "/stock-levels/rent",
+      authorize("assets:update"),
+      StockLevelController.rentOutStock,
+    );
+    router.post(
+      "/stock-levels/return",
+      authorize("assets:update"),
+      StockLevelController.returnStock,
+    );
+    router.post(
+      "/stock-levels/adjust",
+      authorize("assets:update"),
+      StockLevelController.adjustStock,
+    );
 
     // ========== ASSETS ==========
     router.post(
       "/assets/import",
+      authorize("assets:create"),
       getCSVUploadMiddleware(),
       AssetsController.importCSV,
     );
-    router.post("/assets", AssetsController.createAsset);
-    router.get("/assets/next-code", AssetsController.getNextCode); // Before :assetId to avoid conflict
-    router.get("/assets", AssetsController.listAssets);
-    router.get("/assets/:assetId", AssetsController.getAsset);
-    router.patch("/assets/:assetId", AssetsController.updateAsset);
-    router.delete("/assets/:assetId", AssetsController.deleteAsset);
-    router.post("/assets/:assetId/state", AssetsController.updateAssetState);
+    router.post(
+      "/assets",
+      authorize("assets:create"),
+      AssetsController.createAsset,
+    );
+    router.get(
+      "/assets/next-code",
+      authorize("assets:read"),
+      AssetsController.getNextCode,
+    ); // Before :assetId to avoid conflict
+    router.get(
+      "/assets",
+      authorize("assets:read"),
+      AssetsController.listAssets,
+    );
+    router.get(
+      "/assets/:assetId",
+      authorize("assets:read"),
+      AssetsController.getAsset,
+    );
+    router.patch(
+      "/assets/:assetId",
+      authorize("assets:update"),
+      AssetsController.updateAsset,
+    );
+    router.delete(
+      "/assets/:assetId",
+      authorize("assets:delete"),
+      AssetsController.deleteAsset,
+    );
+    router.post(
+      "/assets/:assetId/state",
+      authorize("assets:update"),
+      AssetsController.updateAssetState,
+    );
     router.post(
       "/assets/:assetId/decommission",
+      authorize("assets:delete"),
       AssetsController.decommissionAsset,
     );
-    router.get("/assets/:assetId/events", AssetsController.getAssetEvents);
+    router.get(
+      "/assets/:assetId/events",
+      authorize("assets:read"),
+      AssetsController.getAssetEvents,
+    );
 
     // ========== ASSET IMAGE UPLOAD ==========
     router.post(
       "/assets/:assetId/image",
+      authorize("assets:update"),
       upload.single("image"),
       AssetsController.uploadMainImage,
     );
-    router.delete("/assets/:assetId/image", AssetsController.deleteMainImage);
+    router.delete(
+      "/assets/:assetId/image",
+      authorize("assets:update"),
+      AssetsController.deleteMainImage,
+    );
 
     // ========== ASSET ATTACHMENTS (Multiple documents/photos) ==========
     router.post(
       "/assets/:assetId/attachments",
+      authorize("assets:update"),
       uploadDocuments.array("files", 10),
       AssetsController.uploadMultipleAttachments,
     );
 
     // ========== MAINTENANCE ==========
-    router.post("/maintenance", AssetsController.createMaintenance);
-    router.get("/maintenance/active", AssetsController.getActiveMaintenance);
-    router.get("/maintenance/:maintenanceId", AssetsController.getMaintenance);
+    router.post(
+      "/maintenance",
+      authorize("assets:update"),
+      AssetsController.createMaintenance,
+    );
+    router.get(
+      "/maintenance/active",
+      authorize("assets:read"),
+      AssetsController.getActiveMaintenance,
+    );
+    router.get(
+      "/maintenance/:maintenanceId",
+      authorize("assets:read"),
+      AssetsController.getMaintenance,
+    );
     router.patch(
       "/maintenance/:maintenanceId",
+      authorize("assets:update"),
       AssetsController.updateMaintenance,
     );
     router.get(
       "/assets/:assetId/maintenance",
+      authorize("assets:read"),
       AssetsController.listMaintenanceByAsset,
     );
 
     // ========== USAGE ==========
-    router.post("/usage", AssetsController.recordUsage);
-    router.get("/usage", AssetsController.listUsage);
-    router.get("/usage/:usageId", AssetsController.getUsage);
-    router.delete("/usage/:usageId", AssetsController.deleteUsage);
+    router.post(
+      "/usage",
+      authorize("assets:update"),
+      AssetsController.recordUsage,
+    );
+    router.get("/usage", authorize("assets:read"), AssetsController.listUsage);
+    router.get(
+      "/usage/:usageId",
+      authorize("assets:read"),
+      AssetsController.getUsage,
+    );
+    router.delete(
+      "/usage/:usageId",
+      authorize("assets:delete"),
+      AssetsController.deleteUsage,
+    );
     router.get(
       "/assets/:assetId/usage/summary",
+      authorize("assets:read"),
       AssetsController.getAssetUsageSummary,
     );
     router.post(
       "/usage/:usageId/evidence",
+      authorize("assets:update"),
       upload.array("files", 5),
       AssetsController.uploadUsageEvidence,
     );
 
     // ========== ATTACHMENTS ==========
-    router.post("/attachments", AssetsController.createAttachment);
-    router.get("/attachments", AssetsController.listAttachments);
-    router.get("/attachments/:attachmentId", AssetsController.getAttachment);
+    router.post(
+      "/attachments",
+      authorize("assets:update"),
+      AssetsController.createAttachment,
+    );
+    router.get(
+      "/attachments",
+      authorize("assets:read"),
+      AssetsController.listAttachments,
+    );
+    router.get(
+      "/attachments/:attachmentId",
+      authorize("assets:read"),
+      AssetsController.getAttachment,
+    );
     router.delete(
       "/attachments/:attachmentId",
+      authorize("assets:delete"),
       AssetsController.deleteAttachment,
     );
 
     // ========== DOCUMENT TYPES ==========
-    router.post("/document-types", AssetsController.createDocumentType);
-    router.get("/document-types", AssetsController.listDocumentTypes);
+    router.post(
+      "/document-types",
+      authorize("assets:create"),
+      AssetsController.createDocumentType,
+    );
+    router.get(
+      "/document-types",
+      authorize("assets:read"),
+      AssetsController.listDocumentTypes,
+    );
     router.get(
       "/document-types/:documentTypeId",
+      authorize("assets:read"),
       AssetsController.getDocumentType,
     );
     router.patch(
       "/document-types/:documentTypeId",
+      authorize("assets:update"),
       AssetsController.updateDocumentType,
     );
     router.delete(
       "/document-types/:documentTypeId",
+      authorize("assets:delete"),
       AssetsController.deleteDocumentType,
     );
 
     // ========== QUOTATION SUPPORT ==========
     router.get(
       "/assets/:assetId/availability",
+      authorize("assets:read"),
       AssetsController.getAssetAvailability,
     );
     router.get(
       "/search-for-quotation",
+      authorize("assets:read"),
       AssetsController.searchAssetsForQuotation,
     );
 
     // ========== RENTAL CONTRACTS ==========
-    router.post("/rental/contracts", RentalController.createContract);
-    router.get("/rental/contracts", RentalController.listContracts);
-    router.get("/rental/contracts/:contractId", RentalController.getContract);
+    router.post(
+      "/rental/contracts",
+      authorize("rental-contracts:create"),
+      RentalController.createContract,
+    );
+    router.get(
+      "/rental/contracts",
+      authorize("rental-contracts:read"),
+      RentalController.listContracts,
+    );
+    router.get(
+      "/rental/contracts/:contractId",
+      authorize("rental-contracts:read"),
+      RentalController.getContract,
+    );
     router.patch(
       "/rental/contracts/:contractId",
+      authorize("rental-contracts:update"),
       RentalController.updateContract,
     );
     router.post(
       "/rental/contracts/:contractId/assign-asset",
+      authorize("rental-contracts:update"),
       RentalController.assignAsset,
     );
     router.post(
       "/rental/contracts/:contractId/finalize",
+      authorize("rental-contracts:update"),
       RentalController.finalizeContract,
     );
 
     // ========== USAGE REPORTS ==========
-    router.post("/rental/usage-reports", RentalController.recordUsageReport);
-    router.get("/rental/usage-reports", RentalController.listUsageReports);
+    router.post(
+      "/rental/usage-reports",
+      authorize("rental-contracts:update"),
+      RentalController.recordUsageReport,
+    );
+    router.get(
+      "/rental/usage-reports",
+      authorize("rental-contracts:read"),
+      RentalController.listUsageReports,
+    );
 
     // ========== AVAILABILITY PROJECTION ==========
     router.get(
       "/rental/availability/:assetId",
+      authorize("assets:read"),
       RentalController.projectAssetAvailability,
     );
     router.get(
       "/rental/availability/type/:assetTypeId",
+      authorize("assets:read"),
       RentalController.projectAvailabilityByType,
     );
     router.post(
       "/rental/assets/:assetId/evaluate-post-obra",
+      authorize("assets:update"),
       RentalController.evaluatePostObra,
     );
     router.get(
       "/rental/contract-assets/:contractAssetId/usage-variance",
+      authorize("rental-contracts:read"),
       RentalController.getUsageVariance,
     );
 
     // ========== SUPPLIES ==========
-    router.post("/supplies", SupplyController.createSupply);
-    router.get("/supplies", SupplyController.listSupplies);
-    router.get("/supplies/:supplyId", SupplyController.getSupply);
-    router.patch("/supplies/:supplyId", SupplyController.updateSupply);
-    router.post("/supplies/usage", SupplyController.recordUsage);
-    router.post("/supplies/:supplyId/discard", SupplyController.discardSupply);
+    router.post(
+      "/supplies",
+      authorize("supplies:create"),
+      SupplyController.createSupply,
+    );
+    router.get(
+      "/supplies",
+      authorize("supplies:read"),
+      SupplyController.listSupplies,
+    );
+    router.get(
+      "/supplies/:supplyId",
+      authorize("supplies:read"),
+      SupplyController.getSupply,
+    );
+    router.patch(
+      "/supplies/:supplyId",
+      authorize("supplies:update"),
+      SupplyController.updateSupply,
+    );
+    router.post(
+      "/supplies/usage",
+      authorize("supplies:update"),
+      SupplyController.recordUsage,
+    );
+    router.post(
+      "/supplies/:supplyId/discard",
+      authorize("supplies:update"),
+      SupplyController.discardSupply,
+    );
 
     // ========== PREVENTIVE CONFIGURATION ==========
     router.post(
       "/assets/:assetId/preventive-config",
+      authorize("assets:update"),
       SupplyController.configurePreventive,
     );
     router.patch(
       "/assets/:assetId/preventive-config",
+      authorize("assets:update"),
       SupplyController.updatePreventiveConfig,
     );
     router.get(
       "/assets/:assetId/preventive-config",
+      authorize("assets:read"),
       SupplyController.getPreventiveConfig,
     );
 
     // ========== MAINTENANCE EVENTS ==========
     router.post(
       "/assets/:assetId/maintenance/preventive",
+      authorize("assets:update"),
       SupplyController.executePreventive,
     );
     router.post(
       "/assets/:assetId/maintenance/post-obra",
+      authorize("assets:update"),
       SupplyController.executePostObra,
     );
     router.get(
       "/assets/:assetId/maintenance/history",
+      authorize("assets:read"),
       SupplyController.getMaintenanceHistory,
     );
 
     // ========== INCIDENTS ==========
-    router.post("/incidents", IncidentController.reportIncident);
-    router.get("/incidents", IncidentController.listIncidents);
-    router.get("/incidents/active", IncidentController.getActiveIncidents);
-    router.get("/incidents/:incidentId", IncidentController.getIncident);
+    router.post(
+      "/incidents",
+      authorize("assets:create"),
+      IncidentController.reportIncident,
+    );
+    router.get(
+      "/incidents",
+      authorize("assets:read"),
+      IncidentController.listIncidents,
+    );
+    router.get(
+      "/incidents/active",
+      authorize("assets:read"),
+      IncidentController.getActiveIncidents,
+    );
+    router.get(
+      "/incidents/:incidentId",
+      authorize("assets:read"),
+      IncidentController.getIncident,
+    );
     router.post(
       "/incidents/:incidentId/resolve",
+      authorize("assets:update"),
       IncidentController.resolveIncident,
     );
 

@@ -30,8 +30,10 @@ export function TimezonePage() {
       try {
         setLoading(true);
         setError(null);
-        const bu = await businessUnitService.getById(businessUnit.id);
-        setTimezone(bu.timezone || "UTC");
+        const response = await businessUnitService.getRentalSettings(
+          businessUnit.id,
+        );
+        setTimezone(response.timezone || "UTC");
       } catch (err) {
         setError(
           err instanceof Error
@@ -54,7 +56,9 @@ export function TimezonePage() {
       setError(null);
       setSuccess(null);
 
-      await businessUnitService.update(businessUnit.id, { timezone });
+      await businessUnitService.updateRentalSettings(businessUnit.id, {
+        timezone,
+      });
       setSuccess("Zona horaria actualizada correctamente");
     } catch (err) {
       setError(

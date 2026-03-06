@@ -71,6 +71,12 @@ const MODULE_PERMISSIONS: PermissionDefinition[] = [
     description: "Delete clients",
     scope: "BUSINESS_UNIT",
   },
+  {
+    resource: "clients",
+    action: "update-credit-limit",
+    description: "Update client credit limit",
+    scope: "BUSINESS_UNIT",
+  },
 
   // PURCHASES MODULE
   {
@@ -161,6 +167,18 @@ const MODULE_PERMISSIONS: PermissionDefinition[] = [
     description: "Approve quotations pending due to credit limit exceed",
     scope: "BUSINESS_UNIT",
   },
+  {
+    resource: "quotations",
+    action: "send",
+    description: "Send quotations to clients",
+    scope: "BUSINESS_UNIT",
+  },
+  {
+    resource: "quotations",
+    action: "confirm-payment",
+    description: "Confirm payment received for quotations",
+    scope: "BUSINESS_UNIT",
+  },
 
   // CONTRACTS (Rental sub-module)
   {
@@ -191,6 +209,200 @@ const MODULE_PERMISSIONS: PermissionDefinition[] = [
     resource: "contracts",
     action: "sign",
     description: "Sign rental contracts",
+    scope: "BUSINESS_UNIT",
+  },
+  {
+    resource: "contracts",
+    action: "close",
+    description: "Close rental contracts",
+    scope: "BUSINESS_UNIT",
+  },
+  {
+    resource: "contracts",
+    action: "approve",
+    description: "Approve rental contracts",
+    scope: "BUSINESS_UNIT",
+  },
+
+  // RENTAL CONTRACTS (for assets module)
+  {
+    resource: "rental-contracts",
+    action: "read",
+    description: "View rental contracts (assets module)",
+    scope: "BUSINESS_UNIT",
+  },
+  {
+    resource: "rental-contracts",
+    action: "create",
+    description: "Create rental contracts (assets module)",
+    scope: "BUSINESS_UNIT",
+  },
+  {
+    resource: "rental-contracts",
+    action: "update",
+    description: "Update rental contracts (assets module)",
+    scope: "BUSINESS_UNIT",
+  },
+  {
+    resource: "rental-contracts",
+    action: "delete",
+    description: "Delete rental contracts (assets module)",
+    scope: "BUSINESS_UNIT",
+  },
+
+  // SUPPLIERS (Purchases module)
+  {
+    resource: "suppliers",
+    action: "read",
+    description: "View suppliers",
+    scope: "BUSINESS_UNIT",
+  },
+  {
+    resource: "suppliers",
+    action: "create",
+    description: "Create suppliers",
+    scope: "BUSINESS_UNIT",
+  },
+  {
+    resource: "suppliers",
+    action: "update",
+    description: "Update suppliers",
+    scope: "BUSINESS_UNIT",
+  },
+  {
+    resource: "suppliers",
+    action: "delete",
+    description: "Delete suppliers",
+    scope: "BUSINESS_UNIT",
+  },
+
+  // SUPPLY CATEGORIES (Purchases module)
+  {
+    resource: "supply-categories",
+    action: "read",
+    description: "View supply categories",
+    scope: "BUSINESS_UNIT",
+  },
+  {
+    resource: "supply-categories",
+    action: "create",
+    description: "Create supply categories",
+    scope: "BUSINESS_UNIT",
+  },
+  {
+    resource: "supply-categories",
+    action: "update",
+    description: "Update supply categories",
+    scope: "BUSINESS_UNIT",
+  },
+  {
+    resource: "supply-categories",
+    action: "delete",
+    description: "Delete supply categories",
+    scope: "BUSINESS_UNIT",
+  },
+
+  // SUPPLIES (Inventory/Purchases module)
+  {
+    resource: "supplies",
+    action: "read",
+    description: "View supplies inventory",
+    scope: "BUSINESS_UNIT",
+  },
+  {
+    resource: "supplies",
+    action: "create",
+    description: "Create supplies",
+    scope: "BUSINESS_UNIT",
+  },
+  {
+    resource: "supplies",
+    action: "update",
+    description: "Update supplies and adjust stock",
+    scope: "BUSINESS_UNIT",
+  },
+  {
+    resource: "supplies",
+    action: "delete",
+    description: "Delete supplies",
+    scope: "BUSINESS_UNIT",
+  },
+
+  // SUPPLY QUOTES (Purchase quotes)
+  {
+    resource: "supply-quotes",
+    action: "read",
+    description: "View purchase quotes",
+    scope: "BUSINESS_UNIT",
+  },
+  {
+    resource: "supply-quotes",
+    action: "create",
+    description: "Create purchase quotes",
+    scope: "BUSINESS_UNIT",
+  },
+  {
+    resource: "supply-quotes",
+    action: "update",
+    description: "Update purchase quotes",
+    scope: "BUSINESS_UNIT",
+  },
+  {
+    resource: "supply-quotes",
+    action: "delete",
+    description: "Delete purchase quotes",
+    scope: "BUSINESS_UNIT",
+  },
+
+  // PURCHASE ORDERS
+  {
+    resource: "purchase-orders",
+    action: "read",
+    description: "View purchase orders",
+    scope: "BUSINESS_UNIT",
+  },
+  {
+    resource: "purchase-orders",
+    action: "create",
+    description: "Create purchase orders",
+    scope: "BUSINESS_UNIT",
+  },
+  {
+    resource: "purchase-orders",
+    action: "update",
+    description: "Update purchase orders",
+    scope: "BUSINESS_UNIT",
+  },
+  {
+    resource: "purchase-orders",
+    action: "delete",
+    description: "Delete/cancel purchase orders",
+    scope: "BUSINESS_UNIT",
+  },
+
+  // ASSET TEMPLATES
+  {
+    resource: "asset-templates",
+    action: "read",
+    description: "View asset templates",
+    scope: "BUSINESS_UNIT",
+  },
+  {
+    resource: "asset-templates",
+    action: "create",
+    description: "Create asset templates",
+    scope: "BUSINESS_UNIT",
+  },
+  {
+    resource: "asset-templates",
+    action: "update",
+    description: "Update asset templates",
+    scope: "BUSINESS_UNIT",
+  },
+  {
+    resource: "asset-templates",
+    action: "delete",
+    description: "Delete asset templates",
     scope: "BUSINESS_UNIT",
   },
 
@@ -279,6 +491,92 @@ const MODULE_PERMISSIONS: PermissionDefinition[] = [
     description: "Update settings",
     scope: "BUSINESS_UNIT",
   },
+  {
+    resource: "settings",
+    action: "manage",
+    description: "Manage advanced settings",
+    scope: "BUSINESS_UNIT",
+  },
+
+  // DASHBOARD
+  {
+    resource: "dashboard",
+    action: "read",
+    description: "View dashboard",
+    scope: "BUSINESS_UNIT",
+  },
+
+  // BILLING
+  {
+    resource: "billing",
+    action: "read",
+    description: "View billing information",
+    scope: "BUSINESS_UNIT",
+  },
+  {
+    resource: "billing",
+    action: "manage",
+    description: "Manage billing and payments",
+    scope: "BUSINESS_UNIT",
+  },
+  {
+    resource: "billing",
+    action: "discount",
+    description: "Apply discounts to billing",
+    scope: "BUSINESS_UNIT",
+  },
+
+  // ROLES
+  {
+    resource: "roles",
+    action: "read",
+    description: "View roles",
+    scope: "BUSINESS_UNIT",
+  },
+  {
+    resource: "roles",
+    action: "create",
+    description: "Create custom roles",
+    scope: "BUSINESS_UNIT",
+  },
+  {
+    resource: "roles",
+    action: "update",
+    description: "Update roles",
+    scope: "BUSINESS_UNIT",
+  },
+  {
+    resource: "roles",
+    action: "delete",
+    description: "Delete roles",
+    scope: "BUSINESS_UNIT",
+  },
+
+  // BUSINESS UNITS
+  {
+    resource: "business-units",
+    action: "read",
+    description: "View business units",
+    scope: "TENANT",
+  },
+  {
+    resource: "business-units",
+    action: "create",
+    description: "Create business units",
+    scope: "TENANT",
+  },
+  {
+    resource: "business-units",
+    action: "update",
+    description: "Update business units",
+    scope: "TENANT",
+  },
+  {
+    resource: "business-units",
+    action: "delete",
+    description: "Delete business units",
+    scope: "TENANT",
+  },
 
   // USERS (Business Unit level)
   {
@@ -303,6 +601,12 @@ const MODULE_PERMISSIONS: PermissionDefinition[] = [
     resource: "users",
     action: "delete",
     description: "Delete users",
+    scope: "BUSINESS_UNIT",
+  },
+  {
+    resource: "users",
+    action: "change-password",
+    description: "Change user passwords (admin reset)",
     scope: "BUSINESS_UNIT",
   },
 
