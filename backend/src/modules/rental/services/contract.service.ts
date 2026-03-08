@@ -31,6 +31,31 @@ export interface CreateContractParams {
   createdBy: string;
 }
 
+/**
+ * Parámetros para crear un Master Contract (v7.0)
+ * Los master contracts NO tienen items específicos inicialmente
+ */
+export interface CreateMasterContractParams {
+  tenantId: string;
+  businessUnitId: string;
+  clientId: string;
+
+  startDate: Date;
+  estimatedEndDate?: Date;
+
+  // Límites acordados (pueden ser diferentes a los de la cuenta)
+  agreedCreditLimit?: number; // Si no se especifica, usa el de ClientAccount
+  agreedTimeLimit?: number; // Si no se especifica, usa el de ClientAccount
+
+  // Documentación
+  templateId?: string;
+  pdfUrl?: string;
+  notes?: string;
+  metadata?: any;
+
+  createdBy: string;
+}
+
 export interface WithdrawAssetParams {
   contractId: string;
   assetId: string;
@@ -90,6 +115,7 @@ export class ContractService {
         clientAccountId: clientAccount.id,
         quotationId: params.quotationId,
         code,
+        contractType: "specific", // Explicit contract type (v7.0)
         status: "active",
         startDate: params.startDate,
         estimatedEndDate: params.estimatedEndDate,
@@ -110,6 +136,74 @@ export class ContractService {
             items: true,
           },
         },
+      },
+    });
+
+    return contract;
+  }
+
+  /**
+   * Crear Master Contract (v7.0)
+   * Contratos sin items específicos, que usan addendums para entregas
+   */
+  async createMasterContract(params: CreateMasterContractParams) {
+    // 1. Verificar o crear ClientAccount
+    let clientAccount = await prisma.clientAccount.findUnique({
+      where: { clientId: params.clientId },
+    });
+
+    if (!clientAccount) {
+      // Crear cuenta si no existe
+      clientAccount = await accountService.createAccount({
+        tenantId: params.tenantId,
+        clientId: params.clientId,
+        initialBalance: 0,
+        alertAmount: 100000, // Default $100k
+        statementFrequency: "monthly",
+      });
+    }
+
+    // 2. Generar código único
+    const code = await this.generateContractCode(
+      params.tenantId,
+      params.businessUnitId,
+    );
+
+    // 3. Determinar límites acordados
+    const agreedCreditLimit =
+      params.agreedCreditLimit || clientAccount.creditLimit.toNumber();
+    const agreedTimeLimit =
+      params.agreedTimeLimit || clientAccount.timeLimit;
+
+    // 4. Crear master contract
+    const contract = await prisma.rentalContract.create({
+      data: {
+        tenantId: params.tenantId,
+        businessUnitId: params.businessUnitId,
+        clientId: params.clientId,
+        clientAccountId: clientAccount.id,
+        code,
+        
+        // Master contract específicos
+        contractType: "master",
+        agreedAmount: agreedCreditLimit
+          ? new Decimal(agreedCreditLimit)
+          : clientAccount.creditLimit,
+        agreedDays: agreedTimeLimit,
+        totalActiveDays: 0,
+        
+        status: "active",
+        startDate: params.startDate,
+        estimatedEndDate: params.estimatedEndDate,
+        templateId: params.templateId,
+        pdfUrl: params.pdfUrl,
+        notes: params.notes,
+        metadata: params.metadata,
+        createdBy: params.createdBy,
+      },
+      include: {
+        client: true,
+        clientAccount: true,
       },
     });
 

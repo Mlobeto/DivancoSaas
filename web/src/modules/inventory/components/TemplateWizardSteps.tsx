@@ -770,18 +770,57 @@ interface SpecPoolItem {
 }
 
 const SPEC_POOL_EQUIPMENT: SpecPoolItem[] = [
-  { key: "Color", icon: "🎨" },
-  { key: "Capacidad de carga", icon: "🏗️" },
-  { key: "Peso (kg)", icon: "⚖️" },
-  { key: "Altura de elevación", icon: "📏" },
-  { key: "Longitud", icon: "↔️" },
-  { key: "Ancho", icon: "↕️" },
-  { key: "Motor", icon: "⚙️" },
-  { key: "Potencia", icon: "⚡" },
-  { key: "Velocidad máx", icon: "🏎️" },
-  { key: "Combustible", icon: "⛽" },
-  { key: "Capacidad hidráulica", icon: "💧" },
-  { key: "Año de fabricación", icon: "📅" },
+  // ═══ IDENTIFICACIÓN ═══
+  { key: "Placa/Patente", icon: "🚗", label: "Placa/Patente" },
+  { key: "VIN/Chasis", icon: "🔢", label: "VIN/Chasis" },
+  { key: "Número de serie", icon: "🏷️", label: "Número de serie" },
+  { key: "Marca", icon: "🏭", label: "Marca" },
+  { key: "Modelo", icon: "📋", label: "Modelo" },
+  { key: "Año de fabricación", icon: "📅", label: "Año de fabricación" },
+  { key: "Color", icon: "🎨", label: "Color" },
+  
+  // ═══ MOTOR Y MECÁNICA ═══
+  { key: "Motor", icon: "⚙️", label: "Motor" },
+  { key: "Cilindraje", icon: "🔧", label: "Cilindraje" },
+  { key: "Potencia", icon: "⚡", label: "Potencia (HP/KW)" },
+  { key: "Tipo de transmisión", icon: "⚙️", label: "Tipo de transmisión" },
+  { key: "Número de ejes", icon: "🛞", label: "Número de ejes" },
+  { key: "Combustible", icon: "⛽", label: "Tipo de combustible" },
+  { key: "Capacidad del tanque", icon: "⛽", label: "Capacidad del tanque (L)" },
+  
+  // ═══ TRACKING INICIAL ═══
+  { key: "Horómetro inicial", icon: "⏱️", label: "Horómetro inicial (hrs)" },
+  { key: "Kilometraje inicial", icon: "🛣️", label: "Kilometraje inicial (km)" },
+  
+  // ═══ DOCUMENTACIÓN - FECHAS VENCIMIENTO ═══
+  { key: "Fecha tarjeta propiedad", icon: "📄", label: "Vence tarjeta propiedad" },
+  { key: "Fecha SOAT", icon: "🛡️", label: "Vence SOAT" },
+  { key: "Fecha tecnomecánica", icon: "🔍", label: "Vence tecnomecánica" },
+  { key: "Fecha cert. gases", icon: "💨", label: "Vence cert. gases" },
+  { key: "Fecha licencia conductor", icon: "🪪", label: "Vence licencia conductor" },
+  
+  // ═══ ELEMENTOS DE SEGURIDAD ═══
+  { key: "Fecha venc. extintor", icon: "🧯", label: "Vence extintor" },
+  { key: "Fecha venc. botiquín", icon: "🩹", label: "Vence botiquín" },
+  { key: "Fecha garantía batería", icon: "🔋", label: "Vence garantía batería" },
+  
+  // ═══ DIMENSIONES Y CAPACIDADES ═══
+  { key: "Capacidad de carga", icon: "🏗️", label: "Capacidad de carga (ton)" },
+  { key: "Peso (kg)", icon: "⚖️", label: "Peso (kg)" },
+  { key: "Altura de elevación", icon: "📏", label: "Altura de elevación (m)" },
+  { key: "Longitud", icon: "↔️", label: "Longitud (m)" },
+  { key: "Ancho", icon: "↕️", label: "Ancho (m)" },
+  { key: "Altura", icon: "⬆️", label: "Altura (m)" },
+  { key: "Número de pasajeros", icon: "👥", label: "Número de pasajeros" },
+  
+  // ═══ SISTEMAS HIDRÁULICOS ═══
+  { key: "Capacidad hidráulica", icon: "💧", label: "Capacidad hidráulica (L)" },
+  { key: "Presión hidráulica", icon: "💪", label: "Presión hidráulica (PSI)" },
+  
+  // ═══ OTROS ═══
+  { key: "Velocidad máxima", icon: "🏎️", label: "Velocidad máxima (km/h)" },
+  { key: "Tipo de llantas", icon: "🛞", label: "Tipo de llantas" },
+  { key: "Observaciones", icon: "📝", label: "Observaciones generales" },
 ];
 
 export function TechnicalSpecsStep({

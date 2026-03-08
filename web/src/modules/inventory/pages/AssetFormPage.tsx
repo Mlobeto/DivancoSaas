@@ -26,6 +26,9 @@ import {
   FileText,
 } from "lucide-react";
 import { AssetDocumentationModal } from "@/modules/inventory/components/AssetDocumentationModal";
+import Joyride from "react-joyride";
+import { useTour } from "@/core/hooks/useTour";
+import { assetCreateTour } from "@/modules/inventory/tours/assetCreateTour";
 
 export function AssetFormPage() {
   const navigate = useNavigate();
@@ -33,6 +36,13 @@ export function AssetFormPage() {
   const queryClient = useQueryClient();
   const { tenant, businessUnit } = useAuthStore();
   const isEditMode = !!id;
+
+  // Tour system (only for create mode)
+  const { tourState, steps, handleJoyrideCallback } = useTour({
+    tourName: "asset-create",
+    steps: assetCreateTour,
+    autoStart: !isEditMode, // Only auto-start when creating, not editing
+  });
 
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
@@ -436,6 +446,32 @@ export function AssetFormPage() {
 
   return (
     <Layout>
+      {/* Product Tour */}
+      {!isEditMode && (
+        <Joyride
+          steps={steps}
+          run={tourState.run}
+          stepIndex={tourState.stepIndex}
+          continuous
+          showSkipButton
+          showProgress
+          callback={handleJoyrideCallback}
+          styles={{
+            options: {
+              primaryColor: "#3b82f6",
+              zIndex: 10000,
+            },
+          }}
+          locale={{
+            back: "Atrás",
+            close: "Cerrar",
+            last: "Finalizar",
+            next: "Siguiente",
+            skip: "Saltar tour",
+          }}
+        />
+      )}
+
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4">
@@ -459,14 +495,17 @@ export function AssetFormPage() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Main Info Card */}
-          <div className="bg-[#1e1e1e] border border-[#555555] rounded-none p-6">
+          <div
+            className="bg-[#1e1e1e] border border-[#555555] rounded-none p-6"
+            data-tour="basic-info"
+          >
             <h2 className="text-lg font-semibold text-[#e0e0e0] mb-4">
               Información Básica
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Template Select */}
-              <div className="md:col-span-2">
+              <div className="md:col-span-2" data-tour="template-select">
                 <label className="block text-sm font-medium text-[#e0e0e0] mb-1">
                   Plantilla{" "}
                   {!isEditMode && <span className="text-[#e53935]">*</span>}
@@ -808,7 +847,10 @@ export function AssetFormPage() {
               const rules = selectedTemplate.rentalRules;
               if (!rules) return null;
               return (
-                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 space-y-4">
+                <div
+                  className="bg-gray-800 border border-gray-700 rounded-lg p-6 space-y-4"
+                  data-tour="rental-pricing"
+                >
                   <div>
                     <h2 className="text-lg font-semibold text-white">
                       💰 Precios de Alquiler
@@ -1281,220 +1323,11 @@ export function AssetFormPage() {
             </div>
           )}
 
-          {/* Tracking Fields Configuration (Rental vertical only) */}
-          {formData.trackingType === "MACHINERY" && (
-            <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 space-y-6">
-              <h2 className="text-lg font-semibold text-white mb-4">
-                📊 Configuración de Campos de Evidencia
-              </h2>
-              <p className="text-sm text-gray-400 mb-4">
-                Selecciona qué campos quieres rastrear para este activo e
-                ingresa los valores iniciales
-              </p>
-
-              <div className="space-y-4">
-                {/* Hourometer */}
-                <div className="flex items-start gap-4 p-4 bg-gray-900/50 border border-gray-700 rounded-lg">
-                  <input
-                    type="checkbox"
-                    id="track_hourometer"
-                    checked={formData.trackingFields?.hourometer || false}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        trackingFields: {
-                          ...formData.trackingFields,
-                          hourometer: e.target.checked,
-                        },
-                      })
-                    }
-                    className="mt-1 w-4 h-4 rounded border-gray-700 bg-gray-900 text-blue-600 focus:ring-2 focus:ring-blue-500"
-                  />
-                  <div className="flex-1">
-                    <label
-                      htmlFor="track_hourometer"
-                      className="block text-sm font-medium text-gray-300 mb-1 cursor-pointer"
-                    >
-                      ⏱️ Horómetro (horas de uso)
-                    </label>
-                    {formData.trackingFields?.hourometer && (
-                      <input
-                        type="number"
-                        step="0.1"
-                        min="0"
-                        value={formData.initialValues?.hourometer || ""}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            initialValues: {
-                              ...formData.initialValues,
-                              hourometer: e.target.value
-                                ? parseFloat(e.target.value)
-                                : 0,
-                            },
-                          })
-                        }
-                        placeholder="Ej: 1500"
-                        className="mt-2 w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    )}
-                  </div>
-                </div>
-
-                {/* Odometer */}
-                <div className="flex items-start gap-4 p-4 bg-gray-900/50 border border-gray-700 rounded-lg">
-                  <input
-                    type="checkbox"
-                    id="track_odometer"
-                    checked={formData.trackingFields?.odometer || false}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        trackingFields: {
-                          ...formData.trackingFields,
-                          odometer: e.target.checked,
-                        },
-                      })
-                    }
-                    className="mt-1 w-4 h-4 rounded border-gray-700 bg-gray-900 text-blue-600 focus:ring-2 focus:ring-blue-500"
-                  />
-                  <div className="flex-1">
-                    <label
-                      htmlFor="track_odometer"
-                      className="block text-sm font-medium text-gray-300 mb-1 cursor-pointer"
-                    >
-                      🚗 Odómetro (kilómetros recorridos)
-                    </label>
-                    {formData.trackingFields?.odometer && (
-                      <input
-                        type="number"
-                        step="0.1"
-                        min="0"
-                        value={formData.initialValues?.odometer || ""}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            initialValues: {
-                              ...formData.initialValues,
-                              odometer: e.target.value
-                                ? parseFloat(e.target.value)
-                                : 0,
-                            },
-                          })
-                        }
-                        placeholder="Ej: 25000"
-                        className="mt-2 w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    )}
-                  </div>
-                </div>
-
-                {/* Fuel Level */}
-                <div className="flex items-start gap-4 p-4 bg-gray-900/50 border border-gray-700 rounded-lg">
-                  <input
-                    type="checkbox"
-                    id="track_fuelLevel"
-                    checked={formData.trackingFields?.fuelLevel || false}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        trackingFields: {
-                          ...formData.trackingFields,
-                          fuelLevel: e.target.checked,
-                        },
-                      })
-                    }
-                    className="mt-1 w-4 h-4 rounded border-gray-700 bg-gray-900 text-blue-600 focus:ring-2 focus:ring-blue-500"
-                  />
-                  <div className="flex-1">
-                    <label
-                      htmlFor="track_fuelLevel"
-                      className="block text-sm font-medium text-gray-300 mb-1 cursor-pointer"
-                    >
-                      ⛽ Nivel de Combustible (litros)
-                    </label>
-                    {formData.trackingFields?.fuelLevel && (
-                      <input
-                        type="number"
-                        step="0.1"
-                        min="0"
-                        value={formData.initialValues?.fuelLevel || ""}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            initialValues: {
-                              ...formData.initialValues,
-                              fuelLevel: e.target.value
-                                ? parseFloat(e.target.value)
-                                : 0,
-                            },
-                          })
-                        }
-                        placeholder="Ej: 50"
-                        className="mt-2 w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    )}
-                  </div>
-                </div>
-
-                {/* Oil Level */}
-                <div className="flex items-start gap-4 p-4 bg-gray-900/50 border border-gray-700 rounded-lg">
-                  <input
-                    type="checkbox"
-                    id="track_oilLevel"
-                    checked={formData.trackingFields?.oilLevel || false}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        trackingFields: {
-                          ...formData.trackingFields,
-                          oilLevel: e.target.checked,
-                        },
-                      })
-                    }
-                    className="mt-1 w-4 h-4 rounded border-gray-700 bg-gray-900 text-blue-600 focus:ring-2 focus:ring-blue-500"
-                  />
-                  <div className="flex-1">
-                    <label
-                      htmlFor="track_oilLevel"
-                      className="block text-sm font-medium text-gray-300 mb-1 cursor-pointer"
-                    >
-                      🛢️ Nivel de Aceite
-                    </label>
-                    {formData.trackingFields?.oilLevel && (
-                      <input
-                        type="number"
-                        step="0.1"
-                        min="0"
-                        value={formData.initialValues?.oilLevel || ""}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            initialValues: {
-                              ...formData.initialValues,
-                              oilLevel: e.target.value
-                                ? parseFloat(e.target.value)
-                                : 0,
-                            },
-                          })
-                        }
-                        placeholder="Ej: 10"
-                        className="mt-2 w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-4 p-3 bg-blue-900/10 border border-blue-800 rounded-lg text-sm text-blue-300">
-                💡 <strong>Tip:</strong> Los operadores reportarán estos valores
-                diariamente desde la app móvil
-              </div>
-            </div>
-          )}
-
           {/* Media & Documents Card */}
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 space-y-6">
+          <div
+            className="bg-gray-800 border border-gray-700 rounded-lg p-6 space-y-6"
+            data-tour="upload-photos"
+          >
             <h2 className="text-lg font-semibold text-white">
               📎 Fotos y Documentos
             </h2>
@@ -1632,10 +1465,38 @@ export function AssetFormPage() {
             selectedTemplate.technicalSpecs &&
             Object.keys(selectedTemplate.technicalSpecs as Record<string, any>)
               .length > 0 && (
-              <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-                <h2 className="text-lg font-semibold text-white mb-1">
-                  🔧 Especificaciones Técnicas
-                </h2>
+              <div
+                className="bg-gray-800 border border-gray-700 rounded-lg p-6"
+                data-tour="technical-specs"
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <h2 className="text-lg font-semibold text-white">
+                    🔧 Especificaciones Técnicas
+                  </h2>
+                  <button
+                    type="button"
+                    data-tour="add-custom-field"
+                    onClick={() => {
+                      const newFieldName = prompt(
+                        "Ingresa el nombre del campo adicional:",
+                        "",
+                      );
+                      if (newFieldName && newFieldName.trim()) {
+                        setFormData((prev) => ({
+                          ...prev,
+                          customData: {
+                            ...prev.customData,
+                            [newFieldName.trim()]: "",
+                          },
+                        }));
+                      }
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white text-sm rounded-lg transition-colors"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Campo Especial
+                  </button>
+                </div>
                 <p className="text-sm text-gray-400 mb-4">
                   Campos definidos en la plantilla — ingresá los valores reales
                   de este activo
@@ -1659,24 +1520,66 @@ export function AssetFormPage() {
                       />
                     </div>
                   ))}
-                  {selectedTemplate.requiresWeight && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-1">
-                        Peso (kg)
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={formData.customData?.["peso_kg"] || ""}
-                        onChange={(e) =>
-                          handleCustomFieldChange("peso_kg", e.target.value)
-                        }
-                        placeholder="Ej: 3500"
-                        className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                  )}
+                  {/* Peso (kg) - Always visible by default */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      Peso (kg)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.customData?.["peso_kg"] || ""}
+                      onChange={(e) =>
+                        handleCustomFieldChange("peso_kg", e.target.value)
+                      }
+                      placeholder="Ej: 3500"
+                      className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  {/* Additional custom fields not in template */}
+                  {Object.keys(formData.customData || {})
+                    .filter(
+                      (key) =>
+                        !(selectedTemplate.technicalSpecs as any)?.[key] &&
+                        key !== "peso_kg",
+                    )
+                    .map((customKey) => (
+                      <div key={customKey} className="relative">
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-sm font-medium text-gray-300">
+                            {customKey}
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const { [customKey]: _, ...rest } =
+                                formData.customData || {};
+                              setFormData((prev) => ({
+                                ...prev,
+                                customData: rest,
+                              }));
+                            }}
+                            className="text-red-400 hover:text-red-300 text-xs"
+                            title="Eliminar campo"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                        <input
+                          type="text"
+                          value={formData.customData?.[customKey] || ""}
+                          onChange={(e) =>
+                            handleCustomFieldChange(customKey, e.target.value)
+                          }
+                          placeholder={`Valor para ${customKey}`}
+                          className="w-full px-3 py-2 bg-gray-900 border border-yellow-600/50 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                        />
+                        <p className="text-xs text-yellow-400 mt-0.5">
+                          Campo adicional
+                        </p>
+                      </div>
+                    ))}
                 </div>
               </div>
             )}

@@ -69,6 +69,12 @@ model Tenant {
   chatRooms            ChatRoom[]
   contractClauses      ContractClause[]
 
+  // Master Contract System relations
+  contractAddendums       ContractAddendum[]
+  contractAttachments     ContractAttachment[]
+  limitChangeRequests     LimitChangeRequest[]
+  contractClauseTemplates ContractClauseTemplate[]
+
   @@index([slug])
   @@index([country])
   @@map("tenants")
@@ -131,6 +137,12 @@ model BusinessUnit {
   assetRentalProfiles    AssetRentalProfile[]
   contractClauses        ContractClause[]
 
+  // Master Contract System relations
+  contractAddendums       ContractAddendum[]
+  contractAttachments     ContractAttachment[]
+  limitChangeRequests     LimitChangeRequest[]
+  contractClauseTemplates ContractClauseTemplate[]
+
   @@unique([tenantId, slug])
   @@index([tenantId])
   @@map("business_units")
@@ -179,6 +191,13 @@ model User {
   // Stock management relations
   createdStockMovements  StockMovement[]  @relation("StockMovementCreator")
   createdBulkRentalItems BulkRentalItem[] @relation("BulkRentalItemCreator")
+
+  // Master Contract System relations
+  createdContractAddendums     ContractAddendum[]       @relation("ContractAddendumCreator")
+  createdContractAttachments   ContractAttachment[]     @relation("ContractAttachmentCreator")
+  limitChangeRequestsRequested LimitChangeRequest[]     @relation("LimitChangeRequestRequester")
+  limitChangeRequestsReviewed  LimitChangeRequest[]     @relation("LimitChangeRequestReviewer")
+  createdClauseTemplates       ContractClauseTemplate[] @relation("ContractClauseTemplateCreator")
 
   // Operator profile (optional 1:1 extension)
   operatorProfile             OperatorProfile?
@@ -825,8 +844,8 @@ model Warehouse {
   name        String // Nombre: "Bodega Central", "Taller Norte"
   type        WarehouseType @default(BODEGA)
   address     String? // Dirección física
-  description String? @db.Text
-  isActive    Boolean @default(true)
+  description String?       @db.Text
+  isActive    Boolean       @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -846,7 +865,7 @@ model Warehouse {
 enum WarehouseType {
   BODEGA // Almacenamiento general
   TALLER // Taller de mantenimiento
-  OBRA   // Ubicación en obra/proyecto
+  OBRA // Ubicación en obra/proyecto
 }
 
 enum AssetCategory {
@@ -897,8 +916,8 @@ model Asset {
   // ═══════════════════════════════════════
   // RENTAL: Estado actual de alquiler
   // ═══════════════════════════════════════
-  isCurrentlyRented      Boolean @default(false) // ¿Está alquilado en este momento?
-  currentRentalContract  String? // Número de contrato actual (si está alquilado)
+  isCurrentlyRented     Boolean @default(false) // ¿Está alquilado en este momento?
+  currentRentalContract String? // Número de contrato actual (si está alquilado)
 
   // Imagen principal (foto de portada del activo)
   imageUrl String? // URL en Azure Blob Storage
@@ -936,6 +955,24 @@ model Asset {
   // ═══════════════════════════════════════
   machineParts Json? // [{ description: "Llantas", quantity: 4, observations: "" }]
 
+  // ═══════════════════════════════════════
+  // TRACKING: Estado inicial y actual
+  // ═══════════════════════════════════════
+  initialHourMeter Decimal? @db.Decimal(12, 2) // Horómetro al registrar el activo (hrs)
+  initialKm        Decimal? @db.Decimal(12, 2) // Kilometraje al registrar el activo (km)
+  currentHourMeter Decimal? @db.Decimal(12, 2) // Horómetro actual (se actualiza con reportes)
+  currentKm        Decimal? @db.Decimal(12, 2) // Kilometraje actual (se actualiza con reportes)
+
+  // ═══════════════════════════════════════
+  // STOCK MÍNIMO (aplicable a todos los activos)
+  // ═══════════════════════════════════════
+  minStockLevel Int? // Alerta cuando stock disponible < este valor (UNIT y BULK)
+
+  // ═══════════════════════════════════════
+  // DOCUMENTACIÓN: Fechas de vencimiento
+  // ═══════════════════════════════════════
+  documentExpiries Json? // { soat: "2026-12-31", tecno: "2026-06-15", seguro: "2027-01-20", extintor: "2026-09-15", botiquin: "2026-08-10" }
+
   requiresOperator Boolean @default(false)
   requiresTracking Boolean @default(false)
   requiresClinic   Boolean @default(false) // Requiere historia clínica de mantenimiento
@@ -969,6 +1006,9 @@ model Asset {
   assetRentals         AssetRental[] // Assets en alquiler activo
   operatorAssignments  OperatorAssignment[]
   operatorDailyReports OperatorDailyReport[]
+
+  // Master Contract System relations
+  contractAttachments ContractAttachment[] // Special attachments (safety, viaticum, etc.)
 
   @@unique([businessUnitId, code])
   @@index([tenantId, businessUnitId])
@@ -1040,7 +1080,7 @@ model AssetRentalProfile {
   // Campos a rastrear durante alquileres (RENTAL VERTICAL ONLY)
   // Ejemplo: { hourometer: true, odometer: true, fuelLevel: false, oilLevel: true }
   trackingFields Json? // Configuración de qué campos rastrear
-  
+
   // Valores iniciales al crear el activo - punto de partida para tracking
   // Ejemplo: { hourometer: 1500, odometer: 25000, fuelLevel: 100, oilLevel: 100 }
   initialValues Json? // Valores iniciales de los campos configurados
@@ -1163,9 +1203,10 @@ model AssetUsage {
 // ============================================
 
 model AssetRental {
-  id         String @id @default(uuid())
+  id         String  @id @default(uuid())
   contractId String
   assetId    String
+  addendumId String? // Addendum del que forma parte este rental (master contracts)
 
   // Fechas
   withdrawalDate     DateTime  @default(now())
@@ -1215,6 +1256,7 @@ model AssetRental {
   contract     RentalContract          @relation(fields: [contractId], references: [id], onDelete: Cascade)
   asset        Asset                   @relation(fields: [assetId], references: [id])
   creator      User                    @relation(fields: [createdBy], references: [id])
+  addendum     ContractAddendum?       @relation(fields: [addendumId], references: [id])
   usageReports AssetUsage[]
   movements    RentalAccountMovement[] @relation("RentalMovements")
 
@@ -1503,6 +1545,19 @@ model ClientAccount {
   totalConsumed Decimal @default(0) @db.Decimal(12, 2) // Total consumido (todos los contratos)
   totalReloaded Decimal @default(0) @db.Decimal(12, 2) // Total recargado
 
+  // Límites configurables (v7.0 - Master Contract)
+  creditLimit Decimal @default(0) @db.Decimal(12, 2) // Límite máximo de dinero
+  timeLimit   Int     @default(30) // Límite de días de alquiler
+
+  // Tracking de uso de límites
+  activeDays Int @default(0) // Días activos acumulados
+
+  // Estado de excepción
+  limitsOverridden Boolean   @default(false) // Si se aprobó exceder límites
+  overrideReason   String?   @db.Text // Motivo de la excepción
+  overriddenBy     String? // userId que aprobó
+  overriddenAt     DateTime? // Cuándo se aprobó
+
   // Alertas (para usuarios internos)
   alertAmount    Decimal   @default(0) @db.Decimal(12, 2) // Monto en el cual alertar
   alertTriggered Boolean   @default(false)
@@ -1521,13 +1576,15 @@ model ClientAccount {
   updatedAt DateTime @updatedAt
 
   // Relaciones
-  tenant          Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  client          Client                  @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  movements       RentalAccountMovement[] // Historial de movimientos
-  rentalContracts RentalContract[]
+  tenant              Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  client              Client                  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  movements           RentalAccountMovement[] // Historial de movimientos
+  rentalContracts     RentalContract[]
+  limitChangeRequests LimitChangeRequest[] // Solicitudes de ampliación (v7.0)
 
   @@index([tenantId])
   @@index([balance]) // Para alertas de bajo saldo
+  @@index([limitsOverridden]) // Para auditoría
   @@map("client_accounts")
 }
 
@@ -2131,6 +2188,12 @@ model RentalContract {
   clientAccountId String // Cuenta única del cliente (compartida)
   code            String // CON-2026-001
 
+  // Tipo de contrato (v7.0 - Master Contract)
+  contractType String @default("master") // "master" | "specific" (legacy)
+
+  // MASTER CONTRACT: Sin items específicos, solo montos y períodos generales
+  // SPECIFIC CONTRACT: Legacy - con items en el momento de creación
+
   // Estado del contrato
   status String // "active", "suspended", "completed", "cancelled"
 
@@ -2139,8 +2202,13 @@ model RentalContract {
   estimatedEndDate DateTime?
   actualEndDate    DateTime?
 
-  // Tracking de consumo POR CONTRATO (solo informativo)
-  totalConsumed Decimal @default(0) @db.Decimal(12, 2) // Total consumido por ESTE contrato
+  // Montos y períodos del contrato marco (referencia a cotización) (v7.0)
+  agreedAmount Decimal? @db.Decimal(12, 2) // Monto acordado según cotización
+  agreedPeriod Int? // Días acordados según cotización
+
+  // Tracking - ahora la suma de todos los addendums (v7.0)
+  totalConsumed   Decimal @default(0) @db.Decimal(12, 2) // Total consumido por ESTE contrato
+  totalActiveDays Int     @default(0) // Días activos acumulados
 
   // Último descuento realizado
   lastAutoChargeDate DateTime? // Última vez que se ejecutó descuento automático
@@ -2190,9 +2258,11 @@ model RentalContract {
   creator       User?         @relation("RentalContractCreator", fields: [createdBy], references: [id])
 
   // Relaciones rental
-  movements     RentalAccountMovement[] // Historial de transacciones (de ESTE contrato)
-  activeRentals AssetRental[] // Assets actualmente rentados
-  bulkItems     BulkRentalItem[] // BULK inventory items in this contract
+  movements          RentalAccountMovement[] // Historial de transacciones (de ESTE contrato)
+  activeRentals      AssetRental[] // Assets actualmente rentados
+  bulkItems          BulkRentalItem[] // BULK inventory items in this contract
+  addendums          ContractAddendum[] // Anexos por entrega (v7.0)
+  specialAttachments ContractAttachment[] // Anexos especiales: operador, seguridad (v7.0)
 
   // Legacy relations (mantener compatibilidad)
   contractAssets      ContractAsset[]
@@ -2207,6 +2277,7 @@ model RentalContract {
   @@index([clientId, status])
   @@index([clientAccountId])
   @@index([status])
+  @@index([contractType]) // Para filtrar master vs specific (v7.0)
   @@index([lastAutoChargeDate]) // Para cron job
   @@map("rental_contracts")
 }
@@ -2260,6 +2331,223 @@ model RentalAccountMovement {
   @@index([movementType])
   @@index([assetRentalId])
   @@map("rental_account_movements")
+}
+
+// ============================================
+// RENTAL: ContractAddendum - Anexo por Entrega (v7.0 - Master Contract)
+// ============================================
+
+model ContractAddendum {
+  id             String @id @default(uuid())
+  tenantId       String
+  businessUnitId String
+  contractId     String
+  code           String // CON-2026-001-ADD-001
+
+  // Metadata del addendum
+  addendumType String @default("delivery") // "delivery" | "modification" | "extension"
+
+  // Fecha de emisión
+  issueDate DateTime @default(now())
+
+  // Activos entregados en ESTE addendum
+  items Json // Array de { assetId, quantity, startDate, estimatedEndDate, dailyRate, estimatedCost }
+
+  // Costos de ESTE addendum
+  estimatedCost Decimal @db.Decimal(12, 2)
+  actualCost    Decimal @default(0) @db.Decimal(12, 2) // Se actualiza al devolver
+
+  // Período estimado
+  estimatedDays Int?
+
+  // Estado del addendum
+  status String @default("active") // "active" | "completed" | "cancelled"
+
+  // Documento PDF del addendum
+  pdfUrl       String?
+  signedPdfUrl String?
+
+  // Fechas de devolución
+  completedAt DateTime?
+
+  // Metadata
+  notes    String? @db.Text
+  metadata Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+
+  // Relaciones
+  tenant       Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  businessUnit BusinessUnit   @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
+  contract     RentalContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  creator      User?          @relation("ContractAddendumCreator", fields: [createdBy], references: [id])
+
+  // Rentals específicos de este addendum
+  rentals AssetRental[] // Assets entregados en ESTE addendum
+
+  @@unique([tenantId, code])
+  @@index([contractId])
+  @@index([tenantId, status])
+  @@index([issueDate])
+  @@map("contract_addendums")
+}
+
+// ============================================
+// RENTAL: ContractAttachment - Anexos Especiales (v7.0 - Master Contract)
+// ============================================
+
+model ContractAttachment {
+  id             String @id @default(uuid())
+  tenantId       String
+  businessUnitId String
+  contractId     String
+
+  // Tipo de anexo
+  attachmentType String // "operator_safety" | "operator_viaticum" | "insurance" | "technical_specs" | "custom"
+
+  // Referencia al activo (si aplica)
+  assetId String?
+
+  // Metadata
+  title       String
+  description String? @db.Text
+
+  // Archivo
+  fileUrl  String
+  fileType String // "pdf" | "docx" | "jpg" | etc
+  fileSize Int? // bytes
+
+  // Visibilidad
+  visibleToClient Boolean @default(true)
+
+  // Fechas
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+
+  // Relaciones
+  tenant       Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  businessUnit BusinessUnit   @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
+  contract     RentalContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  asset        Asset?         @relation(fields: [assetId], references: [id])
+  creator      User?          @relation("ContractAttachmentCreator", fields: [createdBy], references: [id])
+
+  @@index([contractId])
+  @@index([assetId])
+  @@index([attachmentType])
+  @@map("contract_attachments")
+}
+
+// ============================================
+// RENTAL: LimitChangeRequest - Solicitud de Ampliación (v7.0 - Master Contract)
+// ============================================
+
+model LimitChangeRequest {
+  id              String @id @default(uuid())
+  tenantId        String
+  businessUnitId  String
+  clientAccountId String
+
+  // Quién solicita
+  requestedBy String // userId (usuario de entregas)
+  requestedAt DateTime @default(now())
+
+  // Límites actuales
+  currentCreditLimit Decimal @db.Decimal(12, 2)
+  currentTimeLimit   Int
+
+  // Límites solicitados
+  requestedCreditLimit Decimal? @db.Decimal(12, 2)
+  requestedTimeLimit   Int?
+
+  // Justificación
+  reason  String @db.Text
+  urgency String @default("normal") // "low" | "normal" | "high" | "urgent"
+
+  // Estado de la solicitud
+  status String @default("pending") // "pending" | "approved" | "rejected" | "cancelled"
+
+  // Respuesta
+  reviewedBy String? // userId (owner/admin)
+  reviewedAt DateTime?
+
+  approvedCreditLimit Decimal? @db.Decimal(12, 2)
+  approvedTimeLimit   Int?
+
+  reviewNotes String? @db.Text
+
+  // Metadata
+  metadata Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relaciones
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  businessUnit  BusinessUnit  @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
+  clientAccount ClientAccount @relation(fields: [clientAccountId], references: [id], onDelete: Cascade)
+  requester     User          @relation("LimitChangeRequestRequester", fields: [requestedBy], references: [id])
+  reviewer      User?         @relation("LimitChangeRequestReviewer", fields: [reviewedBy], references: [id])
+
+  @@index([clientAccountId])
+  @@index([status])
+  @@index([requestedAt])
+  @@index([urgency])
+  @@map("limit_change_requests")
+}
+
+// ============================================
+// RENTAL: ContractClauseTemplate - Plantillas de Cláusulas (v7.0 - Master Contract)
+// ============================================
+
+model ContractClauseTemplate {
+  id             String  @id @default(uuid())
+  tenantId       String
+  businessUnitId String?
+
+  // Metadata de la cláusula
+  name     String
+  category String // "general" | "safety" | "maintenance" | "insurance" | "liability" | "termination"
+
+  // Contenido
+  content String @db.Text
+
+  // Variables soportadas (para interpolación)
+  // Ejemplo: "El activo {{asset.name}} debe ser operado..."
+  supportedVariables Json?
+
+  // Aplicabilidad
+  applicableAssetTypes    String[] // ["excavadora", "retroexcavadora"] o [] para todas
+  applicableContractTypes String[] @default(["master", "specific"])
+
+  // Estado
+  isActive  Boolean @default(true)
+  isDefault Boolean @default(false) // Si se incluye automáticamente
+
+  // Orden de visualización
+  displayOrder Int @default(0)
+
+  // Metadata
+  notes    String? @db.Text
+  metadata Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+
+  // Relaciones
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  businessUnit BusinessUnit? @relation(fields: [businessUnitId], references: [id])
+  creator      User?         @relation("ContractClauseTemplateCreator", fields: [createdBy], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, businessUnitId])
+  @@index([category])
+  @@index([isActive])
+  @@index([isDefault])
+  @@map("contract_clause_templates")
 }
 
 model ContractAsset {
@@ -2635,9 +2923,9 @@ model QuotationItem {
   // ═══════════════════════════════════════
 
   // OPCIÓN 1: Por Día
-  pricePerDay         Decimal? @db.Decimal(15, 2) // Precio unitario por día
-  totalPerDay         Decimal? @db.Decimal(15, 2) // Total calculado (pricePerDay * rentalDays)
-  operatorCostPerDay  Decimal? @db.Decimal(15, 2) // Costo de operador por día (si aplica)
+  pricePerDay        Decimal? @db.Decimal(15, 2) // Precio unitario por día
+  totalPerDay        Decimal? @db.Decimal(15, 2) // Total calculado (pricePerDay * rentalDays)
+  operatorCostPerDay Decimal? @db.Decimal(15, 2) // Costo de operador por día (si aplica)
 
   // OPCIÓN 2: Por Semana
   pricePerWeek        Decimal? @db.Decimal(15, 2) // Precio unitario por semana

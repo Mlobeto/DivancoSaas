@@ -28,6 +28,12 @@ const QuotationFormPage = lazy(() =>
   })),
 );
 
+const QuotationDetailPage = lazy(() =>
+  import("@/modules/rental/pages/QuotationDetailPage").then((m) => ({
+    default: m.QuotationDetailPage,
+  })),
+);
+
 const ContractsListPage = lazy(() =>
   import("@/modules/rental/pages/ContractsListPage").then((m) => ({
     default: m.ContractsListPage,
@@ -114,6 +120,17 @@ export const rentalRoutes: VerticalRouteConfig = {
         breadcrumb: "New",
       },
       chunkName: "quotations-create",
+    },
+    {
+      path: "quotations/:id",
+      element: QuotationDetailPage,
+      protection: RouteProtection.AUTHENTICATED,
+      layout: RouteLayout.APP,
+      meta: {
+        title: "Quotation Details",
+        breadcrumb: "Details",
+      },
+      chunkName: "quotations-detail",
     },
     {
       path: "quotations/:id/edit",

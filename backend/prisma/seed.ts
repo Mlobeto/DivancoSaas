@@ -5,7 +5,8 @@
  * 1. Roles base del sistema (OWNER, ADMIN, MANAGER, EMPLOYEE, VIEWER)
  * 2. Tenant de prueba (Construcciones Demo S.A.)
  * 3. Business Unit de prueba (División Alquiler)
- * 4. Usuario OWNER de prueba (admin@construcciones-demo.com / Admin123!)
+ * 4. Plantillas de activos rental (auto-seed para BU de alquiler)
+ * 5. Usuario OWNER de prueba (admin@construcciones-demo.com / Admin123!)
  *
  * Ejecutar con: npx prisma db seed
  *
@@ -15,6 +16,7 @@
 
 import { PrismaClient } from "@prisma/client";
 import * as bcrypt from "bcrypt";
+import { seedRentalTemplates } from "../scripts/seeds/asset-templates-rental.seed";
 
 const prisma = new PrismaClient();
 
@@ -112,7 +114,22 @@ async function main() {
   console.log(`✅ Business Unit creado: ${businessUnit.name}\n`);
 
   // ============================================
-  // 4. PLATFORM OWNER (SUPER_ADMIN)
+  // 4. PLANTILLAS DE ACTIVOS RENTAL (AUTO-SEED)
+  // ============================================
+  // Si el BusinessUnit es de tipo rental (alquiler), crear plantillas automáticamente
+  const isRentalBusinessUnit =
+    businessUnit.slug === "alquiler" ||
+    businessUnit.name.toLowerCase().includes("alquiler") ||
+    businessUnit.name.toLowerCase().includes("rental");
+
+  if (isRentalBusinessUnit) {
+    console.log("📋 Creando plantillas de activos para vertical rental...");
+    await seedRentalTemplates(prisma, businessUnit.id);
+    console.log("");
+  }
+
+  // ============================================
+  // 5. PLATFORM OWNER (SUPER_ADMIN)
   // ============================================
   console.log("👑 Creando PLATFORM OWNER (SUPER_ADMIN)...");
 
@@ -163,7 +180,7 @@ async function main() {
   console.log(`✅ Tenant Admin creado: ${tenantAdmin.email}\n`);
 
   // ============================================
-  // 6. ASIGNAR TENANT ADMIN AL BUSINESS UNIT
+  // 7. ASIGNAR TENANT ADMIN AL BUSINESS UNIT
   // ============================================
   console.log("🔗 Asignando Tenant Admin a Business Unit...");
 

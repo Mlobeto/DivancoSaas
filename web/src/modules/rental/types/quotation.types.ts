@@ -58,6 +58,10 @@ export interface Quotation {
   // Relaciones
   client?: Client;
   assignedUser?: User;
+  businessUnit?: {
+    id: string;
+    name: string;
+  };
   items: QuotationItem[];
 }
 

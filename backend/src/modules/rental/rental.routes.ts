@@ -15,6 +15,9 @@ import { usageReportController } from "./controllers/usage-report.controller";
 import { rentalController } from "./controllers/rental.controller";
 import { jobsController } from "./controllers/jobs.controller";
 import { operatorController } from "./controllers/operator.controller";
+import { contractAddendumController } from "./controllers/contract-addendum.controller";
+import { limitChangeRequestController } from "./controllers/limit-change-request.controller";
+import { contractClauseTemplateController } from "./controllers/contract-clause-template.controller";
 import { authenticate, authorize } from "@core/middlewares/auth.middleware";
 
 const router = Router();
@@ -701,6 +704,170 @@ router.get(
   "/operators/my/expenses",
   authorize("mobile:access"),
   operatorController.getMyExpenses.bind(operatorController),
+);
+
+// ============================================
+// MASTER CONTRACT SYSTEM (v7.0)
+// ============================================
+
+// -------- CONTRACT ADDENDUMS --------
+
+// Crear addendum para contrato master
+router.post(
+  "/contracts/:contractId/addendums",
+  authorize("contracts:update"),
+  contractAddendumController.create.bind(contractAddendumController),
+);
+
+// Listar addendums de un contrato
+router.get(
+  "/contracts/:contractId/addendums",
+  authorize("contracts:read"),
+  contractAddendumController.list.bind(contractAddendumController),
+);
+
+// Obtener addendum por ID
+router.get(
+  "/addendums/:addendumId",
+  authorize("contracts:read"),
+  contractAddendumController.getById.bind(contractAddendumController),
+);
+
+// Actualizar addendum
+router.patch(
+  "/addendums/:addendumId",
+  authorize("contracts:update"),
+  contractAddendumController.update.bind(contractAddendumController),
+);
+
+// Completar addendum
+router.post(
+  "/addendums/:addendumId/complete",
+  authorize("contracts:update"),
+  contractAddendumController.complete.bind(contractAddendumController),
+);
+
+// Cancelar addendum
+router.post(
+  "/addendums/:addendumId/cancel",
+  authorize("contracts:update"),
+  contractAddendumController.cancel.bind(contractAddendumController),
+);
+
+// -------- LIMIT CHANGE REQUESTS --------
+
+// Crear solicitud de ampliación de límites
+router.post(
+  "/limit-requests",
+  authorize("accounts:update"),
+  limitChangeRequestController.create.bind(limitChangeRequestController),
+);
+
+// Listar solicitudes
+router.get(
+  "/limit-requests",
+  authorize("accounts:read"),
+  limitChangeRequestController.list.bind(limitChangeRequestController),
+);
+
+// Obtener solicitud por ID
+router.get(
+  "/limit-requests/:requestId",
+  authorize("accounts:read"),
+  limitChangeRequestController.getById.bind(limitChangeRequestController),
+);
+
+// Revisar solicitud (aprobar/rechazar)
+router.post(
+  "/limit-requests/:requestId/review",
+  authorize("admin"),
+  limitChangeRequestController.review.bind(limitChangeRequestController),
+);
+
+// Cancelar solicitud
+router.post(
+  "/limit-requests/:requestId/cancel",
+  authorize("accounts:update"),
+  limitChangeRequestController.cancel.bind(limitChangeRequestController),
+);
+
+// Estadísticas de solicitudes
+router.get(
+  "/limit-requests/stats",
+  authorize("accounts:read"),
+  limitChangeRequestController.getStats.bind(limitChangeRequestController),
+);
+
+// -------- CONTRACT CLAUSE TEMPLATES --------
+
+// Crear plantilla de cláusula
+router.post(
+  "/clause-templates",
+  authorize("contracts:create"),
+  contractClauseTemplateController.create.bind(
+    contractClauseTemplateController,
+  ),
+);
+
+// Listar plantillas
+router.get(
+  "/clause-templates",
+  authorize("contracts:read"),
+  contractClauseTemplateController.list.bind(contractClauseTemplateController),
+);
+
+// Obtener plantilla por ID
+router.get(
+  "/clause-templates/:templateId",
+  authorize("contracts:read"),
+  contractClauseTemplateController.getById.bind(
+    contractClauseTemplateController,
+  ),
+);
+
+// Actualizar plantilla
+router.patch(
+  "/clause-templates/:templateId",
+  authorize("contracts:update"),
+  contractClauseTemplateController.update.bind(
+    contractClauseTemplateController,
+  ),
+);
+
+// Eliminar plantilla
+router.delete(
+  "/clause-templates/:templateId",
+  authorize("admin"),
+  contractClauseTemplateController.delete.bind(
+    contractClauseTemplateController,
+  ),
+);
+
+// Duplicar plantilla
+router.post(
+  "/clause-templates/:templateId/duplicate",
+  authorize("contracts:create"),
+  contractClauseTemplateController.duplicate.bind(
+    contractClauseTemplateController,
+  ),
+);
+
+// Interpolar variables en plantilla
+router.post(
+  "/clause-templates/interpolate",
+  authorize("contracts:read"),
+  contractClauseTemplateController.interpolate.bind(
+    contractClauseTemplateController,
+  ),
+);
+
+// Reordenar plantillas
+router.post(
+  "/clause-templates/reorder",
+  authorize("contracts:update"),
+  contractClauseTemplateController.reorder.bind(
+    contractClauseTemplateController,
+  ),
 );
 
 // ============================================

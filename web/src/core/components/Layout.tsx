@@ -6,6 +6,7 @@ import { businessUnitService } from "@/core/services/businessUnit.service";
 import type { BusinessUnit } from "@/core/types/api.types";
 import DynamicNavigation from "@/app/navigation/DynamicNavigation";
 import { NotificationBell } from "@/core/components/NotificationBell";
+import { ToursMenu } from "@/core/components/ToursMenu";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -110,6 +111,9 @@ export function Layout({ children, title, subtitle, actions }: LayoutProps) {
             <div className="flex items-center gap-2 sm:gap-4">
               {/* Notification Bell */}
               <NotificationBell />
+
+              {/* Tours Menu */}
+              <ToursMenu />
 
               {/* Business Unit Selector */}
               {businessUnit && (

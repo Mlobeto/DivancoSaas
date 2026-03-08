@@ -30,6 +30,9 @@ import {
   Fence,
   Pickaxe,
 } from "lucide-react";
+import Joyride from "react-joyride";
+import { useTour } from "@/core/hooks/useTour";
+import { assetTemplatesListTour } from "@/modules/inventory/tours/assetTemplatesTour";
 
 // Helper para renderizar iconos
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -65,6 +68,13 @@ export function AssetTemplatesPage() {
   const { tenant, businessUnit } = useAuthStore();
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<AssetCategory | "">("");
+
+  // Tour system
+  const { tourState, steps, handleJoyrideCallback } = useTour({
+    tourName: "asset-templates-list",
+    steps: assetTemplatesListTour,
+    autoStart: true,
+  });
 
   // Fetch templates
   const { data, isLoading, error } = useQuery({
@@ -175,16 +185,44 @@ export function AssetTemplatesPage() {
           <button
             onClick={() => navigate("/inventory/templates/new")}
             className="btn-primary"
+            data-tour="new-template-btn"
           >
             + Nueva Plantilla
           </button>
         </>
       }
     >
+      {/* Product Tour */}
+      <Joyride
+        steps={steps}
+        run={tourState.run}
+        stepIndex={tourState.stepIndex}
+        continuous
+        showSkipButton
+        showProgress
+        callback={handleJoyrideCallback}
+        styles={{
+          options: {
+            primaryColor: "#3b82f6",
+            zIndex: 10000,
+          },
+        }}
+        locale={{
+          back: "Atrás",
+          close: "Cerrar",
+          last: "Finalizar",
+          next: "Siguiente",
+          skip: "Saltar tour",
+        }}
+      />
+
       <div className="p-8">
         {/* Stats Cards */}
         {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <div
+            className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6"
+            data-tour="templates-stats"
+          >
             <div className="card bg-primary-900/10 border-primary-800">
               <div className="text-sm text-dark-400 mb-1">Total Plantillas</div>
               <div className="text-3xl font-bold text-primary-400">
@@ -287,10 +325,11 @@ export function AssetTemplatesPage() {
         {/* Templates Grid */}
         {data && data.data && data.data.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {data.data.map((template: AssetTemplate) => (
+            {data.data.map((template: AssetTemplate, index: number) => (
               <div
                 key={template.id}
                 className="card hover:border-primary-600 transition-colors"
+                data-tour={index === 0 ? "template-card" : undefined}
               >
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">

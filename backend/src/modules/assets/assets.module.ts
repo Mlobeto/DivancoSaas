@@ -656,6 +656,28 @@ export class AssetsModule implements ModuleContract {
         action: "resolve",
         description: "Resolve incidents",
       },
+
+      // Asset Templates
+      {
+        resource: "asset-templates",
+        action: "create",
+        description: "Create asset templates",
+      },
+      {
+        resource: "asset-templates",
+        action: "read",
+        description: "View asset templates",
+      },
+      {
+        resource: "asset-templates",
+        action: "update",
+        description: "Update asset templates",
+      },
+      {
+        resource: "asset-templates",
+        action: "delete",
+        description: "Delete asset templates",
+      },
     ];
   }
 

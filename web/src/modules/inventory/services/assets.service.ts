@@ -40,6 +40,19 @@ export interface Asset {
   requiresTracking: boolean;
   requiresClinic: boolean;
   machineParts?: any[];
+
+  // ═══ TRACKING: Estado inicial y actual ═══
+  initialHourMeter?: number; // Horómetro al registrar (hrs)
+  initialKm?: number; // Kilometraje al registrar (km)
+  currentHourMeter?: number; // Horómetro actual (se actualiza con reportes)
+  currentKm?: number; // Kilometraje actual (se actualiza con reportes)
+
+  // ═══ STOCK MÍNIMO ═══
+  minStockLevel?: number; // Alerta cuando stock < este valor
+
+  // ═══ DOCUMENTACIÓN: Fechas de vencimiento ═══
+  documentExpiries?: Record<string, string>; // { soat: "2026-12-31", tecno: "2026-06-15", ... }
+
   createdAt: string;
   updatedAt: string;
 
@@ -78,6 +91,16 @@ export interface CreateAssetData {
   requiresOperator?: boolean;
   requiresTracking?: boolean;
   requiresClinic?: boolean;
+
+  // ═══ TRACKING: Estado inicial ═══
+  initialHourMeter?: number; // Horómetro inicial (hrs)
+  initialKm?: number; // Kilometraje inicial (km)
+
+  // ═══ STOCK MÍNIMO ═══
+  minStockLevel?: number; // Alerta cuando stock < este valor
+
+  // ═══ DOCUMENTACIÓN: Fechas de vencimiento ═══
+  documentExpiries?: Record<string, string>; // { soat: "2026-12-31", tecno: "2026-06-15", ... }
 
   // Rental Configuration (creates AssetRentalProfile if provided)
   trackingType?: "MACHINERY" | "TOOL" | null;
