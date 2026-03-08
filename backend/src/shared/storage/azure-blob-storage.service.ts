@@ -98,6 +98,13 @@ export class AzureBlobStorageService {
     const containerClient =
       this.blobServiceClient.getContainerClient(containerName);
 
+    // Ensure the container exists
+    // avatars container should be public (blob access), others private
+    const isPublicContainer = containerName === "avatars";
+    await containerClient.createIfNotExists({
+      access: isPublicContainer ? "blob" : undefined,
+    });
+
     // Estructura de path: tenantId/businessUnitId/folder/filename
     const pathParts = [
       params.tenantId,

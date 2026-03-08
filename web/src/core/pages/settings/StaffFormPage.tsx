@@ -5,7 +5,7 @@
  * Role selection via cards + optional operator profile creation.
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Layout } from "@/core/components/Layout";
 import { PermissionsDragDrop } from "@/core/components/PermissionsDragDrop";
@@ -31,8 +31,11 @@ import {
   ChevronDown,
   Eye,
   EyeOff,
+  Camera,
+  Upload,
 } from "lucide-react";
 import { userService } from "@/core/services/user.service";
+import { useAuthStore } from "@/store/auth.store";
 
 // ---------- Types ----------
 
@@ -150,6 +153,7 @@ export function StaffFormPage() {
   const navigate = useNavigate();
   const { id } = useParams();
   const isEditing = !!id;
+  const { user: currentUser, updateAvatar } = useAuthStore();
 
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(isEditing);
@@ -186,6 +190,12 @@ export function StaffFormPage() {
   const [operatorDocs, setOperatorDocs] = useState<OperatorDoc[]>(
     makeDefaultOperatorDocs(),
   );
+
+  // Avatar
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [existingAvatar, setExistingAvatar] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   // Password reset (admin only, when editing)
   const [showPasswordReset, setShowPasswordReset] = useState(false);
@@ -251,6 +261,10 @@ export function StaffFormPage() {
     setStatus("ACTIVE");
     setSelectedAdditionalPermissionIds([]);
 
+    setAvatarFile(null);
+    setAvatarPreview(null);
+    setExistingAvatar(null);
+
     setIsOperario(false);
     setOperatorData(makeDefaultOperatorData());
     setOperatorDocs(makeDefaultOperatorDocs());
@@ -271,6 +285,7 @@ export function StaffFormPage() {
         setBusinessUnitId(firstBU?.businessUnitId || "");
         setRoleId(firstBU?.roleId || "");
         setStatus(u.status || "ACTIVE");
+        setExistingAvatar(u.avatar || null);
 
         // Check if user has OWNER role (protection against password reset)
         const hasOwnerRole = u.businessUnits?.some(
@@ -355,6 +370,22 @@ export function StaffFormPage() {
         "❌ No se pudo copiar automáticamente. Copia la contraseña manualmente.",
       );
     }
+  };
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setError("❌ Solo se permiten imágenes (JPG, PNG, WEBP, etc.)");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError("❌ La imagen no puede superar los 5 MB");
+      return;
+    }
+    setAvatarFile(file);
+    setAvatarPreview(URL.createObjectURL(file));
+    setError(null);
   };
 
   const handleRoleChange = (newRoleId: string) => {
@@ -449,6 +480,12 @@ export function StaffFormPage() {
     setLoading(true);
     setError(null);
 
+    if (!isEditing && !avatarFile && !existingAvatar) {
+      setError("❌ Debes subir una foto de perfil para el empleado.");
+      setLoading(false);
+      return;
+    }
+
     if (!isEditing && (!businessUnitId || businessUnitId.trim() === "")) {
       setError(
         "❌ Debes seleccionar una unidad de negocio. Si no hay ninguna disponible, créala primero en Configuración → Unidades de Negocio.",
@@ -501,6 +538,19 @@ export function StaffFormPage() {
             permissionIds: selectedAdditionalPermissionIds,
           });
         }
+
+        // Upload avatar if a new one was selected
+        if (id && avatarFile) {
+          const formData = new FormData();
+          formData.append("avatar", avatarFile);
+          const avatarRes = await api.post(`/users/${id}/avatar`, formData, {
+            headers: { "Content-Type": "multipart/form-data" },
+          });
+          // Si el usuario está editando su propio perfil, actualizar el navbar
+          if (id === currentUser?.id && avatarRes.data?.data?.avatar) {
+            updateAvatar(avatarRes.data.data.avatar);
+          }
+        }
       } else {
         // Step 1: create user
         const res = await api.post("/users", {
@@ -540,6 +590,15 @@ export function StaffFormPage() {
           await api.post(`/users/${createdUserId}/permissions`, {
             businessUnitId,
             permissionIds: selectedAdditionalPermissionIds,
+          });
+        }
+
+        // Step 2.5: Upload avatar (required for new users)
+        if (createdUserId && avatarFile) {
+          const formData = new FormData();
+          formData.append("avatar", avatarFile);
+          await api.post(`/users/${createdUserId}/avatar`, formData, {
+            headers: { "Content-Type": "multipart/form-data" },
           });
         }
 
@@ -660,6 +719,47 @@ export function StaffFormPage() {
                   <User className="w-5 h-5 text-primary-400" />
                   Información Personal
                 </h2>
+
+                {/* Avatar Upload */}
+                <div className="flex items-center gap-4">
+                  <div className="relative">
+                    <div className="w-24 h-24 rounded-full overflow-hidden bg-dark-700 flex items-center justify-center">
+                      {avatarPreview || existingAvatar ? (
+                        <img
+                          src={avatarPreview || existingAvatar || ""}
+                          alt="Avatar"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <User className="w-12 h-12 text-dark-400" />
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <input
+                      ref={avatarInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAvatarChange}
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => avatarInputRef.current?.click()}
+                      className="btn-secondary flex items-center gap-2"
+                    >
+                      <Camera className="w-4 h-4" />
+                      {existingAvatar || avatarPreview
+                        ? "Cambiar foto"
+                        : "Subir foto"}
+                    </button>
+                    <p className="mt-2 text-xs text-dark-400">
+                      {isEditing
+                        ? "JPG, PNG o WEBP. Máximo 5 MB."
+                        : "⚠️ Requerida. JPG, PNG o WEBP. Máximo 5 MB."}
+                    </p>
+                  </div>
+                </div>
 
                 <div>
                   <label className="block text-sm font-medium text-dark-200 mb-1">

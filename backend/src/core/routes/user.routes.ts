@@ -2,6 +2,9 @@ import { Router, Request } from "express";
 import { authenticate, authorize } from "@core/middlewares/auth.middleware";
 import { UserService } from "@core/services/user.service";
 import { z } from "zod";
+import multer from "multer";
+import { azureBlobStorageService } from "@shared/storage/azure-blob-storage.service";
+import { prisma } from "@config/database";
 
 const router = Router();
 const userService = new UserService();
@@ -921,6 +924,90 @@ router.delete(
         success: true,
         message: "Permission revoked successfully",
       });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+// ============================================
+// AVATAR UPLOAD
+// ============================================
+
+const avatarUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype.startsWith("image/")) {
+      cb(null, true);
+    } else {
+      cb(new Error("Solo se permiten imágenes"));
+    }
+  },
+});
+
+router.post(
+  "/:id/avatar",
+  authorize("users:update"),
+  avatarUpload.single("avatar"),
+  async (req, res, next) => {
+    try {
+      const tenantId = (req as any).context.tenantId;
+      const { id } = req.params;
+
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          error: { code: "NO_FILE", message: "No se recibió ningún archivo" },
+        });
+      }
+
+      // Verify user belongs to this tenant
+      const existingUser = await prisma.user.findFirst({
+        where: { id, tenantId },
+        select: { id: true },
+      });
+      if (!existingUser) {
+        return res.status(404).json({
+          success: false,
+          error: { code: "USER_NOT_FOUND", message: "Usuario no encontrado" },
+        });
+      }
+
+      let result;
+      try {
+        result = await azureBlobStorageService.uploadFile({
+          file: req.file.buffer,
+          fileName: req.file.originalname,
+          contentType: req.file.mimetype,
+          folder: "avatars",
+          tenantId,
+          businessUnitId: id,
+          containerName: "avatars", // Public container for avatars
+        });
+      } catch (uploadError: any) {
+        console.error(
+          "[avatar-upload] Azure upload failed:",
+          uploadError?.message || uploadError,
+        );
+        return res.status(502).json({
+          success: false,
+          error: {
+            code: "UPLOAD_FAILED",
+            message:
+              uploadError?.message ||
+              "Error al subir la imagen al almacenamiento",
+          },
+        });
+      }
+
+      const updatedUser = await prisma.user.update({
+        where: { id },
+        data: { avatar: result.url },
+        select: { id: true, avatar: true },
+      });
+
+      res.json({ success: true, data: updatedUser });
     } catch (error) {
       next(error);
     }

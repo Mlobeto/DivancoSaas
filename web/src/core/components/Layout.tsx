@@ -196,9 +196,19 @@ export function Layout({ children, title, subtitle, actions }: LayoutProps) {
                   onClick={() => setShowUserMenu(!showUserMenu)}
                   className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-dark-700 transition-colors"
                 >
-                  <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
-                    {user?.firstName?.[0]}
-                    {user?.lastName?.[0]}
+                  <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 bg-primary-600 flex items-center justify-center text-white text-sm font-bold">
+                    {user?.avatar ? (
+                      <img
+                        src={user.avatar}
+                        alt={`${user.firstName} ${user.lastName}`}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <>
+                        {user?.firstName?.[0]}
+                        {user?.lastName?.[0]}
+                      </>
+                    )}
                   </div>
                   <div className="hidden md:block text-left">
                     <div className="text-white font-medium text-sm leading-tight">
@@ -213,16 +223,34 @@ export function Layout({ children, title, subtitle, actions }: LayoutProps) {
                 {/* User Dropdown */}
                 {showUserMenu && (
                   <div className="absolute top-full right-0 mt-2 w-72 bg-dark-800 border border-dark-700 rounded-lg shadow-xl z-50">
-                    <div className="p-4 border-b border-dark-700">
-                      <div className="font-medium text-white">
-                        {user?.firstName} {user?.lastName}
+                    <div className="p-4 border-b border-dark-700 flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-primary-600 flex items-center justify-center text-white text-sm font-bold">
+                        {user?.avatar ? (
+                          <img
+                            src={user.avatar}
+                            alt={`${user?.firstName} ${user?.lastName}`}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <>
+                            {user?.firstName?.[0]}
+                            {user?.lastName?.[0]}
+                          </>
+                        )}
                       </div>
-                      <div className="text-sm text-dark-400">{user?.email}</div>
-                      {role && (
-                        <div className="mt-2 px-2 py-1 bg-dark-700 rounded text-xs inline-block text-primary-400">
-                          {role}
+                      <div>
+                        <div className="font-medium text-white">
+                          {user?.firstName} {user?.lastName}
                         </div>
-                      )}
+                        <div className="text-sm text-dark-400">
+                          {user?.email}
+                        </div>
+                        {role && (
+                          <div className="mt-1 px-2 py-0.5 bg-dark-700 rounded text-xs inline-block text-primary-400">
+                            {role}
+                          </div>
+                        )}
+                      </div>
                     </div>
                     <div className="p-4 border-b border-dark-700 space-y-2">
                       <div>

@@ -16,6 +16,7 @@ interface AuthState {
     role?: string;
     permissions?: string[]; // Permissions from backend
   }) => void;
+  updateAvatar: (avatarUrl: string) => void;
   clearAuth: () => void;
 }
 
@@ -41,6 +42,11 @@ export const useAuthStore = create<AuthState>()(
               : data.permissions || [],
           isAuthenticated: true,
         }),
+
+      updateAvatar: (avatarUrl) =>
+        set((state) => ({
+          user: state.user ? { ...state.user, avatar: avatarUrl } : null,
+        })),
 
       clearAuth: () =>
         set({
