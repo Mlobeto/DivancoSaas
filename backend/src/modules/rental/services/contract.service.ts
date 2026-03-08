@@ -172,8 +172,7 @@ export class ContractService {
     // 3. Determinar límites acordados
     const agreedCreditLimit =
       params.agreedCreditLimit || clientAccount.creditLimit.toNumber();
-    const agreedTimeLimit =
-      params.agreedTimeLimit || clientAccount.timeLimit;
+    const agreedTimeLimit = params.agreedTimeLimit || clientAccount.timeLimit;
 
     // 4. Crear master contract
     const contract = await prisma.rentalContract.create({
@@ -183,15 +182,15 @@ export class ContractService {
         clientId: params.clientId,
         clientAccountId: clientAccount.id,
         code,
-        
+
         // Master contract específicos
         contractType: "master",
         agreedAmount: agreedCreditLimit
           ? new Decimal(agreedCreditLimit)
           : clientAccount.creditLimit,
-        agreedDays: agreedTimeLimit,
+        agreedPeriod: agreedTimeLimit,
         totalActiveDays: 0,
-        
+
         status: "active",
         startDate: params.startDate,
         estimatedEndDate: params.estimatedEndDate,
