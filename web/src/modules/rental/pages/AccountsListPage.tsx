@@ -87,11 +87,11 @@ export function AccountsListPage() {
 
   // Calcular estadísticas globales
   const stats = {
-    totalAccounts: data?.pagination.total || 0,
-    totalBalance: data?.data.reduce((sum, acc) => sum + acc.balance, 0) || 0,
+    totalAccounts: data?.pagination?.total || 0,
+    totalBalance: data?.data?.reduce((sum, acc) => sum + acc.balance, 0) || 0,
     totalConsumed:
-      data?.data.reduce((sum, acc) => sum + acc.totalConsumed, 0) || 0,
-    alertsCount: data?.data.filter((acc) => acc.alertTriggered).length || 0,
+      data?.data?.reduce((sum, acc) => sum + acc.totalConsumed, 0) || 0,
+    alertsCount: data?.data?.filter((acc) => acc.alertTriggered)?.length || 0,
   };
 
   return (
@@ -247,7 +247,7 @@ export function AccountsListPage() {
                 </div>
 
                 {/* Paginación */}
-                {data.pagination.totalPages > 1 && (
+                {data && data.pagination && data.pagination.totalPages > 1 && (
                   <div className="flex items-center justify-center gap-2">
                     <button
                       onClick={() => setPage((p) => Math.max(1, p - 1))}
