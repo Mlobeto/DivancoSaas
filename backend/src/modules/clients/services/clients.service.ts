@@ -76,7 +76,7 @@ export class ClientsService {
   }
 
   async createClient(context: Context, payload: any) {
-    const { contacts, taxProfile, ...clientData } = payload;
+    const { contacts, taxProfile, rentalAccount, ...clientData } = payload;
     const created = await this.prisma.client.create({
       data: {
         tenantId: context.tenantId,
@@ -110,6 +110,33 @@ export class ClientsService {
         taxProfiles: true,
       },
     });
+
+    // Si se proporciona información de rentalAccount, crear ClientAccount
+    if (rentalAccount) {
+      // Obtener currency de BusinessUnit
+      const bu = await this.prisma.businessUnit.findUnique({
+        where: { id: context.businessUnitId },
+        select: { currency: true },
+      });
+      const currency = bu?.currency || "USD";
+
+      await this.prisma.clientAccount.create({
+        data: {
+          tenantId: context.tenantId,
+          clientId: created.id,
+          balance: rentalAccount.initialBalance || 0,
+          totalConsumed: 0,
+          totalReloaded: rentalAccount.initialBalance || 0,
+          creditLimit: rentalAccount.creditLimit || 0,
+          timeLimit: rentalAccount.timeLimit || 30,
+          activeDays: 0,
+          alertAmount: rentalAccount.alertAmount || 0,
+          statementFrequency: rentalAccount.statementFrequency,
+          currency,
+          notes: rentalAccount.notes,
+        },
+      });
+    }
 
     return created;
   }

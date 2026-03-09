@@ -104,6 +104,17 @@ export function ClientWizardPage() {
 
   const [tagInput, setTagInput] = useState("");
   const [showBilling, setShowBilling] = useState(true);
+  const [showRentalAccount, setShowRentalAccount] = useState(false);
+
+  // Estado para configuración de cuenta rental (opcional)
+  const [rentalAccount, setRentalAccount] = useState<{
+    initialBalance?: number;
+    creditLimit?: number;
+    timeLimit?: number;
+    alertAmount?: number;
+    statementFrequency?: "weekly" | "biweekly" | "monthly" | "manual";
+    notes?: string;
+  }>({});
 
   // Estado separado para el perfil tributario/facturación
   const [taxProfile, setTaxProfile] = useState<
@@ -195,6 +206,11 @@ export function ClientWizardPage() {
         ? `${taxProfile.taxIdNumber}-${nitDV}`
         : taxProfile.taxIdNumber;
 
+    // Incluir rentalAccount solo si tiene al menos un campo configurado
+    const hasRentalAccount = Object.values(rentalAccount).some(
+      (val) => val !== undefined && val !== "",
+    );
+
     const payload: any = {
       ...formData,
       ...(hasTaxProfile
@@ -211,6 +227,18 @@ export function ClientWizardPage() {
               city: taxProfile.city || undefined,
               state: taxProfile.state || undefined,
               postalCode: taxProfile.postalCode || undefined,
+            },
+          }
+        : {}),
+      ...(hasRentalAccount
+        ? {
+            rentalAccount: {
+              initialBalance: rentalAccount.initialBalance || 0,
+              creditLimit: rentalAccount.creditLimit || 0,
+              timeLimit: rentalAccount.timeLimit || 30,
+              alertAmount: rentalAccount.alertAmount,
+              statementFrequency: rentalAccount.statementFrequency || "monthly",
+              notes: rentalAccount.notes,
             },
           }
         : {}),
@@ -432,6 +460,190 @@ export function ClientWizardPage() {
                 ))}
               </div>
             </div>
+
+            {/* ─── Cuenta de Alquiler (Rental) ─── */}
+            <div className="col-span-2 mt-2">
+              <button
+                type="button"
+                className="flex items-center gap-2 text-sm font-semibold text-primary-300 w-full border-b border-dark-700 pb-2"
+                onClick={() => setShowRentalAccount((v) => !v)}
+              >
+                {showRentalAccount ? (
+                  <ChevronUp className="w-4 h-4" />
+                ) : (
+                  <ChevronDown className="w-4 h-4" />
+                )}
+                Configuración de Cuenta de Alquiler
+                <span className="text-xs font-normal text-dark-400 ml-1">
+                  (opcional - límites de crédito y tiempo)
+                </span>
+              </button>
+            </div>
+
+            {showRentalAccount && (
+              <>
+                <div className="col-span-2">
+                  <p className="text-sm text-dark-300 italic">
+                    Si configuras una cuenta de alquiler, el cliente podrá usar
+                    contratos maestros con límites de crédito y tiempo.
+                  </p>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">
+                    Saldo Inicial
+                    <span className="text-xs text-dark-400 ml-2">
+                      (opcional)
+                    </span>
+                  </label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    placeholder="0"
+                    min="0"
+                    step="1000"
+                    value={rentalAccount.initialBalance || ""}
+                    onChange={(e) =>
+                      setRentalAccount({
+                        ...rentalAccount,
+                        initialBalance: e.target.value
+                          ? Number(e.target.value)
+                          : undefined,
+                      })
+                    }
+                  />
+                  <p className="text-xs text-dark-400 mt-1">
+                    Saldo de crédito disponible al crear la cuenta.
+                  </p>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">
+                    Límite de Crédito
+                    <span className="text-xs text-dark-400 ml-2">
+                      (default: 0)
+                    </span>
+                  </label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    placeholder="0"
+                    min="0"
+                    step="100000"
+                    value={rentalAccount.creditLimit || ""}
+                    onChange={(e) =>
+                      setRentalAccount({
+                        ...rentalAccount,
+                        creditLimit: e.target.value
+                          ? Number(e.target.value)
+                          : undefined,
+                      })
+                    }
+                  />
+                  <p className="text-xs text-dark-400 mt-1">
+                    Monto máximo que el cliente puede tener en alquiler
+                    simultáneamente.
+                  </p>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">
+                    Límite de Tiempo (días)
+                    <span className="text-xs text-dark-400 ml-2">
+                      (default: 30)
+                    </span>
+                  </label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    placeholder="30"
+                    min="1"
+                    step="1"
+                    value={rentalAccount.timeLimit || ""}
+                    onChange={(e) =>
+                      setRentalAccount({
+                        ...rentalAccount,
+                        timeLimit: e.target.value
+                          ? Number(e.target.value)
+                          : undefined,
+                      })
+                    }
+                  />
+                  <p className="text-xs text-dark-400 mt-1">
+                    Días máximos que el cliente puede tener equipos rentados.
+                  </p>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">
+                    Monto de Alerta
+                    <span className="text-xs text-dark-400 ml-2">
+                      (opcional)
+                    </span>
+                  </label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    placeholder="0"
+                    min="0"
+                    step="10000"
+                    value={rentalAccount.alertAmount || ""}
+                    onChange={(e) =>
+                      setRentalAccount({
+                        ...rentalAccount,
+                        alertAmount: e.target.value
+                          ? Number(e.target.value)
+                          : undefined,
+                      })
+                    }
+                  />
+                  <p className="text-xs text-dark-400 mt-1">
+                    Si el saldo cae por debajo de este monto, se enviará una
+                    alerta.
+                  </p>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">
+                    Frecuencia de Estado de Cuenta
+                  </label>
+                  <select
+                    className="form-input"
+                    value={rentalAccount.statementFrequency || "monthly"}
+                    onChange={(e) =>
+                      setRentalAccount({
+                        ...rentalAccount,
+                        statementFrequency: e.target.value as any,
+                      })
+                    }
+                  >
+                    <option value="weekly">Semanal</option>
+                    <option value="biweekly">Quincenal</option>
+                    <option value="monthly">Mensual</option>
+                    <option value="manual">Manual</option>
+                  </select>
+                  <p className="text-xs text-dark-400 mt-1">
+                    Con qué frecuencia se genera el estado de cuenta.
+                  </p>
+                </div>
+
+                <div className="col-span-2 form-group">
+                  <label className="form-label">Notas de la Cuenta</label>
+                  <textarea
+                    className="form-input"
+                    rows={3}
+                    placeholder="Ej: Cliente VIP, revisar límites trimestralmente..."
+                    value={rentalAccount.notes || ""}
+                    onChange={(e) =>
+                      setRentalAccount({
+                        ...rentalAccount,
+                        notes: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+              </>
+            )}
 
             {/* ─── Facturación ─── */}
             <div className="col-span-2 mt-2">

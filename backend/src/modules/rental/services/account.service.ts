@@ -10,7 +10,10 @@ import { nowInBUTimezone } from "@core/utils/timezone-utils";
 export interface CreateAccountParams {
   tenantId: string;
   clientId: string;
+  businessUnitId?: string; // Para obtener currency
   initialBalance?: number;
+  creditLimit?: number; // Límite de crédito (v7.0)
+  timeLimit?: number; // Límite de días (v7.0)
   alertAmount?: number;
   statementFrequency?: "weekly" | "biweekly" | "monthly" | "manual";
   notes?: string;
@@ -47,6 +50,18 @@ export class AccountService {
    * Crear cuenta de alquiler para un cliente
    */
   async createAccount(params: CreateAccountParams) {
+    // Obtener currency de BusinessUnit si se proporciona
+    let currency = "USD"; // Default
+    if (params.businessUnitId) {
+      const bu = await prisma.businessUnit.findUnique({
+        where: { id: params.businessUnitId },
+        select: { currency: true },
+      });
+      if (bu) {
+        currency = bu.currency;
+      }
+    }
+
     const account = await prisma.clientAccount.create({
       data: {
         tenantId: params.tenantId,
@@ -54,8 +69,14 @@ export class AccountService {
         balance: new Decimal(params.initialBalance || 0),
         totalConsumed: new Decimal(0),
         totalReloaded: new Decimal(params.initialBalance || 0),
+        creditLimit: params.creditLimit
+          ? new Decimal(params.creditLimit)
+          : new Decimal(0),
+        timeLimit: params.timeLimit || 30, // Default 30 días
+        activeDays: 0,
         alertAmount: new Decimal(params.alertAmount || 0),
         statementFrequency: params.statementFrequency,
+        currency,
         notes: params.notes,
       },
       include: {
@@ -391,6 +412,266 @@ export class AccountService {
       alertAmount: Number(account.alertAmount),
       alertTriggered: account.alertTriggered,
       statementFrequency: account.statementFrequency,
+    };
+  }
+
+  /**
+   * Listar todas las cuentas del tenant/businessUnit
+   */
+  async listAccounts(params: {
+    tenantId: string;
+    businessUnitId?: string;
+    search?: string;
+    status?: "active" | "inactive" | "alert";
+    page?: number;
+    limit?: number;
+  }) {
+    const {
+      tenantId,
+      businessUnitId,
+      search,
+      status,
+      page = 1,
+      limit = 20,
+    } = params;
+    const skip = (page - 1) * limit;
+
+    const where: any = {
+      tenantId,
+    };
+
+    // Filtrar por businessUnit si se especifica
+    if (businessUnitId) {
+      where.client = {
+        clientBusinessUnits: {
+          some: {
+            businessUnitId,
+          },
+        },
+      };
+    }
+
+    // Búsqueda por nombre de cliente
+    if (search) {
+      where.client = {
+        ...where.client,
+        OR: [
+          { name: { contains: search, mode: "insensitive" } },
+          { displayName: { contains: search, mode: "insensitive" } },
+        ],
+      };
+    }
+
+    // Filtrar por estado
+    if (status === "alert") {
+      where.alertTriggered = true;
+    } else if (status === "active") {
+      where.client = {
+        ...where.client,
+        status: "ACTIVE",
+      };
+    } else if (status === "inactive") {
+      where.client = {
+        ...where.client,
+        status: { not: "ACTIVE" },
+      };
+    }
+
+    const [accounts, total] = await Promise.all([
+      prisma.clientAccount.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: "desc" },
+        include: {
+          client: {
+            select: {
+              id: true,
+              name: true,
+              displayName: true,
+              status: true,
+            },
+          },
+          _count: {
+            select: {
+              contracts: true,
+              movements: true,
+            },
+          },
+        },
+      }),
+      prisma.clientAccount.count({ where }),
+    ]);
+
+    // Calcular contratos y rentals activos para cada cuenta
+    const accountsWithDetails = await Promise.all(
+      accounts.map(async (account) => {
+        const [activeContracts, activeRentals] = await Promise.all([
+          prisma.rentalContract.count({
+            where: {
+              clientAccountId: account.id,
+              status: "active",
+            },
+          }),
+          prisma.assetRental.count({
+            where: {
+              contract: {
+                clientAccountId: account.id,
+              },
+              actualReturnDate: null,
+            },
+          }),
+        ]);
+
+        return {
+          id: account.id,
+          clientId: account.clientId,
+          clientName: account.client.displayName || account.client.name,
+          clientStatus: account.client.status,
+          balance: Number(account.balance),
+          creditLimit: Number(account.creditLimit),
+          timeLimit: account.timeLimit,
+          activeDays: account.activeDays,
+          totalConsumed: Number(account.totalConsumed),
+          totalReloaded: Number(account.totalReloaded),
+          alertAmount: Number(account.alertAmount),
+          alertTriggered: account.alertTriggered,
+          currency: account.currency,
+          activeContracts,
+          activeRentals,
+          totalContracts: account._count.contracts,
+          totalMovements: account._count.movements,
+          createdAt: account.createdAt,
+          updatedAt: account.updatedAt,
+        };
+      }),
+    );
+
+    return {
+      data: accountsWithDetails,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  /**
+   * Verificar disponibilidad de saldo y tiempo para una entrega
+   */
+  async checkAvailability(params: {
+    clientId: string;
+    items: Array<{
+      assetId: string;
+      estimatedDays: number;
+      dailyRate: number;
+    }>;
+  }): Promise<{
+    canDeliver: boolean;
+    estimatedCost: number;
+    estimatedDays: number;
+    currentBalance: number;
+    remainingBalance: number;
+    creditLimit: number;
+    currentActiveDays: number;
+    remainingDays: number;
+    timeLimit: number;
+    error?: string;
+    errorCode?: string;
+    shortfall?: number;
+    options?: string[];
+  }> {
+    // Obtener cuenta del cliente
+    const account = await prisma.clientAccount.findUnique({
+      where: { clientId: params.clientId },
+    });
+
+    if (!account) {
+      return {
+        canDeliver: false,
+        estimatedCost: 0,
+        estimatedDays: 0,
+        currentBalance: 0,
+        remainingBalance: 0,
+        creditLimit: 0,
+        currentActiveDays: 0,
+        remainingDays: 0,
+        timeLimit: 0,
+        error: "El cliente no tiene cuenta de alquiler configurada",
+        errorCode: "NO_ACCOUNT",
+      };
+    }
+
+    // Calcular costos estimados
+    const estimatedCost = params.items.reduce(
+      (sum, item) => sum + item.estimatedDays * item.dailyRate,
+      0,
+    );
+
+    // Calcular días máximos estimados (el mayor de todos los items)
+    const estimatedDays = Math.max(
+      ...params.items.map((item) => item.estimatedDays),
+    );
+
+    const currentBalance = Number(account.balance);
+    const creditLimit = Number(account.creditLimit);
+    const currentActiveDays = account.activeDays;
+    const timeLimit = account.timeLimit;
+
+    const remainingBalance = currentBalance - estimatedCost;
+    const remainingDays = timeLimit - (currentActiveDays + estimatedDays);
+
+    // Validar saldo
+    if (currentBalance < estimatedCost) {
+      const shortfall = estimatedCost - currentBalance;
+      return {
+        canDeliver: false,
+        estimatedCost,
+        estimatedDays,
+        currentBalance,
+        remainingBalance,
+        creditLimit,
+        currentActiveDays,
+        remainingDays,
+        timeLimit,
+        error: `Saldo insuficiente. Se requiere ${estimatedCost.toFixed(2)}, disponible: ${currentBalance.toFixed(2)}`,
+        errorCode: "INSUFFICIENT_BALANCE",
+        shortfall,
+        options: ["reload_balance", "request_limit_increase"],
+      };
+    }
+
+    // Validar tiempo
+    if (currentActiveDays + estimatedDays > timeLimit) {
+      return {
+        canDeliver: false,
+        estimatedCost,
+        estimatedDays,
+        currentBalance,
+        remainingBalance,
+        creditLimit,
+        currentActiveDays,
+        remainingDays,
+        timeLimit,
+        error: `Límite de tiempo excedido. Días activos: ${currentActiveDays}, estimados: ${estimatedDays}, límite: ${timeLimit}`,
+        errorCode: "TIME_LIMIT_EXCEEDED",
+        options: ["request_limit_increase"],
+      };
+    }
+
+    // Todo OK
+    return {
+      canDeliver: true,
+      estimatedCost,
+      estimatedDays,
+      currentBalance,
+      remainingBalance,
+      creditLimit,
+      currentActiveDays,
+      remainingDays,
+      timeLimit,
     };
   }
 }

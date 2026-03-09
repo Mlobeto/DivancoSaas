@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Layout } from "@/core/components/Layout";
 import { useAuthStore } from "@/store/auth.store";
 import { businessUnitService } from "@/core/services/businessUnit.service";
-import { AlertCircle, Clock3, Save } from "lucide-react";
+import { AlertCircle, Clock3, Save, DollarSign } from "lucide-react";
 
 const TIMEZONE_OPTIONS = [
   "UTC",
@@ -15,9 +15,20 @@ const TIMEZONE_OPTIONS = [
   "Europe/Madrid",
 ];
 
+const CURRENCY_OPTIONS = [
+  { code: "USD", name: "Dólar estadounidense", symbol: "$" },
+  { code: "COP", name: "Peso colombiano", symbol: "$" },
+  { code: "MXN", name: "Peso mexicano", symbol: "$" },
+  { code: "PEN", name: "Sol peruano", symbol: "S/" },
+  { code: "CLP", name: "Peso chileno", symbol: "$" },
+  { code: "ARS", name: "Peso argentino", symbol: "$" },
+  { code: "EUR", name: "Euro", symbol: "€" },
+];
+
 export function TimezonePage() {
   const { businessUnit } = useAuthStore();
   const [timezone, setTimezone] = useState("UTC");
+  const [currency, setCurrency] = useState("USD");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,11 +45,12 @@ export function TimezonePage() {
           businessUnit.id,
         );
         setTimezone(response.timezone || "UTC");
+        setCurrency(response.defaultCurrency || "USD");
       } catch (err) {
         setError(
           err instanceof Error
             ? err.message
-            : "No se pudo cargar la zona horaria actual",
+            : "No se pudo cargar la configuración regional",
         );
       } finally {
         setLoading(false);
@@ -58,13 +70,14 @@ export function TimezonePage() {
 
       await businessUnitService.updateRentalSettings(businessUnit.id, {
         timezone,
+        defaultCurrency: currency,
       });
-      setSuccess("Zona horaria actualizada correctamente");
+      setSuccess("Configuración regional actualizada correctamente");
     } catch (err) {
       setError(
         err instanceof Error
           ? err.message
-          : "No se pudo actualizar la zona horaria",
+          : "No se pudo actualizar la configuración regional",
       );
     } finally {
       setSaving(false);
@@ -73,7 +86,7 @@ export function TimezonePage() {
 
   if (!businessUnit) {
     return (
-      <Layout title="Zona horaria">
+      <Layout title="Configuración Regional">
         <div className="p-8">
           <div className="card bg-red-900/20 border-red-800 text-red-400">
             <div className="flex items-center gap-3">
@@ -88,8 +101,8 @@ export function TimezonePage() {
 
   return (
     <Layout
-      title="Zona horaria"
-      subtitle={`Configura la zona horaria de ${businessUnit.name}`}
+      title="Configuración Regional"
+      subtitle={`Configura la zona horaria y moneda de ${businessUnit.name}`}
     >
       <div className="p-8">
         <div className="max-w-2xl space-y-6">
@@ -111,32 +124,57 @@ export function TimezonePage() {
             </div>
           )}
 
-          <div className="card space-y-4">
+          <div className="card space-y-6">
             <h2 className="font-semibold text-dark-100 flex items-center gap-2">
               <Clock3 className="w-5 h-5 text-primary-400" />
-              Configuración de zona horaria
+              Configuración regional
             </h2>
 
-            <div>
-              <label className="block text-sm font-medium text-dark-200 mb-1">
-                Zona horaria
-              </label>
-              <select
-                value={timezone}
-                onChange={(e) => setTimezone(e.target.value)}
-                className="input"
-                disabled={loading || saving}
-              >
-                {TIMEZONE_OPTIONS.map((tz) => (
-                  <option key={tz} value={tz}>
-                    {tz}
-                  </option>
-                ))}
-              </select>
-              <p className="mt-2 text-xs text-dark-400">
-                Esta zona horaria se usa para operaciones y fechas de la unidad
-                de negocio.
-              </p>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-dark-200 mb-1">
+                  Zona horaria
+                </label>
+                <select
+                  value={timezone}
+                  onChange={(e) => setTimezone(e.target.value)}
+                  className="input"
+                  disabled={loading || saving}
+                >
+                  {TIMEZONE_OPTIONS.map((tz) => (
+                    <option key={tz} value={tz}>
+                      {tz}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-2 text-xs text-dark-400">
+                  Esta zona horaria se usa para operaciones y fechas de la
+                  unidad de negocio.
+                </p>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-dark-200 mb-1 flex items-center gap-2">
+                  <DollarSign className="w-4 h-4" />
+                  Moneda
+                </label>
+                <select
+                  value={currency}
+                  onChange={(e) => setCurrency(e.target.value)}
+                  className="input"
+                  disabled={loading || saving}
+                >
+                  {CURRENCY_OPTIONS.map((curr) => (
+                    <option key={curr.code} value={curr.code}>
+                      {curr.symbol} {curr.name} ({curr.code})
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-2 text-xs text-dark-400">
+                  Esta moneda se usará por defecto en contratos, cotizaciones y
+                  transacciones.
+                </p>
+              </div>
             </div>
 
             <div className="pt-2 flex justify-end">
@@ -154,7 +192,7 @@ export function TimezonePage() {
                 ) : (
                   <>
                     <Save className="w-4 h-4" />
-                    Guardar zona horaria
+                    Guardar configuración
                   </>
                 )}
               </button>

@@ -519,6 +519,203 @@ export class AccountController {
       });
     }
   }
+
+  /**
+   * @swagger
+   * /api/v1/rental/deliveries/check-availability:
+   *   post:
+   *     tags: [Deliveries]
+   *     summary: Verificar disponibilidad de saldo y tiempo para una entrega
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - clientId
+   *               - items
+   *             properties:
+   *               clientId:
+   *                 type: string
+   *                 format: uuid
+   *               items:
+   *                 type: array
+   *                 items:
+   *                   type: object
+   *                   required:
+   *                     - assetId
+   *                     - estimatedDays
+   *                     - dailyRate
+   *                   properties:
+   *                     assetId:
+   *                       type: string
+   *                       format: uuid
+   *                     estimatedDays:
+   *                       type: integer
+   *                       example: 10
+   *                     dailyRate:
+   *                       type: number
+   *                       example: 200000
+   *     responses:
+   *       200:
+   *         description: Resultado de la verificación
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                 data:
+   *                   type: object
+   *                   properties:
+   *                     canDeliver:
+   *                       type: boolean
+   *                     estimatedCost:
+   *                       type: number
+   *                     estimatedDays:
+   *                       type: integer
+   *                     currentBalance:
+   *                       type: number
+   *                     remainingBalance:
+   *                       type: number
+   *                     creditLimit:
+   *                       type: number
+   *                     currentActiveDays:
+   *                       type: integer
+   *                     remainingDays:
+   *                       type: integer
+   *                     timeLimit:
+   *                       type: integer
+   *                     error:
+   *                       type: string
+   *                     errorCode:
+   *                       type: string
+   *                     shortfall:
+   *                       type: number
+   *                     options:
+   *                       type: array
+   *                       items:
+   *                         type: string
+   */
+  async checkAvailability(req: Request, res: Response): Promise<void> {
+    try {
+      const { clientId, items } = req.body;
+
+      if (!clientId || !items || !Array.isArray(items) || items.length === 0) {
+        res.status(400).json({
+          success: false,
+          error: {
+            code: "INVALID_REQUEST",
+            message: "clientId and items array are required",
+          },
+        });
+        return;
+      }
+
+      // Validar items
+      for (const item of items) {
+        if (!item.assetId || !item.estimatedDays || !item.dailyRate) {
+          res.status(400).json({
+            success: false,
+            error: {
+              code: "INVALID_ITEM",
+              message:
+                "Each item must have assetId, estimatedDays, and dailyRate",
+            },
+          });
+          return;
+        }
+      }
+
+      const result = await accountService.checkAvailability({
+        clientId,
+        items,
+      });
+
+      res.json({
+        success: true,
+        data: result,
+      });
+    } catch (error: any) {
+      res.status(400).json({
+        success: false,
+        error: {
+          code: "CHECK_AVAILABILITY_ERROR",
+          message: error.message,
+        },
+      });
+    }
+  }
+
+  /**
+   * @swagger
+   * /api/v1/rental/accounts:
+   *   get:
+   *     tags: [Accounts]
+   *     summary: Listar todas las cuentas del tenant/businessUnit
+   *     parameters:
+   *       - in: query
+   *         name: search
+   *         schema:
+   *           type: string
+   *       - in: query
+   *         name: status
+   *         schema:
+   *           type: string
+   *           enum: [active, inactive, alert]
+   *       - in: query
+   *         name: page
+   *         schema:
+   *           type: integer
+   *           default: 1
+   *       - in: query
+   *         name: limit
+   *         schema:
+   *           type: integer
+   *           default: 20
+   *     responses:
+   *       200:
+   *         description: Lista de cuentas con paginación
+   */
+  async list(req: Request, res: Response): Promise<void> {
+    try {
+      const { tenantId, businessUnitId } = req.context || {};
+      const { search, status, page = 1, limit = 20 } = req.query;
+
+      if (!tenantId) {
+        res.status(401).json({
+          success: false,
+          error: { code: "UNAUTHORIZED", message: "Missing tenant context" },
+        });
+        return;
+      }
+
+      const result = await accountService.listAccounts({
+        tenantId,
+        businessUnitId,
+        search: search as string,
+        status: status as "active" | "inactive" | "alert",
+        page: parseInt(page as string),
+        limit: parseInt(limit as string),
+      });
+
+      res.json({
+        success: true,
+        data: result.data,
+        pagination: result.pagination,
+      });
+    } catch (error: any) {
+      res.status(400).json({
+        success: false,
+        error: {
+          code: "LIST_ACCOUNTS_ERROR",
+          message: error.message,
+        },
+      });
+    }
+  }
 }
 
 export const accountController = new AccountController();

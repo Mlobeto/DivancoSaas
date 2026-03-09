@@ -185,7 +185,7 @@ export class BusinessUnitService {
   async getRentalSettings(tenantId: string, id: string) {
     const businessUnit = await prisma.businessUnit.findFirst({
       where: { id, tenantId },
-      select: { id: true, settings: true },
+      select: { id: true, currency: true, settings: true },
     });
 
     if (!businessUnit) {
@@ -198,7 +198,7 @@ export class BusinessUnitService {
     return {
       businessUnitId: businessUnit.id,
       timezone: rental.timezone || "America/Bogota",
-      defaultCurrency: rental.defaultCurrency || "COP",
+      defaultCurrency: businessUnit.currency || "USD",
       secondaryCurrency: rental.secondaryCurrency || "USD",
     };
   }
@@ -214,7 +214,7 @@ export class BusinessUnitService {
   ) {
     const businessUnit = await prisma.businessUnit.findFirst({
       where: { id, tenantId },
-      select: { id: true, settings: true },
+      select: { id: true, currency: true, settings: true },
     });
 
     if (!businessUnit) {
@@ -224,24 +224,31 @@ export class BusinessUnitService {
     const currentSettings = (businessUnit.settings as any) || {};
     const currentRental = currentSettings.rental || {};
 
+    // Preparar actualizaciones
+    const updateData: any = {};
+
+    // Currency se actualiza en el campo directo de la tabla
+    if (data.defaultCurrency !== undefined) {
+      updateData.currency = data.defaultCurrency;
+    }
+
+    // Timezone y secondaryCurrency van en settings.rental
     const nextSettings = {
       ...currentSettings,
       rental: {
         ...currentRental,
         ...(data.timezone !== undefined ? { timezone: data.timezone } : {}),
-        ...(data.defaultCurrency !== undefined
-          ? { defaultCurrency: data.defaultCurrency }
-          : {}),
         ...(data.secondaryCurrency !== undefined
           ? { secondaryCurrency: data.secondaryCurrency }
           : {}),
       },
     };
+    updateData.settings = nextSettings;
 
     const updated = await prisma.businessUnit.update({
       where: { id, tenantId },
-      data: { settings: nextSettings },
-      select: { id: true, settings: true },
+      data: updateData,
+      select: { id: true, currency: true, settings: true },
     });
 
     const rental = (updated.settings as any)?.rental || {};
@@ -249,7 +256,7 @@ export class BusinessUnitService {
     return {
       businessUnitId: updated.id,
       timezone: rental.timezone || "America/Bogota",
-      defaultCurrency: rental.defaultCurrency || "COP",
+      defaultCurrency: updated.currency || "USD",
       secondaryCurrency: rental.secondaryCurrency || "USD",
     };
   }

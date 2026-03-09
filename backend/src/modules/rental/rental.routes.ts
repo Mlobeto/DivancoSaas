@@ -53,6 +53,13 @@ const upload = multer({
 // CLIENT ACCOUNTS (Cuentas Compartidas)
 // ============================================
 
+// Listar cuentas (debe ir ANTES del POST para evitar conflictos)
+router.get(
+  "/accounts",
+  authorize("accounts:read"),
+  accountController.list.bind(accountController),
+);
+
 // Crear cuenta de cliente
 router.post(
   "/accounts",
@@ -100,6 +107,17 @@ router.get(
   "/accounts/:id/statement",
   authorize("accounts:read"),
   accountController.getStatement.bind(accountController),
+);
+
+// ============================================
+// DELIVERIES (Entregas y Verificación)
+// ============================================
+
+// Verificar disponibilidad de saldo y tiempo para una entrega
+router.post(
+  "/deliveries/check-availability",
+  authorize("accounts:read"),
+  accountController.checkAvailability.bind(accountController),
 );
 
 // ============================================

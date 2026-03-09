@@ -84,7 +84,14 @@ export class ContractService {
    * Crear contrato de alquiler
    */
   async createContract(params: CreateContractParams) {
-    // 1. Verificar o crear ClientAccount
+    // 1. Obtener currency de BusinessUnit
+    const bu = await prisma.businessUnit.findUnique({
+      where: { id: params.businessUnitId },
+      select: { currency: true },
+    });
+    const currency = bu?.currency || "USD";
+
+    // 2. Verificar o crear ClientAccount
     let clientAccount = await prisma.clientAccount.findUnique({
       where: { clientId: params.clientId },
     });
@@ -94,19 +101,20 @@ export class ContractService {
       clientAccount = await accountService.createAccount({
         tenantId: params.tenantId,
         clientId: params.clientId,
+        businessUnitId: params.businessUnitId,
         initialBalance: 0,
         alertAmount: 100000, // Default $100k
         statementFrequency: "monthly",
       });
     }
 
-    // 2. Generar código único
+    // 3. Generar código único
     const code = await this.generateContractCode(
       params.tenantId,
       params.businessUnitId,
     );
 
-    // 3. Crear contrato
+    // 4. Crear contrato
     const contract = await prisma.rentalContract.create({
       data: {
         tenantId: params.tenantId,
@@ -122,6 +130,7 @@ export class ContractService {
         estimatedTotal: params.estimatedTotal
           ? new Decimal(params.estimatedTotal)
           : undefined,
+        currency,
         templateId: params.templateId,
         pdfUrl: params.pdfUrl,
         notes: params.notes,
@@ -147,7 +156,14 @@ export class ContractService {
    * Contratos sin items específicos, que usan addendums para entregas
    */
   async createMasterContract(params: CreateMasterContractParams) {
-    // 1. Verificar o crear ClientAccount
+    // 1. Obtener currency de BusinessUnit
+    const bu = await prisma.businessUnit.findUnique({
+      where: { id: params.businessUnitId },
+      select: { currency: true },
+    });
+    const currency = bu?.currency || "USD";
+
+    // 2. Verificar o crear ClientAccount
     let clientAccount = await prisma.clientAccount.findUnique({
       where: { clientId: params.clientId },
     });
@@ -157,24 +173,25 @@ export class ContractService {
       clientAccount = await accountService.createAccount({
         tenantId: params.tenantId,
         clientId: params.clientId,
+        businessUnitId: params.businessUnitId,
         initialBalance: 0,
         alertAmount: 100000, // Default $100k
         statementFrequency: "monthly",
       });
     }
 
-    // 2. Generar código único
+    // 3. Generar código único
     const code = await this.generateContractCode(
       params.tenantId,
       params.businessUnitId,
     );
 
-    // 3. Determinar límites acordados
+    // 4. Determinar límites acordados
     const agreedCreditLimit =
       params.agreedCreditLimit || clientAccount.creditLimit.toNumber();
     const agreedTimeLimit = params.agreedTimeLimit || clientAccount.timeLimit;
 
-    // 4. Crear master contract
+    // 5. Crear master contract
     const contract = await prisma.rentalContract.create({
       data: {
         tenantId: params.tenantId,
@@ -194,6 +211,7 @@ export class ContractService {
         status: "active",
         startDate: params.startDate,
         estimatedEndDate: params.estimatedEndDate,
+        currency,
         templateId: params.templateId,
         pdfUrl: params.pdfUrl,
         notes: params.notes,

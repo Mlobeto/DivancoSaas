@@ -312,7 +312,7 @@ export default function DynamicNavigation({
       },
       {
         id: "timezone",
-        label: "Zona horaria",
+        label: "Configuración Regional",
         path: "/settings/timezone",
         icon: "clock",
       },

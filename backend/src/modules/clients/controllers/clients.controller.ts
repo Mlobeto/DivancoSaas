@@ -44,6 +44,14 @@ export class ClientsController {
     }
   }
 
+  /**
+   * Crear cliente
+   *
+   * Body puede incluir (opcional):
+   * - rentalAccount: { initialBalance, creditLimit, timeLimit, alertAmount, statementFrequency, notes }
+   *
+   * Si se proporciona rentalAccount, se crea automáticamente una ClientAccount con los límites configurados
+   */
   static async createClient(req: Request, res: Response, next: NextFunction) {
     try {
       const context = validateBusinessUnitContext(req, res);

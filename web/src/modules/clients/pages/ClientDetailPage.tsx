@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/core/components/Layout";
 import { useAuthStore } from "@/store/auth.store";
 import { clientService } from "../services/client.service";
+import { ClientAccountCard } from "../components/ClientAccountCard";
 import type { ClientSummary } from "../types/client.types";
 
 export function ClientDetailPage() {
@@ -268,8 +269,11 @@ export function ClientDetailPage() {
             </div>
           </div>
 
-          {/* Columna lateral: riesgo y movimientos */}
+          {/* Columna lateral: cuenta de alquiler, riesgo y movimientos */}
           <div className="space-y-6">
+            {/* Cuenta de alquiler (si existe) */}
+            {id && <ClientAccountCard clientId={id} />}
+
             <div className="card">
               <h2 className="text-sm font-semibold text-primary-300 mb-4">
                 Perfil de riesgo y ranking
