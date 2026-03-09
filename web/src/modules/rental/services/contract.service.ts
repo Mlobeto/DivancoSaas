@@ -43,7 +43,7 @@ export interface RentalContract {
   clientAccount?: {
     id: string;
     balance: number;
-    balanceLimit: number;
+    creditLimit: number;
     timeLimit: number;
   };
   activeRentals?: Array<{

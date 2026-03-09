@@ -430,9 +430,9 @@ export function ContractDetailPage() {
         <DeliveryFormModal
           contractId={contract.id}
           clientId={contract.client.id}
-          clientName={contract.client.businessName}
+          clientName={contract.client.name}
           currency={contract.currency}
-          currentBalanceLimit={contract.clientAccount.balanceLimit}
+          currentBalanceLimit={contract.clientAccount.creditLimit}
           currentTimeLimit={contract.clientAccount.timeLimit}
           onClose={() => setShowDeliveryModal(false)}
           onSuccess={() => {
