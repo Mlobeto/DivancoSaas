@@ -489,12 +489,11 @@ export class AccountService {
               id: true,
               name: true,
               displayName: true,
-              status: true,
             },
           },
           _count: {
             select: {
-              contracts: true,
+              rentalContracts: true,
               movements: true,
             },
           },
@@ -527,7 +526,7 @@ export class AccountService {
           id: account.id,
           clientId: account.clientId,
           clientName: account.client.displayName || account.client.name,
-          clientStatus: account.client.status,
+          clientStatus: "ACTIVE", // Status is in ClientBusinessUnit relation
           balance: Number(account.balance),
           creditLimit: Number(account.creditLimit),
           timeLimit: account.timeLimit,
@@ -539,7 +538,7 @@ export class AccountService {
           currency: account.currency,
           activeContracts,
           activeRentals,
-          totalContracts: account._count.contracts,
+          totalContracts: account._count.rentalContracts,
           totalMovements: account._count.movements,
           createdAt: account.createdAt,
           updatedAt: account.updatedAt,

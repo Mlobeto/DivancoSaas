@@ -1569,6 +1569,9 @@ model ClientAccount {
   lastStatementSent  DateTime?
   nextStatementDue   DateTime?
 
+  // Moneda de la cuenta (heredada de BusinessUnit)
+  currency String @default("USD")
+
   // Metadata
   notes    String? @db.Text
   metadata Json?
