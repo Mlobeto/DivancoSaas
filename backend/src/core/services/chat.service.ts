@@ -241,17 +241,28 @@ class ChatService {
     // Obtener cliente para nombre
     const client = await prisma.client.findUnique({
       where: { id: params.clientId },
-      select: { businessName: true },
+      select: { name: true, displayName: true },
     });
 
-    // Obtener usuarios con rol admin u owner del tenant
-    const approvers = await prisma.user.findMany({
-      where: {
-        tenantId: params.tenantId,
-        role: { in: ["admin", "owner"] },
-      },
-      select: { id: true, email: true },
-    });
+    // Obtener usuarios con rol owner/admin en sus BUs + SUPER_ADMIN
+    const [buMembers, superAdmins] = await Promise.all([
+      prisma.userBusinessUnit.findMany({
+        where: {
+          businessUnit: { tenantId: params.tenantId },
+          role: { name: { in: ["OWNER", "ADMIN"] } },
+        },
+        select: { userId: true, user: { select: { id: true, email: true } } },
+      }),
+      prisma.user.findMany({
+        where: { tenantId: params.tenantId, role: "SUPER_ADMIN" },
+        select: { id: true, email: true },
+      }),
+    ]);
+
+    const approvers = [
+      ...buMembers.map((m) => ({ id: m.user.id, email: m.user.email })),
+      ...superAdmins,
+    ];
 
     if (approvers.length === 0) {
       throw new Error("No hay usuarios aprobadores disponibles");
@@ -263,17 +274,18 @@ class ChatService {
     );
 
     // Crear sala de chat especial
+    const clientName = client?.displayName || client?.name || params.clientId;
     const room = await prisma.chatRoom.create({
       data: {
         tenantId: params.tenantId,
-        name: `Solicitud: Aumento de límite - ${client?.businessName || params.clientId}`,
+        name: `Solicitud: Aumento de límite - ${clientName}`,
         isGroup: true,
         createdBy: params.requestedBy,
         requestType: "limit_increase",
         requestStatus: "pending",
         requestMetadata: {
           clientId: params.clientId,
-          clientName: client?.businessName,
+          clientName,
           currentBalanceLimit: params.currentBalanceLimit,
           currentTimeLimit: params.currentTimeLimit,
           requestedBalanceLimit: params.requestedBalanceLimit,
@@ -295,7 +307,7 @@ class ChatService {
     await this.sendMessage({
       roomId: room.id,
       senderId: params.requestedBy,
-      body: `📋 **Solicitud de Aumento de Límite**\n\n**Cliente:** ${client?.businessName || params.clientId}\n\n**Límites Actuales:**\n• Saldo: ${params.currentBalanceLimit}\n• Días Activos: ${params.currentTimeLimit}\n\n**Límites Solicitados:**\n• Saldo: ${params.requestedBalanceLimit}\n• Días Activos: ${params.requestedTimeLimit}\n\n**Justificación:**\n${params.reason}`,
+      body: `📋 **Solicitud de Aumento de Límite**\n\n**Cliente:** ${clientName}\n\n**Límites Actuales:**\n• Saldo: ${params.currentBalanceLimit}\n• Días Activos: ${params.currentTimeLimit}\n\n**Límites Solicitados:**\n• Saldo: ${params.requestedBalanceLimit}\n• Días Activos: ${params.requestedTimeLimit}\n\n**Justificación:**\n${params.reason}`,
     });
 
     // Emitir notificación a aprobadores
@@ -304,7 +316,7 @@ class ChatService {
         this.io!.to(`user:${approverId}`).emit("request:new", {
           type: "limit_increase",
           roomId: room.id,
-          clientName: client?.businessName,
+          clientName,
         });
       });
     }
@@ -364,8 +376,8 @@ class ChatService {
     const metadata = room.requestMetadata as any;
     const clientId = metadata.clientId;
 
-    // Actualizar límites en RentalAccount
-    await prisma.rentalAccount.update({
+    // Actualizar límites en ClientAccount
+    await prisma.clientAccount.update({
       where: { clientId },
       data: {
         balanceLimit: params.approvedBalanceLimit,
