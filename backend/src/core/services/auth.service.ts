@@ -36,6 +36,7 @@ interface AuthResponse {
     email: string;
     firstName: string;
     lastName: string;
+    avatar?: string;
     tenantId: string | null;
     role?: string; // SUPER_ADMIN or USER
   };
