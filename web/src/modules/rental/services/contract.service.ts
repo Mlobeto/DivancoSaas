@@ -36,12 +36,15 @@ export interface RentalContract {
   client?: {
     id: string;
     name: string;
+    businessName: string;
     email?: string;
     phone?: string;
   };
   clientAccount?: {
     id: string;
     balance: number;
+    balanceLimit: number;
+    timeLimit: number;
   };
   activeRentals?: Array<{
     id: string;

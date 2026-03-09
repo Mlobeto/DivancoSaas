@@ -20,4 +20,6 @@ export { QuotationTemplatesPage } from "./pages/QuotationTemplatesPage.tsx";
 export { TemplateFormPage } from "./pages/TemplateFormPage.tsx";
 export { TemplatePreviewPage } from "./pages/TemplatePreviewPage.tsx";
 export { ContractsListPage } from "./pages/ContractsListPage.tsx";
+export { ContractDetailPage } from "./pages/ContractDetailPage.tsx";
 export { AccountsListPage } from "./pages/AccountsListPage.tsx";
+export { LimitRequestsPage } from "./pages/LimitRequestsPage.tsx";

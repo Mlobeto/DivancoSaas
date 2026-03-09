@@ -3477,12 +3477,18 @@ model ChatRoom {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
+  // Campos para solicitudes/requests
+  requestType     String? // "limit_increase", null si es chat normal
+  requestStatus   String? // "pending", "approved", "rejected", "cancelled"
+  requestMetadata Json? // Datos específicos de la solicitud
+
   tenant   Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   members  ChatRoomMember[]
   messages ChatMessage[]
 
   @@index([tenantId])
   @@index([businessUnitId])
+  @@index([requestType, requestStatus])
   @@map("chat_rooms")
 }
 

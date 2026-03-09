@@ -40,6 +40,12 @@ const ContractsListPage = lazy(() =>
   })),
 );
 
+const ContractDetailPage = lazy(() =>
+  import("@/modules/rental/pages/ContractDetailPage").then((m) => ({
+    default: m.ContractDetailPage,
+  })),
+);
+
 const QuotationTemplatesPage = lazy(() =>
   import("@/modules/rental/pages/QuotationTemplatesPage").then((m) => ({
     default: m.QuotationTemplatesPage,
@@ -61,6 +67,12 @@ const TemplatePreviewPage = lazy(() =>
 const AccountsListPage = lazy(() =>
   import("@/modules/rental/pages/AccountsListPage").then((m) => ({
     default: m.AccountsListPage,
+  })),
+);
+
+const LimitRequestsPage = lazy(() =>
+  import("@/modules/rental/pages/LimitRequestsPage").then((m) => ({
+    default: m.LimitRequestsPage,
   })),
 );
 
@@ -158,7 +170,7 @@ export const rentalRoutes: VerticalRouteConfig = {
     },
     {
       path: "contracts/:id",
-      element: ContractsListPage,
+      element: ContractDetailPage,
       meta: {
         title: "Contract Details",
         breadcrumb: "Details",
@@ -224,6 +236,17 @@ export const rentalRoutes: VerticalRouteConfig = {
         icon: "wallet",
       },
       chunkName: "accounts-list",
+    },
+    {
+      path: "limit-requests",
+      element: LimitRequestsPage,
+      permissions: ["rental:billing:approve", "OWNER", "ADMIN"],
+      meta: {
+        title: "Limit Requests",
+        breadcrumb: "Limit Requests",
+        icon: "trending-up",
+      },
+      chunkName: "limit-requests",
     },
 
     //------------------------------------------------------------

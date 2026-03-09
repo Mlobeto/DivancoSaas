@@ -94,4 +94,117 @@ router.delete("/messages/:id", async (req: Request, res: Response) => {
   res.json({ success: true });
 });
 
+// ═══════════════════════════════════════════════════════════════
+// LIMIT INCREASE REQUESTS
+// ═══════════════════════════════════════════════════════════════
+
+// Crear solicitud de aumento de límite
+router.post("/requests/limit-increase", async (req: Request, res: Response) => {
+  const userId = (req as any).user.userId;
+  const tenantId = (req as any).user.tenantId;
+  const {
+    clientId,
+    currentBalanceLimit,
+    currentTimeLimit,
+    requestedBalanceLimit,
+    requestedTimeLimit,
+    reason,
+  } = req.body;
+
+  if (
+    !clientId ||
+    currentBalanceLimit == null ||
+    currentTimeLimit == null ||
+    requestedBalanceLimit == null ||
+    requestedTimeLimit == null ||
+    !reason
+  ) {
+    res.status(400).json({
+      success: false,
+      error: "Faltan campos requeridos",
+    });
+    return;
+  }
+
+  const room = await chatService.createLimitIncreaseRequest({
+    tenantId,
+    clientId,
+    requestedBy: userId,
+    currentBalanceLimit,
+    currentTimeLimit,
+    requestedBalanceLimit,
+    requestedTimeLimit,
+    reason,
+  });
+
+  res.status(201).json({ success: true, data: room });
+});
+
+// Listar solicitudes pendientes
+router.get("/requests/pending", async (req: Request, res: Response) => {
+  const userId = (req as any).user.userId;
+  const tenantId = (req as any).user.tenantId;
+  const requests = await chatService.listPendingRequests(tenantId, userId);
+  res.json({ success: true, data: requests });
+});
+
+// Aprobar solicitud
+router.post(
+  "/requests/:roomId/approve",
+  async (req: Request, res: Response) => {
+    const userId = (req as any).user.userId;
+    const { roomId } = req.params;
+    const { approvedBalanceLimit, approvedTimeLimit, notes } = req.body;
+
+    if (approvedBalanceLimit == null || approvedTimeLimit == null) {
+      res.status(400).json({
+        success: false,
+        error: "approvedBalanceLimit y approvedTimeLimit son requeridos",
+      });
+      return;
+    }
+
+    const result = await chatService.approveRequest({
+      roomId,
+      approvedBy: userId,
+      approvedBalanceLimit,
+      approvedTimeLimit,
+      notes,
+    });
+
+    res.json({ success: true, data: result });
+  },
+);
+
+// Rechazar solicitud
+router.post("/requests/:roomId/reject", async (req: Request, res: Response) => {
+  const userId = (req as any).user.userId;
+  const { roomId } = req.params;
+  const { reason } = req.body;
+
+  if (!reason) {
+    res.status(400).json({
+      success: false,
+      error: "reason es requerido",
+    });
+    return;
+  }
+
+  const result = await chatService.rejectRequest({
+    roomId,
+    rejectedBy: userId,
+    reason,
+  });
+
+  res.json({ success: true, data: result });
+});
+
+// Cancelar solicitud
+router.post("/requests/:roomId/cancel", async (req: Request, res: Response) => {
+  const userId = (req as any).user.userId;
+  const { roomId } = req.params;
+  const result = await chatService.cancelRequest(roomId, userId);
+  res.json({ success: true, data: result });
+});
+
 export default router;
