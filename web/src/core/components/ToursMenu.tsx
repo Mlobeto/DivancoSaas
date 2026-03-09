@@ -34,16 +34,23 @@ export function ToursMenu() {
       description: "Guía para crear un activo nuevo",
       path: "/inventory/assets/new",
     },
+    {
+      name: "branding-setup",
+      label: "🎨 Configuración de Marca",
+      description: "Guía para configurar logo y colores",
+      path: "/settings/branding",
+    },
+    {
+      name: "email-templates",
+      label: "📧 Plantillas de Email",
+      description: "Guía para crear plantillas de correo",
+      path: "/settings/branding",
+    },
   ];
 
   // Check which tours have been completed
-  const completedTours = tours.filter((tour) =>
-    localStorage.getItem(`tour-completed-${tour.name}`),
-  );
-
-  if (completedTours.length === 0) {
-    return null; // Don't show menu if no tours completed yet
-  }
+  const isTourCompleted = (tourName: string) =>
+    !!localStorage.getItem(`tour-completed-${tourName}`);
 
   return (
     <div className="relative">
@@ -64,15 +71,16 @@ export function ToursMenu() {
               <span>Tours Guiados</span>
             </div>
             <p className="text-xs text-dark-400 mt-1">
-              Revisa los tours que ya completaste
+              Explora las guías interactivas del sistema
             </p>
           </div>
 
           <div className="p-2 max-h-80 overflow-y-auto">
-            {completedTours.map((tour) => {
+            {tours.map((tour) => {
               const isCurrentPage = location.pathname.startsWith(
                 tour.path.split("/").slice(0, -1).join("/"),
               );
+              const isCompleted = isTourCompleted(tour.name);
 
               return (
                 <div
@@ -88,9 +96,11 @@ export function ToursMenu() {
                         {tour.description}
                       </div>
                     </div>
-                    <div className="px-2 py-0.5 bg-green-900/30 text-green-400 text-xs rounded border border-green-800">
-                      ✓ Visto
-                    </div>
+                    {isCompleted && (
+                      <div className="px-2 py-0.5 bg-green-900/30 text-green-400 text-xs rounded border border-green-800">
+                        ✓ Visto
+                      </div>
+                    )}
                   </div>
 
                   <button
@@ -106,7 +116,11 @@ export function ToursMenu() {
                     }}
                     className="w-full px-3 py-1.5 bg-primary-600 hover:bg-primary-700 text-white text-xs font-medium rounded transition-colors"
                   >
-                    {isCurrentPage ? "🔄 Ver de nuevo" : "▶️ Ir y ver tour"}
+                    {isCurrentPage
+                      ? isCompleted
+                        ? "🔄 Ver de nuevo"
+                        : "▶️ Ver tour"
+                      : "▶️ Ir y ver tour"}
                   </button>
                 </div>
               );

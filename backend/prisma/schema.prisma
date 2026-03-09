@@ -1565,7 +1565,7 @@ model ClientAccount {
   lastAlertSent  DateTime?
 
   // Estados de cuenta (para cliente)
-  statementFrequency String? // "weekly" | "biweekly" | "monthly" | "manual"
+  statementFrequency String? // "daily" | "weekly" | "biweekly" | "monthly" | "manual"
   lastStatementSent  DateTime?
   nextStatementDue   DateTime?
 
@@ -3081,7 +3081,7 @@ model EmailTemplate {
   // Información básica
   name        String // Nombre de la plantilla (ej: "Bienvenida Cliente", "Recordatorio Pago")
   description String?
-  emailType   String // welcome | quotation_sent | contract_signed | payment_reminder | invoice | custom
+  emailType   String // welcome | quotation_sent | contract_signed | payment_reminder | contract_statement | custom
   isActive    Boolean @default(true)
   isDefault   Boolean @default(false)
 

@@ -455,6 +455,7 @@ export class AuthService {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
+        avatar: user.avatar,
         tenantId: user.tenant?.id || null,
         role: user.role, // ← Include global role (SUPER_ADMIN or USER)
       },

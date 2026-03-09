@@ -39,6 +39,70 @@ const CO_TAX_REGIMES = [
   { value: "REGIMEN_SIMPLE", label: "Régimen Simple de Tributación (SIMPLE)" },
 ];
 
+const MX_TAX_REGIMES = [
+  { value: "601", label: "601 – General de Ley Personas Morales" },
+  { value: "603", label: "603 – Personas Morales con Fines no Lucrativos" },
+  { value: "605", label: "605 – Sueldos y Salarios e Ingresos Asimilados" },
+  { value: "606", label: "606 – Arrendamiento" },
+  { value: "608", label: "608 – Demás ingresos" },
+  {
+    value: "610",
+    label:
+      "610 – Residentes en el Extranjero sin Establecimiento Permanente en México",
+  },
+  {
+    value: "611",
+    label: "611 – Ingresos por Dividendos (socios y accionistas)",
+  },
+  {
+    value: "612",
+    label:
+      "612 – Personas Físicas con Actividades Empresariales y Profesionales",
+  },
+  { value: "614", label: "614 – Ingresos por intereses" },
+  { value: "616", label: "616 – Sin obligaciones fiscales" },
+  { value: "621", label: "621 – Incorporación Fiscal" },
+  {
+    value: "625",
+    label:
+      "625 – Régimen de las Actividades Empresariales con ingresos a través de Plataformas Tecnológicas",
+  },
+  { value: "626", label: "626 – Régimen Simplificado de Confianza" },
+];
+
+const AR_TAX_REGIMES = [
+  { value: "MONOTRIBUTO", label: "Monotributo" },
+  { value: "RESPONSABLE_INSCRIPTO", label: "Responsable Inscripto" },
+  { value: "EXENTO", label: "Exento" },
+  { value: "NO_RESPONSABLE", label: "No Responsable" },
+  { value: "CONSUMIDOR_FINAL", label: "Consumidor Final" },
+];
+
+const CL_TAX_REGIMES = [
+  { value: "PRIMERA_CATEGORIA", label: "Primera Categoría" },
+  { value: "REGIMEN_14_A", label: "Régimen 14A – Renta Atribuida" },
+  { value: "REGIMEN_14_B", label: "Régimen 14B – Semi Integrado" },
+  { value: "REGIMEN_14_TER", label: "Régimen 14 TER – Empresas Pequeñas" },
+  { value: "PRO_PYME", label: "Pro Pyme General" },
+  { value: "PRO_PYME_TRANSPARENTE", label: "Pro Pyme Transparente" },
+];
+
+// Función para obtener regímenes tributarios según país
+const getTaxRegimesByCountry = (countryCode: string | undefined) => {
+  switch (countryCode) {
+    case "MX":
+      return MX_TAX_REGIMES;
+    case "AR":
+      return AR_TAX_REGIMES;
+    case "CL":
+      return CL_TAX_REGIMES;
+    case "CO":
+    default:
+      // Por defecto Colombia
+      return CO_TAX_REGIMES;
+  }
+};
+
 const CO_FISCAL_RESPONSIBILITIES = [
   { value: "O-13", label: "O-13 – Gran contribuyente" },
   { value: "O-14", label: "O-14 – Agente de retención en la fuente" },
@@ -112,7 +176,7 @@ export function ClientWizardPage() {
     creditLimit?: number;
     timeLimit?: number;
     alertAmount?: number;
-    statementFrequency?: "weekly" | "biweekly" | "monthly" | "manual";
+    statementFrequency?: "daily" | "weekly" | "biweekly" | "monthly" | "manual";
     notes?: string;
   }>({});
 
@@ -292,23 +356,10 @@ export function ClientWizardPage() {
         <form onSubmit={handleSubmit} className="card space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Basic Info */}
-            <div className="col-span-2">
+            <div className="col-span-2 sticky top-0 z-10 bg-dark-800 pt-2">
               <h3 className="text-sm font-semibold text-primary-300 mb-4 border-b border-dark-700 pb-2">
                 Información Principal
               </h3>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Razón Social / Nombre *</label>
-              <input
-                type="text"
-                className="form-input"
-                value={formData.name || ""}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-                required
-              />
             </div>
 
             <div className="form-group">
@@ -360,7 +411,7 @@ export function ClientWizardPage() {
             </div>
 
             {/* Contact Info */}
-            <div className="col-span-2 mt-2">
+            <div className="col-span-2 mt-2 sticky top-0 z-10 bg-dark-800 pt-2">
               <h3 className="text-sm font-semibold text-primary-300 mb-4 border-b border-dark-700 pb-2">
                 Datos de Contacto
               </h3>
@@ -391,7 +442,7 @@ export function ClientWizardPage() {
             </div>
 
             {/* Business Unit Configuration */}
-            <div className="col-span-2 mt-2">
+            <div className="col-span-2 mt-2 sticky top-0 z-10 bg-dark-800 pt-2">
               <h3 className="text-sm font-semibold text-primary-300 mb-4 border-b border-dark-700 pb-2">
                 Configuración en esta Unidad de Negocio
               </h3>
@@ -462,7 +513,7 @@ export function ClientWizardPage() {
             </div>
 
             {/* ─── Cuenta de Alquiler (Rental) ─── */}
-            <div className="col-span-2 mt-2">
+            <div className="col-span-2 mt-2 sticky top-0 z-10 bg-dark-800 pt-2">
               <button
                 type="button"
                 className="flex items-center gap-2 text-sm font-semibold text-primary-300 w-full border-b border-dark-700 pb-2"
@@ -501,7 +552,7 @@ export function ClientWizardPage() {
                     className="form-input"
                     placeholder="0"
                     min="0"
-                    step="1000"
+                    step="1"
                     value={rentalAccount.initialBalance || ""}
                     onChange={(e) =>
                       setRentalAccount({
@@ -529,7 +580,7 @@ export function ClientWizardPage() {
                     className="form-input"
                     placeholder="0"
                     min="0"
-                    step="100000"
+                    step="1"
                     value={rentalAccount.creditLimit || ""}
                     onChange={(e) =>
                       setRentalAccount({
@@ -586,7 +637,7 @@ export function ClientWizardPage() {
                     className="form-input"
                     placeholder="0"
                     min="0"
-                    step="10000"
+                    step="1"
                     value={rentalAccount.alertAmount || ""}
                     onChange={(e) =>
                       setRentalAccount({
@@ -617,6 +668,7 @@ export function ClientWizardPage() {
                       })
                     }
                   >
+                    <option value="daily">Diario</option>
                     <option value="weekly">Semanal</option>
                     <option value="biweekly">Quincenal</option>
                     <option value="monthly">Mensual</option>
@@ -646,7 +698,7 @@ export function ClientWizardPage() {
             )}
 
             {/* ─── Facturación ─── */}
-            <div className="col-span-2 mt-2">
+            <div className="col-span-2 mt-2 sticky top-0 z-10 bg-dark-800 pt-2">
               <button
                 type="button"
                 className="flex items-center gap-2 text-sm font-semibold text-primary-300 w-full border-b border-dark-700 pb-2"
@@ -666,6 +718,20 @@ export function ClientWizardPage() {
 
             {showBilling && (
               <>
+                {/* Razón Social */}
+                <div className="col-span-2 form-group">
+                  <label className="form-label">Razón Social / Nombre *</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={formData.name || ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, name: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+
                 {/* Tipo de documento */}
                 <div className="form-group">
                   <label className="form-label">Tipo de Documento</label>
@@ -742,29 +808,27 @@ export function ClientWizardPage() {
                   )}
                 </div>
 
-                {/* Régimen tributario — solo Colombia */}
-                {(formData.countryCode === "CO" || !formData.countryCode) && (
-                  <div className="form-group">
-                    <label className="form-label">Régimen Tributario</label>
-                    <select
-                      className="form-input"
-                      value={taxProfile.taxRegime || ""}
-                      onChange={(e) =>
-                        setTaxProfile({
-                          ...taxProfile,
-                          taxRegime: e.target.value,
-                        })
-                      }
-                    >
-                      <option value="">-- Seleccionar régimen --</option>
-                      {CO_TAX_REGIMES.map((r) => (
-                        <option key={r.value} value={r.value}>
-                          {r.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
+                {/* Régimen tributario */}
+                <div className="form-group">
+                  <label className="form-label">Régimen Tributario</label>
+                  <select
+                    className="form-input"
+                    value={taxProfile.taxRegime || ""}
+                    onChange={(e) =>
+                      setTaxProfile({
+                        ...taxProfile,
+                        taxRegime: e.target.value,
+                      })
+                    }
+                  >
+                    <option value="">-- Seleccionar régimen --</option>
+                    {getTaxRegimesByCountry(formData.countryCode).map((r) => (
+                      <option key={r.value} value={r.value}>
+                        {r.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
                 {/* Responsabilidad fiscal — solo Colombia */}
                 {(formData.countryCode === "CO" || !formData.countryCode) && (

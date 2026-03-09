@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Layout } from "@/core/components/Layout";
 import { useAuthStore } from "@/store/auth.store";
 import { businessUnitService } from "@/core/services/businessUnit.service";
@@ -26,6 +27,7 @@ const CURRENCY_OPTIONS = [
 ];
 
 export function TimezonePage() {
+  const navigate = useNavigate();
   const { businessUnit } = useAuthStore();
   const [timezone, setTimezone] = useState("UTC");
   const [currency, setCurrency] = useState("USD");
@@ -33,6 +35,17 @@ export function TimezonePage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  // Limpiar mensajes de éxito automáticamente y redirigir
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => {
+        setSuccess(null);
+        navigate("/");
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [success, navigate]);
 
   useEffect(() => {
     const loadBusinessUnit = async () => {

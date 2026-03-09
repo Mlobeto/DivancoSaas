@@ -13,7 +13,7 @@ interface ColorSectionProps {
 export function ColorSection({ formData, onChange }: ColorSectionProps) {
   return (
     <div className="space-y-4">
-      <div>
+      <div data-tour="color-primary">
         <label className="block text-sm font-medium mb-2">
           Color Principal
         </label>
@@ -35,7 +35,7 @@ export function ColorSection({ formData, onChange }: ColorSectionProps) {
         </div>
       </div>
 
-      <div>
+      <div data-tour="color-secondary">
         <label className="block text-sm font-medium mb-2">
           Color Secundario
         </label>

@@ -60,12 +60,15 @@ export function BrandingForm({
         title="Logo"
         icon={<Upload className="w-5 h-5 text-primary-400" />}
         defaultOpen={false}
+        dataTour="tab-logo"
       >
-        <LogoSection
-          formData={formData}
-          onUpload={onLogoUpload}
-          onRemove={handleRemoveLogo}
-        />
+        <div data-tour="logo-upload">
+          <LogoSection
+            formData={formData}
+            onUpload={onLogoUpload}
+            onRemove={handleRemoveLogo}
+          />
+        </div>
       </CollapsibleSection>
 
       {/* Color Section */}
@@ -73,8 +76,11 @@ export function BrandingForm({
         title="Colores"
         icon={<Palette className="w-5 h-5 text-primary-400" />}
         defaultOpen={false}
+        dataTour="tab-colors"
       >
-        <ColorSection formData={formData} onChange={onFormChange} />
+        <div data-tour="color-primary">
+          <ColorSection formData={formData} onChange={onFormChange} />
+        </div>
       </CollapsibleSection>
 
       {/* Font Section */}

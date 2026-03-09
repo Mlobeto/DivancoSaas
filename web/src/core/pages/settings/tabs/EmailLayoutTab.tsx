@@ -7,6 +7,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Plus, Loader2, Save, Star, Power, Trash2 } from "lucide-react";
 import { emailTemplateApi } from "@/core/services/email-template.api";
 import type { EmailTemplate } from "@/core/types/email-template.types";
+import { useTour } from "@/core/hooks/useTour";
+import { emailTemplatesTour } from "../tours/emailTemplatesTour";
+import Joyride from "react-joyride";
 
 interface EmailLayoutTabProps {
   businessUnitId: string;
@@ -52,7 +55,11 @@ const EMAIL_TYPES: EmailTypeOption[] = [
     label: "Recordatorio de Pago",
     description: "Recordatorio de pago pendiente",
   },
-  { id: "invoice", label: "Factura", description: "Envío de factura" },
+  {
+    id: "contract_statement",
+    label: "Corte de Contrato",
+    description: "Informe del contrato abierto según plazo acordado",
+  },
 ];
 
 const EMPTY_FORM: EmailTemplateFormData = {
@@ -94,6 +101,13 @@ export function EmailLayoutTab({ businessUnitId }: EmailLayoutTabProps) {
   const [formData, setFormData] = useState<EmailTemplateFormData>(EMPTY_FORM);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  // Tour
+  const { tourState, steps, handleJoyrideCallback } = useTour({
+    tourName: "email-templates",
+    steps: emailTemplatesTour,
+    autoStart: true,
+  });
 
   const selectedTemplate = useMemo(() => {
     if (!selectedTemplateId) return null;
@@ -318,6 +332,31 @@ export function EmailLayoutTab({ businessUnitId }: EmailLayoutTabProps) {
 
   return (
     <div className="space-y-6">
+      {/* Product Tour */}
+      <Joyride
+        steps={steps}
+        run={tourState.run}
+        callback={handleJoyrideCallback}
+        continuous
+        showProgress
+        showSkipButton
+        scrollToFirstStep
+        disableScrolling={false}
+        styles={{
+          options: {
+            primaryColor: "#3b82f6",
+            zIndex: 10000,
+          },
+        }}
+        locale={{
+          back: "Atrás",
+          close: "Cerrar",
+          last: "Finalizar",
+          next: "Siguiente",
+          skip: "Saltar",
+        }}
+      />
+
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold">Plantillas de Email</h3>
@@ -326,6 +365,7 @@ export function EmailLayoutTab({ businessUnitId }: EmailLayoutTabProps) {
           </p>
         </div>
         <button
+          data-tour="create-template"
           className="btn-primary flex items-center gap-2"
           onClick={handleCreateForType}
           type="button"
@@ -348,7 +388,10 @@ export function EmailLayoutTab({ businessUnitId }: EmailLayoutTabProps) {
       )}
 
       <div className="card">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-2 p-4 border-b border-dark-700">
+        <div
+          data-tour="email-types"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-2 p-4 border-b border-dark-700"
+        >
           {EMAIL_TYPES.map((type) => {
             const count = templates.filter(
               (template) => template.emailType === type.id,
@@ -358,6 +401,7 @@ export function EmailLayoutTab({ businessUnitId }: EmailLayoutTabProps) {
             return (
               <button
                 key={type.id}
+                data-tour="email-type-button"
                 type="button"
                 className={`text-left p-3 rounded border transition-colors ${
                   isSelected
@@ -377,7 +421,10 @@ export function EmailLayoutTab({ businessUnitId }: EmailLayoutTabProps) {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-0">
-          <div className="border-r border-dark-700 p-4 space-y-3">
+          <div
+            data-tour="template-list"
+            className="border-r border-dark-700 p-4 space-y-3"
+          >
             <h4 className="font-medium text-sm text-dark-300">
               Plantillas del tipo
             </h4>
@@ -477,6 +524,7 @@ export function EmailLayoutTab({ businessUnitId }: EmailLayoutTabProps) {
                   </button>
                 )}
                 <button
+                  data-tour="save-template"
                   type="button"
                   className="btn-primary flex items-center gap-2"
                   onClick={handleSave}
@@ -494,6 +542,7 @@ export function EmailLayoutTab({ businessUnitId }: EmailLayoutTabProps) {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <input
+                data-tour="template-name"
                 className="input"
                 placeholder="Nombre"
                 value={formData.name}
@@ -502,6 +551,7 @@ export function EmailLayoutTab({ businessUnitId }: EmailLayoutTabProps) {
                 }
               />
               <input
+                data-tour="template-subject"
                 className="input"
                 placeholder="Asunto"
                 value={formData.subject}
@@ -554,7 +604,10 @@ export function EmailLayoutTab({ businessUnitId }: EmailLayoutTabProps) {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <label className="flex items-center gap-2 text-sm text-dark-300">
+              <label
+                data-tour="use-branding"
+                className="flex items-center gap-2 text-sm text-dark-300"
+              >
                 <input
                   type="checkbox"
                   checked={formData.useBranding}
@@ -586,6 +639,7 @@ export function EmailLayoutTab({ businessUnitId }: EmailLayoutTabProps) {
             <div>
               <label className="block text-sm font-medium mb-2">HTML</label>
               <textarea
+                data-tour="html-content"
                 className="input w-full min-h-[220px] font-mono text-sm"
                 value={formData.htmlContent}
                 onChange={(e) =>

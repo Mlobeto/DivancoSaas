@@ -11,6 +11,7 @@ interface CollapsibleSectionProps {
   icon: React.ReactNode;
   children: React.ReactNode;
   defaultOpen?: boolean;
+  dataTour?: string;
 }
 
 export function CollapsibleSection({
@@ -18,11 +19,12 @@ export function CollapsibleSection({
   icon,
   children,
   defaultOpen = true,
+  dataTour,
 }: CollapsibleSectionProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
-    <div className="card">
+    <div className="card" data-tour={dataTour}>
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex items-center justify-between mb-4 hover:text-primary-400 transition-colors"

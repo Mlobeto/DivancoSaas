@@ -12,7 +12,9 @@ export type TourName =
   | "asset-templates-list"
   | "asset-templates-create"
   | "asset-create"
-  | "quotations-create";
+  | "quotations-create"
+  | "branding-setup"
+  | "email-templates";
 
 interface UseTourOptions {
   tourName: TourName;
@@ -64,17 +66,12 @@ export function useTour({ tourName, steps, autoStart = true }: UseTourOptions) {
   };
 
   const handleJoyrideCallback = (data: any) => {
-    const { status, action, index } = data;
+    const { status, action } = data;
 
     if (status === "finished" || status === "skipped") {
       completeTour();
     } else if (action === "close") {
       stopTour();
-    } else if (action === "next" || action === "prev") {
-      setTourState((prev) => ({
-        ...prev,
-        stepIndex: index + (action === "next" ? 1 : -1),
-      }));
     }
   };
 

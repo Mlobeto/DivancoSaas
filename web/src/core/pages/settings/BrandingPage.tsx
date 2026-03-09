@@ -19,12 +19,22 @@ import { Layout } from "@/core/components/Layout";
 import { EmailLayoutTab, GeneralBrandingTab } from "./tabs";
 import { AlertCircle } from "lucide-react";
 import { useBranding } from "@/core/hooks/useBranding";
+import { useTour } from "@/core/hooks/useTour";
+import { brandingSetupTour } from "./tours/brandingSetupTour";
+import Joyride from "react-joyride";
 
 export function BrandingPage() {
   const { businessUnit } = useAuthStore();
 
   // Use branding hook for messages (error/success)
   const { error, success } = useBranding(businessUnit?.id);
+
+  // Tour
+  const { tourState, steps, handleJoyrideCallback } = useTour({
+    tourName: "branding-setup",
+    steps: brandingSetupTour,
+    autoStart: true,
+  });
 
   if (!businessUnit) {
     return (
@@ -50,6 +60,31 @@ export function BrandingPage() {
       title="Configuración de Marca"
       subtitle={`Personaliza la identidad visual de ${businessUnit.name}`}
     >
+      {/* Product Tour */}
+      <Joyride
+        steps={steps}
+        run={tourState.run}
+        callback={handleJoyrideCallback}
+        continuous
+        showProgress
+        showSkipButton
+        scrollToFirstStep
+        disableScrolling={false}
+        styles={{
+          options: {
+            primaryColor: "#3b82f6",
+            zIndex: 10000,
+          },
+        }}
+        locale={{
+          back: "Atrás",
+          close: "Cerrar",
+          last: "Finalizar",
+          next: "Siguiente",
+          skip: "Saltar",
+        }}
+      />
+
       <div className="p-8">
         {/* Global Messages */}
         {error && (
@@ -76,7 +111,10 @@ export function BrandingPage() {
           businessUnitName={businessUnit.name}
         />
 
-        <div className="mt-10 pt-8 border-t border-dark-700">
+        <div
+          className="mt-10 pt-8 border-t border-dark-700"
+          data-tour="tab-email"
+        >
           <EmailLayoutTab businessUnitId={businessUnit.id} />
         </div>
       </div>
