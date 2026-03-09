@@ -380,7 +380,7 @@ class ChatService {
     await prisma.clientAccount.update({
       where: { clientId },
       data: {
-        balanceLimit: params.approvedBalanceLimit,
+        creditLimit: params.approvedBalanceLimit,
         timeLimit: params.approvedTimeLimit,
       },
     });
