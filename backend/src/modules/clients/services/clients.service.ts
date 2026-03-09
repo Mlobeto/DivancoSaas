@@ -175,18 +175,27 @@ export class ClientsService {
         },
       });
 
+    // Buscar ClientAccount si existe
+    const rentalAccount = await this.prisma.clientAccount.findUnique({
+      where: {
+        clientId,
+      },
+    });
+
     return {
       ...client,
       status: bu?.status ?? ClientStatus.ACTIVE,
       tags: bu?.tags ?? [],
       businessUnitId: context.businessUnitId,
       rentalCreditProfile,
+      rentalAccount,
     };
   }
 
   async updateClient(context: Context, clientId: string, payload: any) {
     // Campos globales del cliente
-    const { name, displayName, email, phone, status, tags } = payload;
+    const { name, displayName, email, phone, status, tags, rentalAccount } =
+      payload;
 
     const updated = await this.prisma.$transaction(async (tx) => {
       const client = await tx.client.update({
@@ -222,6 +231,51 @@ export class ClientsService {
             tags: tags ?? undefined,
           },
         });
+      }
+
+      // Actualizar o crear ClientAccount si se proporciona rentalAccount
+      if (rentalAccount) {
+        const existingAccount = await tx.clientAccount.findUnique({
+          where: { clientId },
+        });
+
+        if (existingAccount) {
+          // Actualizar cuenta existente
+          await tx.clientAccount.update({
+            where: { clientId },
+            data: {
+              creditLimit: rentalAccount.creditLimit ?? undefined,
+              timeLimit: rentalAccount.timeLimit ?? undefined,
+              alertAmount: rentalAccount.alertAmount ?? undefined,
+              statementFrequency: rentalAccount.statementFrequency ?? undefined,
+              notes: rentalAccount.notes ?? undefined,
+            },
+          });
+        } else {
+          // Crear nueva cuenta
+          const bu = await tx.businessUnit.findUnique({
+            where: { id: context.businessUnitId },
+            select: { currency: true },
+          });
+          const currency = bu?.currency || "USD";
+
+          await tx.clientAccount.create({
+            data: {
+              tenantId: context.tenantId,
+              clientId,
+              balance: rentalAccount.initialBalance || 0,
+              totalConsumed: 0,
+              totalReloaded: rentalAccount.initialBalance || 0,
+              creditLimit: rentalAccount.creditLimit || 0,
+              timeLimit: rentalAccount.timeLimit || 30,
+              activeDays: 0,
+              alertAmount: rentalAccount.alertAmount || 0,
+              statementFrequency: rentalAccount.statementFrequency,
+              currency,
+              notes: rentalAccount.notes,
+            },
+          });
+        }
       }
 
       return client;

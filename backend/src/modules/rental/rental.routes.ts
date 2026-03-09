@@ -49,6 +49,33 @@ const upload = multer({
   },
 });
 
+// Configure multer for payment proofs (images and PDFs)
+const proofUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB max
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedMimes = [
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+      "application/pdf",
+    ];
+    if (allowedMimes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(
+        new Error(
+          "Only images (JPG, PNG, GIF, WEBP) and PDF files are allowed",
+        ),
+      );
+    }
+  },
+});
+
 // ============================================
 // CLIENT ACCOUNTS (Cuentas Compartidas)
 // ============================================
@@ -85,6 +112,7 @@ router.get(
 router.post(
   "/accounts/:id/reload",
   authorize("accounts:update"),
+  proofUpload.single("proofFile"),
   accountController.reload.bind(accountController),
 );
 

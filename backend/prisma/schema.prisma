@@ -1542,12 +1542,12 @@ model ClientAccount {
   clientId String @unique
 
   // Saldo compartido entre todos los contratos del cliente
-  balance       Decimal @default(0) @db.Decimal(12, 2) // Saldo actual
-  totalConsumed Decimal @default(0) @db.Decimal(12, 2) // Total consumido (todos los contratos)
-  totalReloaded Decimal @default(0) @db.Decimal(12, 2) // Total recargado
+  balance       Decimal @default(0) @db.Decimal(15, 2) // Saldo actual
+  totalConsumed Decimal @default(0) @db.Decimal(15, 2) // Total consumido (todos los contratos)
+  totalReloaded Decimal @default(0) @db.Decimal(15, 2) // Total recargado
 
   // Límites configurables (v7.0 - Master Contract)
-  creditLimit Decimal @default(0) @db.Decimal(12, 2) // Límite máximo de dinero
+  creditLimit Decimal @default(0) @db.Decimal(15, 2) // Límite máximo de dinero
   timeLimit   Int     @default(30) // Límite de días de alquiler
 
   // Tracking de uso de límites
@@ -1560,7 +1560,7 @@ model ClientAccount {
   overriddenAt     DateTime? // Cuándo se aprobó
 
   // Alertas (para usuarios internos)
-  alertAmount    Decimal   @default(0) @db.Decimal(12, 2) // Monto en el cual alertar
+  alertAmount    Decimal   @default(0) @db.Decimal(15, 2) // Monto en el cual alertar
   alertTriggered Boolean   @default(false)
   lastAlertSent  DateTime?
 
@@ -2299,9 +2299,9 @@ model RentalAccountMovement {
   movementType String // "INITIAL_CREDIT" | "CREDIT_RELOAD" | "DAILY_CHARGE" | "ADJUSTMENT" | "WITHDRAWAL_START" | "RETURN_END"
 
   // Montos
-  amount        Decimal @db.Decimal(12, 2) // Monto (negativo para cargos)
-  balanceBefore Decimal @db.Decimal(12, 2) // Saldo de ClientAccount ANTES
-  balanceAfter  Decimal @db.Decimal(12, 2) // Saldo de ClientAccount DESPUÉS
+  amount        Decimal @db.Decimal(15, 2) // Monto (negativo para cargos)
+  balanceBefore Decimal @db.Decimal(15, 2) // Saldo de ClientAccount ANTES
+  balanceAfter  Decimal @db.Decimal(15, 2) // Saldo de ClientAccount DESPUÉS
 
   // Referencias
   assetRentalId String? // Si es cargo por asset específico

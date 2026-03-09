@@ -13,7 +13,6 @@ export function LoginPage() {
   const [formData, setFormData] = useState<LoginRequest>({
     email: "",
     password: "",
-    tenantSlug: "",
   });
 
   const loginMutation = useMutation({
@@ -107,21 +106,6 @@ export function LoginPage() {
                   setFormData({ ...formData, password: e.target.value })
                 }
                 required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Tenant (opcional)
-              </label>
-              <input
-                type="text"
-                className="input"
-                placeholder="nombre-empresa"
-                value={formData.tenantSlug}
-                onChange={(e) =>
-                  setFormData({ ...formData, tenantSlug: e.target.value })
-                }
               />
             </div>
 

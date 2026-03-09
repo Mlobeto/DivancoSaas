@@ -243,6 +243,20 @@ export function ClientWizardPage() {
           setTaxProfile((prev) => ({ ...prev, taxIdNumber: parts[0] }));
         }
       }
+
+      // Cargar cuenta de alquiler si existe
+      const existingRental = (existingClient as any).rentalAccount;
+      if (existingRental) {
+        setRentalAccount({
+          initialBalance: Number(existingRental.balance) || undefined,
+          creditLimit: Number(existingRental.creditLimit) || undefined,
+          timeLimit: existingRental.timeLimit || undefined,
+          alertAmount: Number(existingRental.alertAmount) || undefined,
+          statementFrequency: existingRental.statementFrequency || undefined,
+          notes: existingRental.notes || undefined,
+        });
+        setShowRentalAccount(true);
+      }
     }
   }, [existingClient]);
 
@@ -346,6 +360,7 @@ export function ClientWizardPage() {
           ? "Modificar datos del cliente"
           : "Registrar un cliente en esta Business Unit"
       }
+      className="sticky top-0 z-20 bg-dark-900"
       actions={
         <button onClick={() => navigate("/clients")} className="btn-ghost">
           Cancelar

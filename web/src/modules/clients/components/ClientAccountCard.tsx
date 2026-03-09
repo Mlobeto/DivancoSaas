@@ -15,6 +15,7 @@ export function ClientAccountCard({ clientId }: ClientAccountCardProps) {
   const [reloadDescription, setReloadDescription] = useState("");
   const [reloadMethod, setReloadMethod] = useState("");
   const [reloadReference, setReloadReference] = useState("");
+  const [proofFile, setProofFile] = useState<File | null>(null);
 
   const { data, isLoading, error } = useQuery<ClientAccountInfo>({
     queryKey: ["clientAccount", clientId],
@@ -29,12 +30,14 @@ export function ClientAccountCard({ clientId }: ClientAccountCardProps) {
       description: string;
       paymentMethod?: string;
       referenceNumber?: string;
+      proofFile?: File | null;
     }) =>
       accountService.reloadBalance(params.accountId, {
         amount: params.amount,
         description: params.description,
         paymentMethod: params.paymentMethod,
         referenceNumber: params.referenceNumber,
+        proofFile: params.proofFile,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["clientAccount", clientId] });
@@ -43,6 +46,7 @@ export function ClientAccountCard({ clientId }: ClientAccountCardProps) {
       setReloadDescription("");
       setReloadMethod("");
       setReloadReference("");
+      setProofFile(null);
     },
   });
 
@@ -55,6 +59,7 @@ export function ClientAccountCard({ clientId }: ClientAccountCardProps) {
       description: reloadDescription,
       paymentMethod: reloadMethod || undefined,
       referenceNumber: reloadReference || undefined,
+      proofFile,
     });
   };
 
@@ -281,6 +286,31 @@ export function ClientAccountCard({ clientId }: ClientAccountCardProps) {
                   value={reloadReference}
                   onChange={(e) => setReloadReference(e.target.value)}
                 />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">
+                  Comprobante de pago
+                  <span className="text-xs text-dark-400 ml-2">(opcional)</span>
+                </label>
+                <input
+                  type="file"
+                  className="form-input"
+                  accept="image/*,.pdf"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    setProofFile(file || null);
+                  }}
+                />
+                <p className="text-xs text-dark-400 mt-1">
+                  Sube el comprobante de transferencia o pago (imágenes o PDF,
+                  máx 5MB)
+                </p>
+                {proofFile && (
+                  <p className="text-xs text-primary-400 mt-1">
+                    ✓ {proofFile.name}
+                  </p>
+                )}
               </div>
 
               {reloadMutation.error && (

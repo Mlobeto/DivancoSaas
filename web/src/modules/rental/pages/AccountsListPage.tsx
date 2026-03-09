@@ -32,6 +32,7 @@ export function AccountsListPage() {
     useState<AccountListItem | null>(null);
   const [reloadAmount, setReloadAmount] = useState("");
   const [reloadDescription, setReloadDescription] = useState("");
+  const [proofFile, setProofFile] = useState<File | null>(null);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["accounts", tenant?.id, businessUnit?.id, search, status, page],
@@ -50,14 +51,17 @@ export function AccountsListPage() {
       accountId,
       amount,
       description,
+      proofFile,
     }: {
       accountId: string;
       amount: number;
       description: string;
+      proofFile?: File | null;
     }) =>
       accountService.reloadBalance(accountId, {
         amount,
         description,
+        proofFile,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({
@@ -67,6 +71,7 @@ export function AccountsListPage() {
       setSelectedAccount(null);
       setReloadAmount("");
       setReloadDescription("");
+      setProofFile(null);
     },
   });
 
@@ -82,6 +87,7 @@ export function AccountsListPage() {
       accountId: selectedAccount.id,
       amount: Number(reloadAmount),
       description: reloadDescription,
+      proofFile,
     });
   };
 
@@ -334,6 +340,31 @@ export function AccountsListPage() {
                   onChange={(e) => setReloadDescription(e.target.value)}
                   required
                 />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">
+                  Comprobante de pago
+                  <span className="text-xs text-dark-400 ml-2">(opcional)</span>
+                </label>
+                <input
+                  type="file"
+                  className="form-input"
+                  accept="image/*,.pdf"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    setProofFile(file || null);
+                  }}
+                />
+                <p className="text-xs text-dark-400 mt-1">
+                  Sube el comprobante de transferencia o pago (imágenes o PDF,
+                  máx 5MB)
+                </p>
+                {proofFile && (
+                  <p className="text-xs text-primary-400 mt-1">
+                    ✓ {proofFile.name}
+                  </p>
+                )}
               </div>
 
               {reloadMutation.error && (

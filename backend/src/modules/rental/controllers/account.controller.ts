@@ -218,8 +218,9 @@ export class AccountController {
   async reload(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const { userId } = req.context || {};
+      const { userId, tenantId, businessUnitId } = req.context || {};
       const { amount, description, paymentReference, notes } = req.body;
+      const file = (req as any).file; // Multer adds this
 
       if (!userId) {
         res.status(401).json({
@@ -248,6 +249,9 @@ export class AccountController {
         createdBy: userId,
         paymentMethod: paymentReference ? "MANUAL" : undefined,
         referenceNumber: paymentReference,
+        proofFile: file,
+        tenantId,
+        businessUnitId,
       });
 
       res.json({

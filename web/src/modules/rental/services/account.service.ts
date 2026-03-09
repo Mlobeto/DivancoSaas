@@ -70,6 +70,7 @@ export interface ReloadBalanceParams {
   description: string;
   paymentMethod?: string;
   referenceNumber?: string;
+  proofFile?: File | null;
 }
 
 export interface CheckAvailabilityParams {
@@ -162,10 +163,38 @@ class AccountService {
     accountId: string,
     params: ReloadBalanceParams,
   ): Promise<{ message: string; newBalance: number }> {
+    // Si hay archivo, usar FormData
+    if (params.proofFile) {
+      const formData = new FormData();
+      formData.append("amount", params.amount.toString());
+      formData.append("description", params.description);
+      if (params.paymentMethod) {
+        formData.append("paymentMethod", params.paymentMethod);
+      }
+      if (params.referenceNumber) {
+        formData.append("referenceNumber", params.referenceNumber);
+      }
+      formData.append("proofFile", params.proofFile);
+
+      const response = await apiClient.post<{
+        success: boolean;
+        data: { message: string; newBalance: number };
+      }>(`/rental/accounts/${accountId}/reload`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      return response.data.data;
+    }
+
+    // Sin archivo, enviar JSON normal
     const response = await apiClient.post<{
       success: boolean;
       data: { message: string; newBalance: number };
-    }>(`/rental/accounts/${accountId}/reload`, params);
+    }>(`/rental/accounts/${accountId}/reload`, {
+      amount: params.amount,
+      description: params.description,
+      paymentMethod: params.paymentMethod,
+      referenceNumber: params.referenceNumber,
+    });
     return response.data.data;
   }
 

@@ -13,9 +13,16 @@ interface LayoutProps {
   title?: string;
   subtitle?: string;
   actions?: React.ReactNode;
+  className?: string;
 }
 
-export function Layout({ children, title, subtitle, actions }: LayoutProps) {
+export function Layout({
+  children,
+  title,
+  subtitle,
+  actions,
+  className,
+}: LayoutProps) {
   const { user, tenant, businessUnit, role, permissions, setAuth, clearAuth } =
     useAuthStore();
   const [showBuSelector, setShowBuSelector] = useState(false);
@@ -346,7 +353,9 @@ export function Layout({ children, title, subtitle, actions }: LayoutProps) {
 
       {/* Main Header - Page Title & Actions */}
       {(title || actions) && (
-        <div className="bg-dark-800 border-b border-dark-700">
+        <div
+          className={`bg-dark-800 border-b border-dark-700 ${className || ""}`}
+        >
           <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>

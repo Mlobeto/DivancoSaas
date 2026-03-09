@@ -6,6 +6,7 @@
 import prisma from "@config/database";
 import { Decimal } from "@prisma/client/runtime/library";
 import { nowInBUTimezone } from "@core/utils/timezone-utils";
+import { azureBlobStorageService } from "@shared/storage/azure-blob-storage.service";
 
 export interface CreateAccountParams {
   tenantId: string;
@@ -26,6 +27,9 @@ export interface ReloadCreditParams {
   paymentMethod?: string;
   referenceNumber?: string;
   createdBy: string;
+  proofFile?: Express.Multer.File;
+  tenantId?: string;
+  businessUnitId?: string;
 }
 
 export interface AccountMovementParams {
@@ -159,6 +163,26 @@ export class AccountService {
 
     const newBalance = Number(account.balance) + params.amount;
 
+    // Si hay archivo, subirlo a Azure
+    let proofUrl: string | undefined;
+    if (params.proofFile) {
+      try {
+        const uploadResult = await azureBlobStorageService.uploadFile({
+          file: params.proofFile.buffer,
+          fileName: params.proofFile.originalname,
+          contentType: params.proofFile.mimetype,
+          folder: "payment-proofs",
+          tenantId: params.tenantId || account.tenantId,
+          businessUnitId: params.businessUnitId,
+          containerName: "payment-proofs",
+        });
+        proofUrl = uploadResult.url;
+      } catch (error) {
+        console.error("[AccountService] Error uploading proof file:", error);
+        // No fallar la recarga si el archivo no se puede subir
+      }
+    }
+
     // Actualizar cuenta
     const updatedAccount = await prisma.clientAccount.update({
       where: { id: params.accountId },
@@ -171,12 +195,13 @@ export class AccountService {
       },
     });
 
-    // Crear movimiento
+    // Crear movimiento con evidencia si existe
     await this.createMovement({
       accountId: params.accountId,
       movementType: "CREDIT_RELOAD",
       amount: params.amount,
       description: params.description,
+      evidenceUrls: proofUrl ? [proofUrl] : undefined,
       metadata: {
         paymentMethod: params.paymentMethod,
         referenceNumber: params.referenceNumber,
@@ -443,7 +468,7 @@ export class AccountService {
     // Filtrar por businessUnit si se especifica
     if (businessUnitId) {
       where.client = {
-        clientBusinessUnits: {
+        businessUnits: {
           some: {
             businessUnitId,
           },
