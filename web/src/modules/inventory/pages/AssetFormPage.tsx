@@ -451,7 +451,6 @@ export function AssetFormPage() {
         <Joyride
           steps={steps}
           run={tourState.run}
-          stepIndex={tourState.stepIndex}
           continuous
           showSkipButton
           showProgress

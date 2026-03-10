@@ -24,13 +24,11 @@ interface UseTourOptions {
 
 interface TourState {
   run: boolean;
-  stepIndex: number;
 }
 
 export function useTour({ tourName, steps, autoStart = true }: UseTourOptions) {
   const [tourState, setTourState] = useState<TourState>({
     run: false,
-    stepIndex: 0,
   });
 
   const storageKey = `tour-completed-${tourName}`;
@@ -42,17 +40,17 @@ export function useTour({ tourName, steps, autoStart = true }: UseTourOptions) {
     if (!completed && autoStart) {
       // Small delay to let the page render
       setTimeout(() => {
-        setTourState({ run: true, stepIndex: 0 });
+        setTourState({ run: true });
       }, 500);
     }
   }, [storageKey, autoStart]);
 
   const startTour = () => {
-    setTourState({ run: true, stepIndex: 0 });
+    setTourState({ run: true });
   };
 
   const stopTour = () => {
-    setTourState({ run: false, stepIndex: 0 });
+    setTourState({ run: false });
   };
 
   const completeTour = () => {

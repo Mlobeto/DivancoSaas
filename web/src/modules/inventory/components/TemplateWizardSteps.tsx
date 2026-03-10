@@ -444,25 +444,24 @@ export function BasicInfoStep({
         <FileText className="w-5 h-5" /> Información Básica
       </h2>
 
-      {/* Info box: reglas de peso y stock */}
-      <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg text-sm space-y-1">
-        <p className="text-blue-300">
-          <span className="font-semibold">⚖️ Peso:</span> Todos los activos
-          requieren peso. Se solicitará al crear cada unidad.
-        </p>
-        {formData.category === AssetCategory.IMPLEMENT && (
-          <p className="text-blue-300">
-            <span className="font-semibold">📦 Stock mínimo:</span> Los
-            implementos deben especificar stock mínimo de alerta.
-          </p>
-        )}
-        {formData.category === AssetCategory.VEHICLE && (
-          <p className="text-blue-300">
-            <span className="font-semibold">👷 Operario:</span> Los vehículos
-            siempre se alquilan con operario incluido.
-          </p>
-        )}
-      </div>
+      {/* Info box: stock mínimo */}
+      {(formData.category === AssetCategory.IMPLEMENT ||
+        formData.category === AssetCategory.VEHICLE) && (
+        <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg text-sm space-y-1">
+          {formData.category === AssetCategory.IMPLEMENT && (
+            <p className="text-blue-300">
+              <span className="font-semibold">📦 Stock mínimo:</span> Los
+              implementos deben especificar stock mínimo de alerta.
+            </p>
+          )}
+          {formData.category === AssetCategory.VEHICLE && (
+            <p className="text-blue-300">
+              <span className="font-semibold">🚗 Vehículos:</span> Requieren
+              patente/placa única, kilometraje, SOAT, tecnomecánica.
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Name + Description */}
       <div className="grid grid-cols-1 gap-4">
@@ -778,7 +777,7 @@ const SPEC_POOL_EQUIPMENT: SpecPoolItem[] = [
   { key: "Modelo", icon: "📋", label: "Modelo" },
   { key: "Año de fabricación", icon: "📅", label: "Año de fabricación" },
   { key: "Color", icon: "🎨", label: "Color" },
-  
+
   // ═══ MOTOR Y MECÁNICA ═══
   { key: "Motor", icon: "⚙️", label: "Motor" },
   { key: "Cilindraje", icon: "🔧", label: "Cilindraje" },
@@ -786,37 +785,56 @@ const SPEC_POOL_EQUIPMENT: SpecPoolItem[] = [
   { key: "Tipo de transmisión", icon: "⚙️", label: "Tipo de transmisión" },
   { key: "Número de ejes", icon: "🛞", label: "Número de ejes" },
   { key: "Combustible", icon: "⛽", label: "Tipo de combustible" },
-  { key: "Capacidad del tanque", icon: "⛽", label: "Capacidad del tanque (L)" },
-  
+  {
+    key: "Capacidad del tanque",
+    icon: "⛽",
+    label: "Capacidad del tanque (L)",
+  },
+
   // ═══ TRACKING INICIAL ═══
   { key: "Horómetro inicial", icon: "⏱️", label: "Horómetro inicial (hrs)" },
   { key: "Kilometraje inicial", icon: "🛣️", label: "Kilometraje inicial (km)" },
-  
+
   // ═══ DOCUMENTACIÓN - FECHAS VENCIMIENTO ═══
-  { key: "Fecha tarjeta propiedad", icon: "📄", label: "Vence tarjeta propiedad" },
+  {
+    key: "Fecha tarjeta propiedad",
+    icon: "📄",
+    label: "Vence tarjeta propiedad",
+  },
   { key: "Fecha SOAT", icon: "🛡️", label: "Vence SOAT" },
   { key: "Fecha tecnomecánica", icon: "🔍", label: "Vence tecnomecánica" },
   { key: "Fecha cert. gases", icon: "💨", label: "Vence cert. gases" },
-  { key: "Fecha licencia conductor", icon: "🪪", label: "Vence licencia conductor" },
-  
+  {
+    key: "Fecha licencia conductor",
+    icon: "🪪",
+    label: "Vence licencia conductor",
+  },
+
   // ═══ ELEMENTOS DE SEGURIDAD ═══
   { key: "Fecha venc. extintor", icon: "🧯", label: "Vence extintor" },
   { key: "Fecha venc. botiquín", icon: "🩹", label: "Vence botiquín" },
-  { key: "Fecha garantía batería", icon: "🔋", label: "Vence garantía batería" },
-  
+  {
+    key: "Fecha garantía batería",
+    icon: "🔋",
+    label: "Vence garantía batería",
+  },
+
   // ═══ DIMENSIONES Y CAPACIDADES ═══
   { key: "Capacidad de carga", icon: "🏗️", label: "Capacidad de carga (ton)" },
-  { key: "Peso (kg)", icon: "⚖️", label: "Peso (kg)" },
   { key: "Altura de elevación", icon: "📏", label: "Altura de elevación (m)" },
   { key: "Longitud", icon: "↔️", label: "Longitud (m)" },
   { key: "Ancho", icon: "↕️", label: "Ancho (m)" },
   { key: "Altura", icon: "⬆️", label: "Altura (m)" },
   { key: "Número de pasajeros", icon: "👥", label: "Número de pasajeros" },
-  
+
   // ═══ SISTEMAS HIDRÁULICOS ═══
-  { key: "Capacidad hidráulica", icon: "💧", label: "Capacidad hidráulica (L)" },
+  {
+    key: "Capacidad hidráulica",
+    icon: "💧",
+    label: "Capacidad hidráulica (L)",
+  },
   { key: "Presión hidráulica", icon: "💪", label: "Presión hidráulica (PSI)" },
-  
+
   // ═══ OTROS ═══
   { key: "Velocidad máxima", icon: "🏎️", label: "Velocidad máxima (km/h)" },
   { key: "Tipo de llantas", icon: "🛞", label: "Tipo de llantas" },
@@ -896,16 +914,6 @@ export function TechnicalSpecsStep({
       <h2 className="text-xl font-semibold text-white border-b border-dark-700 pb-3">
         Especificaciones Técnicas
       </h2>
-
-      {isEquipOrVehicle && (
-        <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg text-sm">
-          <p className="text-blue-300">
-            <span className="font-semibold">ℹ️ Peso siempre incluido:</span>{" "}
-            Todos los activos requieren registro de peso. Se solicitará
-            automáticamente al crear cada activo.
-          </p>
-        </div>
-      )}
 
       {isEquipOrVehicle ? (
         /* ── Drag-and-drop two columns ──────────────────────────────── */

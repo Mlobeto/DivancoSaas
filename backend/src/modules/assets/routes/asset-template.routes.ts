@@ -130,7 +130,10 @@ const updateTemplateSchema = z.object({
     .number()
     .nullish()
     .transform((v) => v ?? undefined),
-  customFields: z.array(customFieldSchema).optional(),
+  customFields: z
+    .array(customFieldSchema)
+    .nullish()
+    .transform((v) => v ?? undefined),
   technicalSpecs: z
     .record(z.string(), z.any())
     .nullish()
