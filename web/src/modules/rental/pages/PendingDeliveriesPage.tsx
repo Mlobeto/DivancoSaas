@@ -123,19 +123,10 @@ export function PendingDeliveriesPage() {
     useState<ContractAddendum | null>(null);
 
   // Fetch todos los addendums pendientes
-  // TODO: Crear endpoint específico para filtrar por status
   const { data: addendums, isLoading } = useQuery({
     queryKey: ["pending-deliveries"],
     queryFn: async () => {
-      // Por ahora, esto necesita un endpoint backend que filtre por status pending_preparation
-      // Como workaround temporal, podríamos consultar todos y filtrar en frontend
-      // Pero lo ideal es: GET /rental/addendums?status=pending_preparation
-      const res = await fetch(
-        "/api/v1/rental/addendums?status=pending_preparation",
-      );
-      if (!res.ok) throw new Error("Failed to fetch");
-      const json = await res.json();
-      return json.data ?? json;
+      return await addendumService.getPendingDeliveries();
     },
     refetchInterval: 30000, // Refetch cada 30 segundos
   });

@@ -94,6 +94,12 @@ const OperatorDetailPage = lazy(() =>
   })),
 );
 
+const PendingDeliveriesPage = lazy(() =>
+  import("@/modules/rental/pages/PendingDeliveriesPage").then((m) => ({
+    default: m.PendingDeliveriesPage,
+  })),
+);
+
 //================================================================
 // RENTAL VERTICAL ROUTE CONFIGURATION
 //================================================================
@@ -294,6 +300,21 @@ export const rentalRoutes: VerticalRouteConfig = {
         breadcrumb: "Edit",
       },
       chunkName: "operators-edit",
+    },
+
+    //------------------------------------------------------------
+    // DELIVERIES
+    //------------------------------------------------------------
+    {
+      path: "deliveries/pending",
+      element: PendingDeliveriesPage,
+      permissions: ["contracts:read", "OWNER", "ADMIN", "MAINTENANCE"],
+      meta: {
+        title: "Entregas Pendientes",
+        breadcrumb: "Entregas Pendientes",
+        icon: "package",
+      },
+      chunkName: "deliveries-pending",
     },
   ],
 };

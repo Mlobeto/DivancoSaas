@@ -351,6 +351,59 @@ export class ContractAddendumService {
   }
 
   /**
+   * Listar addendums con filtros (para mantenimiento, etc)
+   */
+  async findAddendumsByStatus(where: any) {
+    const addendums = await prisma.contractAddendum.findMany({
+      where,
+      include: {
+        contract: {
+          include: {
+            client: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                phone: true,
+              },
+            },
+          },
+        },
+        rentals: {
+          include: {
+            asset: {
+              select: {
+                id: true,
+                code: true,
+                name: true,
+              },
+            },
+          },
+        },
+        preparedBy: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+        deliveredBy: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+      },
+      orderBy: { issueDate: "desc" },
+    });
+
+    return addendums;
+  }
+
+  /**
    * Actualizar addendum
    */
   async updateAddendum(

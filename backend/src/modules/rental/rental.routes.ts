@@ -772,6 +772,13 @@ router.get(
   contractAddendumController.list.bind(contractAddendumController),
 );
 
+// Listar addendums con filtros (status, etc)
+router.get(
+  "/addendums",
+  authorize("contracts:read"),
+  contractAddendumController.listAddendums.bind(contractAddendumController),
+);
+
 // Obtener addendum por ID
 router.get(
   "/addendums/:addendumId",

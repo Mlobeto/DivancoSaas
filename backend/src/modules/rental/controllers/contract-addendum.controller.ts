@@ -188,6 +188,65 @@ export class ContractAddendumController {
 
   /**
    * @swagger
+   * /api/v1/rental/addendums:
+   *   get:
+   *     tags: [Contract Addendums]
+   *     summary: Listar addendums con filtros
+   *     parameters:
+   *       - in: query
+   *         name: status
+   *         schema:
+   *           type: string
+   *           enum: [pending_preparation, ready_to_ship, delivered, completed, cancelled]
+   *     responses:
+   *       200:
+   *         description: Lista de addendums filtrados
+   */
+  async listAddendums(req: Request, res: Response): Promise<void> {
+    try {
+      const { tenantId, businessUnitId } = req.context || {};
+      const { status } = req.query;
+
+      if (!tenantId) {
+        res.status(401).json({
+          success: false,
+          error: { code: "UNAUTHORIZED", message: "Missing tenant context" },
+        });
+        return;
+      }
+
+      const where: any = {
+        tenantId,
+      };
+
+      if (businessUnitId) {
+        where.businessUnitId = businessUnitId;
+      }
+
+      if (status) {
+        where.status = status;
+      }
+
+      const addendums =
+        await contractAddendumService.findAddendumsByStatus(where);
+
+      res.json({
+        success: true,
+        data: addendums,
+      });
+    } catch (error: any) {
+      res.status(400).json({
+        success: false,
+        error: {
+          code: "LIST_ADDENDUMS_ERROR",
+          message: error.message,
+        },
+      });
+    }
+  }
+
+  /**
+   * @swagger
    * /api/v1/rental/addendums/{addendumId}:
    *   get:
    *     tags: [Contract Addendums]

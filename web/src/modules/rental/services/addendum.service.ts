@@ -197,4 +197,14 @@ export const addendumService = {
     );
     return res.data.data ?? res.data;
   },
+
+  /**
+   * Obtener entregas pendientes de preparación
+   */
+  async getPendingDeliveries(): Promise<ContractAddendum[]> {
+    const res = await apiClient.get(
+      `${BASE}/addendums?status=pending_preparation`,
+    );
+    return res.data.data ?? res.data;
+  },
 };
