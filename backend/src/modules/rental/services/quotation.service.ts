@@ -850,43 +850,47 @@ export class QuotationService {
     });
 
     // v5.0: Calcular totales por modalidad para time-based quotations
+    // IMPORTANTE: Los precios de los activos YA INCLUYEN IVA, por lo que debemos descontarlo
     let totalsByPeriod = null;
     if (isTimeBased) {
       const daily = { subtotal: 0, tax: 0, total: 0, hasItems: false };
       const weekly = { subtotal: 0, tax: 0, total: 0, hasItems: false };
       const monthly = { subtotal: 0, tax: 0, total: 0, hasItems: false };
 
+      // Divisor para descontar el IVA del precio total
+      const taxDivisor = 1 + Number(quotation.taxRate) / 100;
+
       itemsData.forEach((item: any) => {
         if (item.selectedPeriods) {
-          const taxRate = Number(quotation.taxRate) / 100;
-
           if (item.selectedPeriods.daily && item.totalPerDay) {
-            const subtotal = Number(item.totalPerDay) * item.quantity;
-            daily.subtotal += subtotal;
+            const total = Number(item.totalPerDay) * item.quantity;
+            daily.total += total;
             daily.hasItems = true;
           }
 
           if (item.selectedPeriods.weekly && item.totalPerWeek) {
-            const subtotal = Number(item.totalPerWeek) * item.quantity;
-            weekly.subtotal += subtotal;
+            const total = Number(item.totalPerWeek) * item.quantity;
+            weekly.total += total;
             weekly.hasItems = true;
           }
 
           if (item.selectedPeriods.monthly && item.totalPerMonth) {
-            const subtotal = Number(item.totalPerMonth) * item.quantity;
-            monthly.subtotal += subtotal;
+            const total = Number(item.totalPerMonth) * item.quantity;
+            monthly.total += total;
             monthly.hasItems = true;
           }
         }
       });
 
-      // Calcular impuestos y totales
-      daily.tax = daily.subtotal * (Number(quotation.taxRate) / 100);
-      daily.total = daily.subtotal + daily.tax;
-      weekly.tax = weekly.subtotal * (Number(quotation.taxRate) / 100);
-      weekly.total = weekly.subtotal + weekly.tax;
-      monthly.tax = monthly.subtotal * (Number(quotation.taxRate) / 100);
-      monthly.total = monthly.subtotal + monthly.tax;
+      // Descontar IVA del total para obtener subtotal e impuesto
+      daily.subtotal = daily.total / taxDivisor;
+      daily.tax = daily.total - daily.subtotal;
+
+      weekly.subtotal = weekly.total / taxDivisor;
+      weekly.tax = weekly.total - weekly.subtotal;
+
+      monthly.subtotal = monthly.total / taxDivisor;
+      monthly.tax = monthly.total - monthly.subtotal;
 
       totalsByPeriod = { daily, weekly, monthly };
     }
