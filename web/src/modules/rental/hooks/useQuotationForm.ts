@@ -56,6 +56,9 @@ export interface QuotationItem {
   // Override manual
   customUnitPrice?: number;
   customOperatorCost?: number;
+  transportCost?: number;
+  otherCosts?: number;
+  otherCostsDescription?: string;
 
   // Calculated preview (legacy - backward compatibility)
   calculatedUnitPrice?: number;
@@ -171,6 +174,11 @@ export function useQuotationForm(options?: UseQuotationFormOptions) {
           item.operatorCost && Number(item.operatorCost) > 0
             ? Number(item.operatorCost)
             : undefined,
+        transportCost: item.transportCost
+          ? Number(item.transportCost)
+          : undefined,
+        otherCosts: item.otherCosts ? Number(item.otherCosts) : undefined,
+        otherCostsDescription: item.otherCostsDescription || undefined,
         calculatedUnitPrice: Number(item.calculatedUnitPrice) || 0,
         calculatedOperatorCost: Number(item.calculatedOperatorCost) || 0,
 
@@ -479,6 +487,9 @@ export function useQuotationForm(options?: UseQuotationFormOptions) {
           // Override manual
           customUnitPrice: item.customUnitPrice,
           customOperatorCost: item.customOperatorCost,
+          transportCost: item.transportCost,
+          otherCosts: item.otherCosts,
+          otherCostsDescription: item.otherCostsDescription,
 
           // Precio ya calculado en el modal (evita recálculo en backend si hay override)
           unitPrice: item.customUnitPrice ?? item.calculatedUnitPrice,

@@ -497,9 +497,35 @@
               ({{this.discountReason}})
               {{/if}}
               {{/if}}
+              {{#if this.transportCost}}
+              <br>+ Transporte: {{this.transportCost}} {{../currency}}
+              {{/if}}
+              {{#if this.otherCosts}}
+              <br>+ Otros Costos: {{this.otherCosts}} {{../currency}}
+              {{#if this.otherCostsDescription}}
+              ({{this.otherCostsDescription}})
+              {{/if}}
+              {{/if}}
               {{#if this.priceOverridden}}
               <br><em>⚠️ Precio ajustado manualmente de {{this.calculatedUnitPrice}} a {{this.unitPrice}} {{../currency}}</em>
               {{/if}}
+            </div>
+            {{/if}}
+
+            <!-- Costos adicionales (siempre visible si existen) -->
+            {{#if this.transportCost}}
+            <div class="item-details">
+              <span class="item-detail-badge">🚚 Transporte: {{this.transportCost}} {{../currency}}</span>
+            </div>
+            {{/if}}
+            {{#if this.otherCosts}}
+            <div class="item-details">
+              <span class="item-detail-badge">
+                ✨ Otros Costos: {{this.otherCosts}} {{../currency}}
+                {{#if this.otherCostsDescription}}
+                - {{this.otherCostsDescription}}
+                {{/if}}
+              </span>
             </div>
             {{/if}}
             {{/if}}

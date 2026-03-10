@@ -110,7 +110,11 @@ export function createApp(): Application {
   // ============================================
   app.use((req, res, next) => {
     // Allow health checks always
-    if (req.path === "/health" || req.path === "/" || req.path === "/health/details") {
+    if (
+      req.path === "/health" ||
+      req.path === "/" ||
+      req.path === "/health/details"
+    ) {
       return next();
     }
 
@@ -120,7 +124,8 @@ export function createApp(): Application {
         success: false,
         error: {
           code: "SERVICE_UNAVAILABLE",
-          message: "Database migrations are still in progress. Please try again in a moment.",
+          message:
+            "Database migrations are still in progress. Please try again in a moment.",
         },
       });
     }
@@ -305,6 +310,10 @@ export function createApp(): Application {
     "/api/v1/public/contracts/:token/upload",
     contractReceiptUpload.single("receipt"),
     publicContractController.uploadReceipt.bind(publicContractController),
+  );
+  app.get(
+    "/api/v1/public/contracts/:token/mark-local-payment",
+    publicContractController.markLocalPayment.bind(publicContractController),
   );
 
   // ── LEGACY: Subida de comprobante en cotización (links previos) ──

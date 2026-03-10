@@ -189,6 +189,63 @@ class PublicContractController {
     res.send(this._successPage(contract.code));
   }
 
+  /**
+   * GET /api/v1/public/contracts/:token/mark-local-payment
+   * El cliente elige pagar en el local (sin subir comprobante)
+   */
+  async markLocalPayment(req: Request, res: Response): Promise<void> {
+    const { token } = req.params;
+
+    const contract = await prisma.rentalContract.findUnique({
+      where: { receiptToken: token },
+      include: { client: true, businessUnit: true },
+    });
+
+    if (!contract) {
+      res.status(404).send(this._errorPage("Enlace no válido o expirado"));
+      return;
+    }
+
+    const meta = (contract.metadata as any) || {};
+    if (meta.receiptUrl || contract.receiptUploadedAt) {
+      res.send(this._alreadyProcessedPage(contract.code));
+      return;
+    }
+
+    // Marcar como pago local
+    await prisma.rentalContract.update({
+      where: { id: contract.id },
+      data: {
+        metadata: {
+          ...meta,
+          paymentMethod: "local",
+          localPaymentRequestedAt: new Date().toISOString(),
+        },
+      },
+    });
+
+    console.log(`✅ [PublicContract] Pago local solicitado: ${contract.code}`);
+
+    // Notificar al equipo
+    try {
+      await notificationService.create({
+        tenantId: contract.tenantId,
+        businessUnitId: contract.businessUnitId,
+        type: "local_payment_requested",
+        title: "🏪 Pago local solicitado",
+        body: `${contract.client?.name ?? "Cliente"} eligió pagar en el local para el contrato ${contract.code}`,
+        data: {
+          contractId: contract.id,
+          contractCode: contract.code,
+        },
+      });
+    } catch (err) {
+      console.warn("[PublicContract] Error enviando notificación:", err);
+    }
+
+    res.send(this._localPaymentSuccessPage(contract.code));
+  }
+
   private _successPage(code: string) {
     return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -214,6 +271,26 @@ class PublicContractController {
       <div class="card"><h2 style="color:#2e7d32">✅ Comprobante ya recibido</h2>
       <p>Ya recibimos tu comprobante para el contrato <strong>${code}</strong>.</p>
       <p>Nuestro equipo lo verificará y te contactará a la brevedad.</p></div></body></html>`;
+  }
+
+  private _alreadyProcessedPage(code: string) {
+    return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Ya procesado</title><style>${STYLES}</style></head><body>
+      <div class="card"><h2 style="color:#2e7d32">✅ Pago ya registrado</h2>
+      <p>El pago para el contrato <strong>${code}</strong> ya fue procesado.</p>
+      <p>Nuestro equipo te contactará a la brevedad.</p></div></body></html>`;
+  }
+
+  private _localPaymentSuccessPage(code: string) {
+    return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Pago en local confirmado</title><style>${STYLES}</style></head><body>
+      <div class="card"><div style="font-size:64px;margin-bottom:16px">🏪</div>
+      <h2 style="color:#2e7d32">¡Pago en local confirmado!</h2>
+      <p>Gracias por elegir pagar en el local para el contrato <strong>${code}</strong>.</p>
+      <p style="margin-top:20px">Nuestro equipo se pondrá en contacto con usted para coordinar el pago presencial y la entrega.</p>
+      <p style="margin-top:20px;font-size:14px;color:#718096">Recibirá un email con los detalles de contacto.</p></div></body></html>`;
   }
 }
 

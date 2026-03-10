@@ -74,7 +74,7 @@ export async function approveQuotationAsAdmin(
 export async function approveQuotationAsClient(
   clientReviewToken: string,
   selectedPeriodType?: string,
-): Promise<{ contractId: string; contractCode: string }> {
+): Promise<{ contractId: string; contractCode: string; receiptToken: string }> {
   const quotation = await prisma.quotation.findUnique({
     where: { clientReviewToken },
     include: { client: true, items: true, businessUnit: true },
@@ -123,8 +123,8 @@ export async function approveQuotationAsClient(
     quotation.createdBy, // usar el creador original de la cotización
   );
 
-  // Enviar email del contrato al cliente
-  await _sendContractEmail(contract.id, quotation);
+  // Enviar email del contrato al cliente y obtener receiptToken
+  const receiptToken = await _sendContractEmail(contract.id, quotation);
 
   // Notificar al equipo
   await notificationService.create({
@@ -136,7 +136,7 @@ export async function approveQuotationAsClient(
     data: { quotationId: quotation.id, contractId: contract.id },
   });
 
-  return { contractId: contract.id, contractCode: contract.code };
+  return { contractId: contract.id, contractCode: contract.code, receiptToken };
 }
 
 // ─── SOLICITUD DE CAMBIOS (CLIENTE) ───────────────────────────────────────────
@@ -236,7 +236,10 @@ async function _createContractFromQuotation(quotation: any, createdBy: string) {
   return contract;
 }
 
-async function _sendContractEmail(contractId: string, quotation: any) {
+async function _sendContractEmail(
+  contractId: string,
+  quotation: any,
+): Promise<string> {
   // Generar token de subida de comprobante para el contrato
   const receiptToken = uuidv4();
   await prisma.rentalContract.update({
@@ -349,4 +352,6 @@ async function _sendContractEmail(contractId: string, quotation: any) {
     html,
     attachments,
   });
+
+  return receiptToken;
 }

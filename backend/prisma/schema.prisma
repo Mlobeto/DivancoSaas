@@ -2921,6 +2921,11 @@ model QuotationItem {
   discount           Decimal? @db.Decimal(15, 2) // Descuento aplicado al item
   discountReason     String? // Razón del descuento
 
+  // Costos adicionales personalizados
+  transportCost         Decimal? @db.Decimal(15, 2) // Costo de transporte
+  otherCosts            Decimal? @db.Decimal(15, 2) // Otros costos personalizados
+  otherCostsDescription String? // Descripción de otros costos
+
   // ═══════════════════════════════════════
   // PRECIOS MÚLTIPLES POR PERÍODO (v4.1)
   // Cotización con todas las opciones de precios

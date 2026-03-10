@@ -624,10 +624,18 @@ export function QuotationsListPage() {
                                   sendMutation.mutate(quotation.id)
                                 }
                                 disabled={sendMutation.isPending}
-                                className="btn-sm btn-primary"
+                                className={`btn-sm btn-primary transition-all ${
+                                  sendMutation.isPending
+                                    ? "animate-pulse opacity-75"
+                                    : ""
+                                }`}
                                 title="Enviar cotización al cliente"
                               >
-                                <Send className="w-4 h-4" />
+                                {sendMutation.isPending ? (
+                                  <RefreshCw className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <Send className="w-4 h-4" />
+                                )}
                               </button>
                             </ProtectedAction>
                           )}

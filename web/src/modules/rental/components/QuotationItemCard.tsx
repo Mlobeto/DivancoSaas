@@ -272,6 +272,27 @@ export function QuotationItemCard({
                   </span>
                 </div>
               )}
+              {item.transportCost && item.transportCost > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">🚚 Costo de Transporte:</span>
+                  <span className="font-mono font-medium text-gray-900">
+                    ${item.transportCost.toLocaleString()}
+                  </span>
+                </div>
+              )}
+              {item.otherCosts && item.otherCosts > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">
+                    ✨ Otros Costos
+                    {item.otherCostsDescription &&
+                      ` (${item.otherCostsDescription})`}
+                    :
+                  </span>
+                  <span className="font-mono font-medium text-gray-900">
+                    ${item.otherCosts.toLocaleString()}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between font-semibold pt-2 border-t border-gray-200">
                 <span className="text-gray-900">
                   Subtotal (x{item.quantity}):
@@ -281,7 +302,9 @@ export function QuotationItemCard({
                   {(
                     ((item.calculatedUnitPrice || 0) +
                       (item.calculatedOperatorCost || 0)) *
-                    item.quantity
+                      item.quantity +
+                    (item.transportCost || 0) +
+                    (item.otherCosts || 0)
                   ).toLocaleString()}
                 </span>
               </div>
@@ -338,6 +361,67 @@ export function QuotationItemCard({
                 />
               </div>
             )}
+
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">
+                💼 Costo de Transporte
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="Ej: 50000"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-sm text-gray-900 placeholder:text-gray-400"
+                value={item.transportCost || ""}
+                onChange={(e) =>
+                  onUpdate(
+                    index,
+                    "transportCost",
+                    e.target.value ? parseFloat(e.target.value) : undefined,
+                  )
+                }
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">
+                ✨ Otros Costos
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="Ej: 25000"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-sm text-gray-900 placeholder:text-gray-400"
+                value={item.otherCosts || ""}
+                onChange={(e) =>
+                  onUpdate(
+                    index,
+                    "otherCosts",
+                    e.target.value ? parseFloat(e.target.value) : undefined,
+                  )
+                }
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-xs text-gray-600 mb-1">
+                📝 Descripción de Otros Costos
+              </label>
+              <input
+                type="text"
+                placeholder="Ej: Instalación, capacitación, etc."
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-sm text-gray-900 placeholder:text-gray-400"
+                value={item.otherCostsDescription || ""}
+                onChange={(e) =>
+                  onUpdate(
+                    index,
+                    "otherCostsDescription",
+                    e.target.value || undefined,
+                  )
+                }
+              />
+            </div>
           </div>
         </details>
       </div>

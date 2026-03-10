@@ -20,6 +20,10 @@ export function QuotationSummary({
     let monthlyTotal = 0;
 
     items.forEach((item) => {
+      // Costos adicionales por item
+      const additionalCosts =
+        (item.transportCost || 0) + (item.otherCosts || 0);
+
       if (item.selectedPeriods) {
         const qty = item.quantity;
 
@@ -27,21 +31,21 @@ export function QuotationSummary({
           const dailyPrice =
             (item.pricePerDay || 0) +
             (item.operatorIncluded ? item.operatorCostPerDay || 0 : 0);
-          dailyTotal += dailyPrice * qty;
+          dailyTotal += dailyPrice * qty + additionalCosts;
         }
 
         if (item.selectedPeriods.weekly) {
           const weeklyPrice =
             (item.pricePerWeek || 0) +
             (item.operatorIncluded ? item.operatorCostPerWeek || 0 : 0);
-          weeklyTotal += weeklyPrice * qty;
+          weeklyTotal += weeklyPrice * qty + additionalCosts;
         }
 
         if (item.selectedPeriods.monthly) {
           const monthlyPrice =
             (item.pricePerMonth || 0) +
             (item.operatorIncluded ? item.operatorCostPerMonth || 0 : 0);
-          monthlyTotal += monthlyPrice * qty;
+          monthlyTotal += monthlyPrice * qty + additionalCosts;
         }
       } else {
         // Fallback: usar precio legacy
@@ -49,9 +53,9 @@ export function QuotationSummary({
           ((item.calculatedUnitPrice || 0) +
             (item.calculatedOperatorCost || 0)) *
           item.quantity;
-        dailyTotal += legacyPrice;
-        weeklyTotal += legacyPrice;
-        monthlyTotal += legacyPrice;
+        dailyTotal += legacyPrice + additionalCosts;
+        weeklyTotal += legacyPrice + additionalCosts;
+        monthlyTotal += legacyPrice + additionalCosts;
       }
     });
 

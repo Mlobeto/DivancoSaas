@@ -63,6 +63,11 @@ export interface QuotationItemInput {
   customUnitPrice?: number; // Override manual del precio unitario
   customOperatorCost?: number; // Override manual del costo del operador
 
+  // Costos adicionales personalizados
+  transportCost?: number; // Costo de transporte
+  otherCosts?: number; // Otros costos personalizados
+  otherCostsDescription?: string; // Descripción de otros costos
+
   // Desglose detallado (opcional)
   basePrice?: number;
   operatorCostAmount?: number;
@@ -376,6 +381,13 @@ export class QuotationService {
             discount: item.discount ? new Decimal(item.discount) : null,
             discountReason: item.discountReason,
 
+            // Costos adicionales personalizados
+            transportCost: item.transportCost
+              ? new Decimal(item.transportCost)
+              : null,
+            otherCosts: item.otherCosts ? new Decimal(item.otherCosts) : null,
+            otherCostsDescription: item.otherCostsDescription,
+
             // v5.0: Multi-period pricing
             pricePerDay: item.pricePerDay
               ? new Decimal(item.pricePerDay)
@@ -565,6 +577,13 @@ export class QuotationService {
                 : null,
               discount: item.discount ? new Decimal(item.discount) : null,
               discountReason: item.discountReason,
+
+              // Costos adicionales personalizados
+              transportCost: item.transportCost
+                ? new Decimal(item.transportCost)
+                : null,
+              otherCosts: item.otherCosts ? new Decimal(item.otherCosts) : null,
+              otherCostsDescription: item.otherCostsDescription,
 
               // v5.0: Multi-period pricing
               pricePerDay: item.pricePerDay
@@ -793,6 +812,9 @@ export class QuotationService {
         priceOverridden: item.priceOverridden,
         discount: item.discount ? Number(item.discount) : null,
         discountReason: item.discountReason,
+        transportCost: item.transportCost ? Number(item.transportCost) : null,
+        otherCosts: item.otherCosts ? Number(item.otherCosts) : null,
+        otherCostsDescription: item.otherCostsDescription || null,
       };
 
       // Para cotizaciones TIME_BASED: incluir detalles de rental
@@ -861,21 +883,28 @@ export class QuotationService {
       const taxDivisor = 1 + Number(quotation.taxRate) / 100;
 
       itemsData.forEach((item: any) => {
+        // Costos adicionales por item
+        const additionalCosts =
+          (item.transportCost || 0) + (item.otherCosts || 0);
+
         if (item.selectedPeriods) {
           if (item.selectedPeriods.daily && item.totalPerDay) {
-            const total = Number(item.totalPerDay) * item.quantity;
+            const total =
+              Number(item.totalPerDay) * item.quantity + additionalCosts;
             daily.total += total;
             daily.hasItems = true;
           }
 
           if (item.selectedPeriods.weekly && item.totalPerWeek) {
-            const total = Number(item.totalPerWeek) * item.quantity;
+            const total =
+              Number(item.totalPerWeek) * item.quantity + additionalCosts;
             weekly.total += total;
             weekly.hasItems = true;
           }
 
           if (item.selectedPeriods.monthly && item.totalPerMonth) {
-            const total = Number(item.totalPerMonth) * item.quantity;
+            const total =
+              Number(item.totalPerMonth) * item.quantity + additionalCosts;
             monthly.total += total;
             monthly.hasItems = true;
           }
