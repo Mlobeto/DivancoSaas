@@ -89,13 +89,27 @@ export class ContractAddendumService {
       );
     }
 
-    // 2. Calcular costo estimado total del addendum
+    // 2. VALIDAR FIRMA DIGITAL (debe estar firmado)
+    if (contract.signatureStatus !== "signed") {
+      throw new Error(
+        `Contract must be signed before creating deliveries. Current signature status: ${contract.signatureStatus || "not_requested"}`,
+      );
+    }
+
+    // 3. VALIDAR PAGO CERTIFICADO (debe estar verificado por staff)
+    if (!contract.paymentVerifiedAt) {
+      throw new Error(
+        "Contract payment must be verified by staff before creating deliveries. Please verify the payment proof first.",
+      );
+    }
+
+    // 4. Calcular costo estimado total del addendum
     const estimatedCost = params.items.reduce(
       (sum, item) => sum + item.estimatedCost,
       0,
     );
 
-    // 3. Verificar límites de crédito (si están configurados)
+    // 5. Verificar límites de crédito (si están configurados)
     if (contract.clientAccount.creditLimit.greaterThan(0)) {
       const availableCredit = contract.clientAccount.creditLimit
         .minus(contract.clientAccount.totalConsumed)
@@ -108,7 +122,7 @@ export class ContractAddendumService {
       }
     }
 
-    // 4. Generar código del addendum
+    // 6. Generar código del addendum
     const addendumCount = await prisma.contractAddendum.count({
       where: {
         contractId: params.contractId,
@@ -118,7 +132,7 @@ export class ContractAddendumService {
     const addendumNumber = String(addendumCount + 1).padStart(3, "0");
     const code = `${contract.code}-ADD-${addendumNumber}`; // Ejemplo: CON-2026-001-ADD-001
 
-    // 5. Crear addendum y rentals en una transacción
+    // 7. Crear addendum y rentals en una transacción
     const addendum = await prisma.$transaction(async (tx) => {
       // Crear addendum
       const newAddendum = await tx.contractAddendum.create({

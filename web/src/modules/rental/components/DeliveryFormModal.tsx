@@ -32,6 +32,9 @@ interface DeliveryFormModalProps {
   currency: string;
   currentBalanceLimit?: number;
   currentTimeLimit?: number;
+  contractSigned: boolean;
+  paymentVerified: boolean;
+  signatureStatus: string;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -43,6 +46,9 @@ export function DeliveryFormModal({
   currency,
   currentBalanceLimit,
   currentTimeLimit,
+  contractSigned,
+  paymentVerified,
+  signatureStatus,
   onClose,
   onSuccess,
 }: DeliveryFormModalProps) {
@@ -74,8 +80,14 @@ export function DeliveryFormModal({
       });
     },
     onSuccess: (result) => {
-      // Add currency to result for UI display
-      setAvailabilityResult({ ...result, currency });
+      // Add currency and contract validation status to result for UI display
+      setAvailabilityResult({
+        ...result,
+        currency,
+        contractSigned,
+        paymentVerified,
+        signatureStatus,
+      });
       setStep("validation");
     },
     onError: (error: any) => {
@@ -135,6 +147,21 @@ export function DeliveryFormModal({
   };
 
   const handleValidate = () => {
+    // Validar requisitos del contrato PRIMERO
+    if (!contractSigned) {
+      alert(
+        "El contrato debe estar firmado antes de crear entregas. Por favor, solicita al cliente que firme el contrato.",
+      );
+      return;
+    }
+
+    if (!paymentVerified) {
+      alert(
+        "El pago debe estar verificado por staff antes de crear entregas. Por favor, verifica el comprobante de pago primero.",
+      );
+      return;
+    }
+
     // Validar que todos los items tengan datos completos
     const validItems = items.filter(
       (item) => item.assetId && item.estimatedDays > 0 && item.dailyRate > 0,
@@ -156,6 +183,14 @@ export function DeliveryFormModal({
   };
 
   const handleSubmit = () => {
+    // Double-check contract requirements
+    if (!contractSigned || !paymentVerified) {
+      alert(
+        "El contrato debe estar firmado y el pago verificado antes de crear entregas.",
+      );
+      return;
+    }
+
     if (!availabilityResult?.canDeliver) {
       alert("No se puede crear la entrega: disponibilidad insuficiente");
       return;

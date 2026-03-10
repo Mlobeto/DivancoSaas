@@ -3,7 +3,14 @@
  * Componente visual para mostrar validación de disponibilidad antes de entregas
  */
 
-import { AlertCircle, CheckCircle, XCircle, TrendingUp } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle,
+  XCircle,
+  TrendingUp,
+  FileSignature,
+  CreditCard,
+} from "lucide-react";
 
 export interface AvailabilityResult {
   canDeliver: boolean;
@@ -21,6 +28,10 @@ export interface AvailabilityResult {
   options?: string[];
   // UI-specific (passed from parent)
   currency?: string;
+  // Contract validation states (NEW)
+  contractSigned?: boolean;
+  paymentVerified?: boolean;
+  signatureStatus?: string;
 }
 
 interface DeliveryAvailabilityCheckProps {
@@ -45,6 +56,9 @@ export function DeliveryAvailabilityCheck({
     errorCode,
     error: errorMessage,
     currency = "USD",
+    contractSigned = false,
+    paymentVerified = false,
+    signatureStatus,
   } = result;
 
   const formatCurrency = (value: number) => {
@@ -83,6 +97,87 @@ export function DeliveryAvailabilityCheck({
           <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-red-900/30 border border-red-700 text-red-400">
             <XCircle className="w-5 h-5" />
             <span className="font-medium">Entrega No Disponible</span>
+          </div>
+        )}
+      </div>
+
+      {/* Contract Requirements Status */}
+      <div className="card bg-dark-800">
+        <h4 className="font-medium mb-3 text-dark-300">
+          Requisitos del Contrato
+        </h4>
+        <div className="space-y-3">
+          {/* Firma Digital */}
+          <div className="flex items-center justify-between p-3 bg-dark-900 rounded-lg">
+            <div className="flex items-center gap-3">
+              <FileSignature
+                className={`w-5 h-5 ${contractSigned ? "text-green-400" : "text-orange-400"}`}
+              />
+              <div>
+                <div className="font-medium text-sm">Firma Digital</div>
+                <div className="text-xs text-dark-400">
+                  {contractSigned
+                    ? "Contrato firmado"
+                    : `Estado: ${signatureStatus || "pendiente"}`}
+                </div>
+              </div>
+            </div>
+            {contractSigned ? (
+              <CheckCircle className="w-5 h-5 text-green-400" />
+            ) : (
+              <XCircle className="w-5 h-5 text-orange-400" />
+            )}
+          </div>
+
+          {/* Pago Verificado */}
+          <div className="flex items-center justify-between p-3 bg-dark-900 rounded-lg">
+            <div className="flex items-center gap-3">
+              <CreditCard
+                className={`w-5 h-5 ${paymentVerified ? "text-green-400" : "text-orange-400"}`}
+              />
+              <div>
+                <div className="font-medium text-sm">Pago Certificado</div>
+                <div className="text-xs text-dark-400">
+                  {paymentVerified
+                    ? "Verificado por staff"
+                    : "Pendiente de verificación"}
+                </div>
+              </div>
+            </div>
+            {paymentVerified ? (
+              <CheckCircle className="w-5 h-5 text-green-400" />
+            ) : (
+              <XCircle className="w-5 h-5 text-orange-400" />
+            )}
+          </div>
+        </div>
+
+        {/* Warning if requirements not met */}
+        {(!contractSigned || !paymentVerified) && (
+          <div className="mt-3 p-3 bg-orange-900/20 border border-orange-700 rounded-lg">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 text-orange-400 mt-0.5" />
+              <div className="text-xs text-orange-300">
+                {!contractSigned && !paymentVerified && (
+                  <span>
+                    El contrato debe estar <strong>firmado</strong> y el pago{" "}
+                    <strong>verificado</strong> antes de crear entregas.
+                  </span>
+                )}
+                {!contractSigned && paymentVerified && (
+                  <span>
+                    El contrato debe estar <strong>firmado</strong> antes de
+                    crear entregas.
+                  </span>
+                )}
+                {contractSigned && !paymentVerified && (
+                  <span>
+                    El pago debe ser <strong>verificado por staff</strong> antes
+                    de crear entregas.
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
         )}
       </div>

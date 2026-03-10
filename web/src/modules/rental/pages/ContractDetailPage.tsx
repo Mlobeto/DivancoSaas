@@ -25,8 +25,13 @@ import {
   ArrowLeft,
   Truck,
   AlertCircle,
+  CreditCard,
+  FileSignature,
 } from "lucide-react";
-import { DeliveryFormModal } from "../components";
+import {
+  DeliveryFormModal,
+  PaymentProofVerificationModal,
+} from "../components";
 
 type ContractStatus = "active" | "suspended" | "completed" | "cancelled";
 type AddendumStatus = "draft" | "delivered" | "completed" | "cancelled";
@@ -77,6 +82,7 @@ export function ContractDetailPage() {
   const queryClient = useQueryClient();
 
   const [showDeliveryModal, setShowDeliveryModal] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   // Cargar contrato
   const { data: contract, isLoading: loadingContract } = useQuery({
@@ -301,6 +307,145 @@ export function ContractDetailPage() {
         </div>
       </div>
 
+      {/* Contract Requirements Status */}
+      <div className="card mb-6">
+        <h3 className="font-medium mb-4">Estado de Requisitos del Contrato</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Firma Digital Status */}
+          <div
+            className={`p-4 rounded-lg border ${
+              contract.signatureStatus === "signed"
+                ? "bg-green-900/20 border-green-700"
+                : "bg-orange-900/20 border-orange-700"
+            }`}
+          >
+            <div className="flex items-start justify-between mb-2">
+              <div className="flex items-center gap-3">
+                <FileSignature
+                  className={`w-5 h-5 ${
+                    contract.signatureStatus === "signed"
+                      ? "text-green-400"
+                      : "text-orange-400"
+                  }`}
+                />
+                <div>
+                  <div className="font-medium">Firma Digital</div>
+                  <div className="text-xs text-dark-400 mt-1">
+                    Estado:{" "}
+                    {contract.signatureStatus === "signed"
+                      ? "Firmado"
+                      : contract.signatureStatus === "pending"
+                        ? "Pendiente"
+                        : contract.signatureStatus || "No solicitado"}
+                  </div>
+                </div>
+              </div>
+              {contract.signatureStatus === "signed" ? (
+                <CheckCircle className="w-5 h-5 text-green-400" />
+              ) : (
+                <Clock className="w-5 h-5 text-orange-400" />
+              )}
+            </div>
+            {contract.signatureCompletedAt && (
+              <div className="text-xs text-dark-500 mt-2">
+                Firmado el {fmtDate(contract.signatureCompletedAt)}
+              </div>
+            )}
+          </div>
+
+          {/* Payment Verification Status */}
+          <div
+            className={`p-4 rounded-lg border ${
+              contract.paymentVerifiedAt
+                ? "bg-green-900/20 border-green-700"
+                : contract.paymentProofUrl
+                  ? "bg-orange-900/20 border-orange-700"
+                  : "bg-dark-800 border-dark-700"
+            }`}
+          >
+            <div className="flex items-start justify-between mb-2">
+              <div className="flex items-center gap-3">
+                <CreditCard
+                  className={`w-5 h-5 ${
+                    contract.paymentVerifiedAt
+                      ? "text-green-400"
+                      : contract.paymentProofUrl
+                        ? "text-orange-400"
+                        : "text-dark-400"
+                  }`}
+                />
+                <div>
+                  <div className="font-medium">Pago Certificado</div>
+                  <div className="text-xs text-dark-400 mt-1">
+                    {contract.paymentVerifiedAt
+                      ? "Verificado por staff"
+                      : contract.paymentProofUrl
+                        ? "Pendiente de verificación"
+                        : "Sin comprobante"}
+                  </div>
+                </div>
+              </div>
+              {contract.paymentVerifiedAt ? (
+                <CheckCircle className="w-5 h-5 text-green-400" />
+              ) : contract.paymentProofUrl ? (
+                <AlertCircle className="w-5 h-5 text-orange-400" />
+              ) : (
+                <XCircle className="w-5 h-5 text-dark-400" />
+              )}
+            </div>
+            <div className="flex gap-2 mt-3">
+              {contract.paymentProofUrl && !contract.paymentVerifiedAt && (
+                <button
+                  onClick={() => setShowPaymentModal(true)}
+                  className="btn-primary btn-sm flex items-center gap-1 flex-1"
+                >
+                  <CreditCard className="w-4 h-4" />
+                  Verificar Comprobante
+                </button>
+              )}
+              {contract.paymentProofUrl && contract.paymentVerifiedAt && (
+                <button
+                  onClick={() => setShowPaymentModal(true)}
+                  className="btn-ghost btn-sm flex items-center gap-1"
+                >
+                  Ver Comprobante
+                </button>
+              )}
+              {contract.paymentVerifiedAt && (
+                <div className="text-xs text-dark-500 mt-1">
+                  Verificado el {fmtDate(contract.paymentVerifiedAt)}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Warning if requirements not met */}
+        {(!contract.signatureStatus ||
+          contract.signatureStatus !== "signed" ||
+          !contract.paymentVerifiedAt) && (
+          <div className="mt-4 p-3 bg-orange-900/20 border border-orange-700 rounded-lg">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 text-orange-400 mt-0.5" />
+              <div className="text-sm text-orange-300">
+                <strong>Importante:</strong> Para permitir entregas de
+                implementos, el contrato debe estar{" "}
+                {(!contract.signatureStatus ||
+                  contract.signatureStatus !== "signed") &&
+                  "firmado"}
+                {(!contract.signatureStatus ||
+                  contract.signatureStatus !== "signed") &&
+                  !contract.paymentVerifiedAt &&
+                  " y "}
+                {!contract.paymentVerifiedAt &&
+                  "el pago debe estar verificado por staff"}
+                .
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Actions */}
       {contract.status === "active" && (
         <div className="card mb-6">
@@ -434,11 +579,29 @@ export function ContractDetailPage() {
           currency={contract.currency}
           currentBalanceLimit={contract.clientAccount.creditLimit}
           currentTimeLimit={contract.clientAccount.timeLimit}
+          contractSigned={contract.signatureStatus === "signed"}
+          paymentVerified={!!contract.paymentVerifiedAt}
+          signatureStatus={contract.signatureStatus || "not_requested"}
           onClose={() => setShowDeliveryModal(false)}
           onSuccess={() => {
             setShowDeliveryModal(false);
             queryClient.invalidateQueries({ queryKey: ["addendums", id] });
             queryClient.invalidateQueries({ queryKey: ["contract", id] });
+          }}
+        />
+      )}
+
+      {/* Payment Proof Verification Modal */}
+      {showPaymentModal && (
+        <PaymentProofVerificationModal
+          contractId={contract.id}
+          contractCode={contract.code}
+          onClose={() => setShowPaymentModal(false)}
+          onSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: ["contract", id] });
+            queryClient.invalidateQueries({
+              queryKey: ["paymentProof", contract.id],
+            });
           }}
         />
       )}

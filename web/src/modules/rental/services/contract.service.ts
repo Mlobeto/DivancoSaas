@@ -27,6 +27,21 @@ export interface RentalContract {
   receiptToken?: string;
   receiptUploadedAt?: string;
 
+  // Firma digital (v5.0)
+  signatureToken?: string;
+  signatureStatus?: string; // "pending", "signed", "declined", "not_requested"
+  signatureRequestedAt?: string;
+  signatureCompletedAt?: string;
+  signatureRequestId?: string;
+  signatureProvider?: string;
+
+  // Verificación de pago (v6.0)
+  paymentType?: string; // "online" | "local" | null
+  paymentProofUrl?: string;
+  paymentVerifiedBy?: string;
+  paymentVerifiedAt?: string;
+  activationMethod?: string; // "payment", "account_balance", "manual"
+
   notes?: string;
   metadata?: Record<string, any>;
   createdAt: string;

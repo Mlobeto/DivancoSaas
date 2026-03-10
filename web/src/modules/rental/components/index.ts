@@ -9,6 +9,7 @@ export { DeliveryAvailabilityCheck } from "./DeliveryAvailabilityCheck";
 export { DeliveryFormModal } from "./DeliveryFormModal";
 export { LimitIncreaseRequestModal } from "./LimitIncreaseRequestModal";
 export { PaymentProofUploader } from "./PaymentProofUploader";
+export { PaymentProofVerificationModal } from "./PaymentProofVerificationModal";
 export { PreviewPanel } from "./PreviewPanel";
 export { QuotationItemCard } from "./QuotationItemCard";
 export { QuotationSummary } from "./QuotationSummary";
