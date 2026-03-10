@@ -5,7 +5,15 @@
 
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { X, Plus, Trash2, CheckCircle, Package } from "lucide-react";
+import {
+  X,
+  Plus,
+  Trash2,
+  CheckCircle,
+  Package,
+  User,
+  Truck,
+} from "lucide-react";
 import { addendumService } from "../services/addendum.service";
 import { accountService } from "../services/account.service";
 import {
@@ -66,6 +74,19 @@ export function DeliveryFormModal({
     useState<AvailabilityResult | null>(null);
   const [showLimitModal, setShowLimitModal] = useState(false);
 
+  // Operario
+  const [hasOperator, setHasOperator] = useState(false);
+  const [operatorLicenseUrl, setOperatorLicenseUrl] = useState("");
+  const [operatorCertificationUrl, setOperatorCertificationUrl] = useState("");
+  const [operatorInsuranceUrl, setOperatorInsuranceUrl] = useState("");
+  const [operatorDocumentationNotes, setOperatorDocumentationNotes] =
+    useState("");
+
+  // Transporte
+  const [transportType, setTransportType] = useState("company_vehicle");
+  const [driverName, setDriverName] = useState("");
+  const [transportNotes, setTransportNotes] = useState("");
+
   // Validar disponibilidad
   const checkAvailabilityMutation = useMutation({
     mutationFn: (validItems: DeliveryItem[]) => {
@@ -112,6 +133,18 @@ export function DeliveryFormModal({
       return addendumService.create(contractId, {
         items: itemsToCreate,
         notes,
+        hasOperator,
+        operatorLicenseUrl: hasOperator ? operatorLicenseUrl : undefined,
+        operatorCertificationUrl: hasOperator
+          ? operatorCertificationUrl
+          : undefined,
+        operatorInsuranceUrl: hasOperator ? operatorInsuranceUrl : undefined,
+        operatorDocumentationNotes: hasOperator
+          ? operatorDocumentationNotes
+          : undefined,
+        transportType,
+        driverName,
+        transportNotes,
       });
     },
     onSuccess: () => {
@@ -419,6 +452,130 @@ export function DeliveryFormModal({
                   placeholder="Observaciones generales de la entrega..."
                   className="form-input"
                 ></textarea>
+              </div>
+
+              {/* Operario */}
+              <div className="card bg-dark-800 space-y-4">
+                <div className="flex items-center gap-2">
+                  <User className="w-5 h-5 text-primary-400" />
+                  <h3 className="font-semibold">Operario</h3>
+                </div>
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={hasOperator}
+                    onChange={(e) => setHasOperator(e.target.checked)}
+                    className="w-4 h-4 rounded border-dark-600 text-primary-500 focus:ring-primary-500"
+                  />
+                  <span>¿Esta entrega requiere operario?</span>
+                </label>
+
+                {hasOperator && (
+                  <div className="space-y-3 pl-6 border-l-2 border-primary-500">
+                    <div>
+                      <label className="label">URL de Licencia</label>
+                      <input
+                        type="url"
+                        value={operatorLicenseUrl}
+                        onChange={(e) => setOperatorLicenseUrl(e.target.value)}
+                        placeholder="https://..."
+                        className="form-input"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="label">URL de Certificación</label>
+                      <input
+                        type="url"
+                        value={operatorCertificationUrl}
+                        onChange={(e) =>
+                          setOperatorCertificationUrl(e.target.value)
+                        }
+                        placeholder="https://..."
+                        className="form-input"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="label">URL de Seguro</label>
+                      <input
+                        type="url"
+                        value={operatorInsuranceUrl}
+                        onChange={(e) =>
+                          setOperatorInsuranceUrl(e.target.value)
+                        }
+                        placeholder="https://..."
+                        className="form-input"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="label">Notas de documentación</label>
+                      <textarea
+                        value={operatorDocumentationNotes}
+                        onChange={(e) =>
+                          setOperatorDocumentationNotes(e.target.value)
+                        }
+                        rows={2}
+                        placeholder="Observaciones sobre la documentación del operario..."
+                        className="form-input"
+                      ></textarea>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Transporte */}
+              <div className="card bg-dark-800 space-y-4">
+                <div className="flex items-center gap-2">
+                  <Truck className="w-5 h-5 text-primary-400" />
+                  <h3 className="font-semibold">Transporte</h3>
+                </div>
+
+                <div>
+                  <label className="label">Tipo de transporte *</label>
+                  <select
+                    value={transportType}
+                    onChange={(e) => setTransportType(e.target.value)}
+                    className="form-input"
+                  >
+                    <option value="company_vehicle">
+                      Vehículo de la empresa
+                    </option>
+                    <option value="third_party">
+                      Tercero / Transporte externo
+                    </option>
+                    <option value="client_pickup">
+                      Cliente recoge en sede
+                    </option>
+                    <option value="other">Otro</option>
+                  </select>
+                </div>
+
+                {transportType !== "client_pickup" && (
+                  <div>
+                    <label className="label">Nombre del conductor</label>
+                    <input
+                      type="text"
+                      value={driverName}
+                      onChange={(e) => setDriverName(e.target.value)}
+                      placeholder="Nombre completo del conductor"
+                      className="form-input"
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <label className="label">Notas de transporte</label>
+                  <textarea
+                    value={transportNotes}
+                    onChange={(e) => setTransportNotes(e.target.value)}
+                    rows={2}
+                    placeholder="Observaciones sobre el transporte, ruta, horarios..."
+                    className="form-input"
+                  ></textarea>
+                </div>
               </div>
 
               {/* Total */}

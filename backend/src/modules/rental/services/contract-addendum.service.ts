@@ -9,6 +9,7 @@
 import prisma from "@config/database";
 import { Decimal } from "@prisma/client/runtime/library";
 import type { ContractAddendum, AssetRental } from "@prisma/client";
+import { notificationService } from "@core/services/notification.service";
 
 // ============================================
 // TYPES
@@ -24,6 +25,17 @@ export interface CreateAddendumParams {
   notes?: string;
   metadata?: any;
   createdBy?: string;
+  // Operario
+  hasOperator?: boolean;
+  operatorLicenseUrl?: string;
+  operatorCertificationUrl?: string;
+  operatorInsuranceUrl?: string;
+  operatorDocumentationNotes?: string;
+  // Transporte
+  transportType?: string;
+  vehicleId?: string;
+  driverName?: string;
+  transportNotes?: string;
 }
 
 export interface AddendumItem {
@@ -40,7 +52,12 @@ export interface AddendumItem {
 
 export interface UpdateAddendumParams {
   actualCost?: number;
-  status?: "active" | "completed" | "cancelled";
+  status?:
+    | "pending_preparation"
+    | "ready_to_ship"
+    | "delivered"
+    | "completed"
+    | "cancelled";
   completedAt?: Date;
   notes?: string;
   metadata?: any;
@@ -146,7 +163,18 @@ export class ContractAddendumService {
           items: params.items, // Guardamos los items como JSON
           estimatedCost: new Decimal(estimatedCost),
           estimatedDays: params.estimatedDays,
-          status: "active",
+          status: "pending_preparation",
+          // Operario
+          hasOperator: params.hasOperator || false,
+          operatorLicenseUrl: params.operatorLicenseUrl,
+          operatorCertificationUrl: params.operatorCertificationUrl,
+          operatorInsuranceUrl: params.operatorInsuranceUrl,
+          operatorDocumentationNotes: params.operatorDocumentationNotes,
+          // Transporte
+          transportType: params.transportType,
+          vehicleId: params.vehicleId,
+          driverName: params.driverName,
+          transportNotes: params.transportNotes,
           notes: params.notes,
           metadata: params.metadata,
           createdBy: params.createdBy,
@@ -215,6 +243,31 @@ export class ContractAddendumService {
       }
 
       return newAddendum;
+    });
+
+    // 8. Notificar al sector de mantenimiento
+    const itemsList = params.items
+      .map((item, idx) => {
+        const assetName = item.assetId; // Se resolverá en el frontend con el nombre real
+        return `${idx + 1}. Asset ${assetName} (${item.quantity || 1} unidad${item.quantity && item.quantity > 1 ? "es" : ""})`;
+      })
+      .join("\\n");
+
+    await notificationService.create({
+      tenantId: params.tenantId,
+      businessUnitId: params.businessUnitId,
+      type: "delivery_pending_preparation",
+      title: "🚚 Nueva entrega pendiente de preparación",
+      body: `Addendum ${addendum.code} para contrato ${contract.code} requiere preparación. ${params.hasOperator ? "⚠️ Requiere operario - verificar documentación." : ""} ${params.items.length} item(s) a entregar.`,
+      data: {
+        addendumId: addendum.id,
+        addendumCode: addendum.code,
+        contractId: params.contractId,
+        contractCode: contract.code,
+        clientName: contract.client.displayName,
+        hasOperator: params.hasOperator,
+        itemsCount: params.items.length,
+      },
     });
 
     return addendum;
@@ -428,6 +481,144 @@ export class ContractAddendumService {
         },
       });
     });
+  }
+
+  /**
+   * Confirmar preparación del addendum (mantenimiento)
+   * Marca el addendum como listo para enviar
+   */
+  async confirmPreparation(
+    addendumId: string,
+    preparedBy: string,
+    notes?: string,
+  ): Promise<ContractAddendum> {
+    const addendum = await prisma.contractAddendum.findUnique({
+      where: { id: addendumId },
+      include: { contract: true },
+    });
+
+    if (!addendum) {
+      throw new Error("Addendum not found");
+    }
+
+    if (addendum.status !== "pending_preparation") {
+      throw new Error(
+        `Cannot confirm preparation: addendum is in status ${addendum.status}`,
+      );
+    }
+
+    // Actualizar a "ready_to_ship"
+    const updated = await prisma.contractAddendum.update({
+      where: { id: addendumId },
+      data: {
+        status: "ready_to_ship",
+        preparedById: preparedBy,
+        preparedAt: new Date(),
+        notes: notes
+          ? `${addendum.notes || ""}\n\n[Preparación] ${notes}`
+          : addendum.notes,
+      },
+    });
+
+    // Notificar al creador
+    await notificationService.create({
+      tenantId: addendum.tenantId,
+      businessUnitId: addendum.businessUnitId,
+      userId: addendum.createdBy || undefined,
+      type: "delivery_ready_to_ship",
+      title: "✅ Entrega preparada",
+      body: `El addendum ${addendum.code} está listo para enviar. Ya puede confirmar la entrega al cliente.`,
+      data: {
+        addendumId: addendum.id,
+        addendumCode: addendum.code,
+        contractId: addendum.contractId,
+      },
+    });
+
+    return updated;
+  }
+
+  /**
+   * Confirmar entrega del addendum al cliente
+   * Marca el addendum como entregado e inicia los cargos diarios
+   */
+  async confirmDelivery(
+    addendumId: string,
+    deliveredBy: string,
+    notes?: string,
+  ): Promise<ContractAddendum> {
+    const addendum = await prisma.contractAddendum.findUnique({
+      where: { id: addendumId },
+      include: {
+        contract: {
+          include: {
+            client: {
+              select: { displayName: true },
+            },
+          },
+        },
+        rentals: true,
+      },
+    });
+
+    if (!addendum) {
+      throw new Error("Addendum not found");
+    }
+
+    if (addendum.status !== "ready_to_ship") {
+      throw new Error(
+        `Cannot confirm delivery: addendum must be in ready_to_ship status. Current: ${addendum.status}`,
+      );
+    }
+
+    const deliveryDate = new Date();
+
+    // Actualizar addendum y rentals en transacción
+    const updated = await prisma.$transaction(async (tx) => {
+      // Actualizar addendum
+      const updatedAddendum = await tx.contractAddendum.update({
+        where: { id: addendumId },
+        data: {
+          status: "delivered",
+          deliveredById: deliveredBy,
+          deliveredAt: deliveryDate,
+          notes: notes
+            ? `${addendum.notes || ""}\n\n[Entrega] ${notes}`
+            : addendum.notes,
+        },
+      });
+
+      // Actualizar todos los rentals: establecer fecha de inicio real (actualStartDate)
+      // Esto permite que el cron de cargos diarios los procese
+      for (const rental of addendum.rentals) {
+        await tx.assetRental.update({
+          where: { id: rental.id },
+          data: {
+            // Establecer el inicio real para que los cargos diarios comiencen
+            withdrawalDate: deliveryDate,
+          },
+        });
+      }
+
+      return updatedAddendum;
+    });
+
+    // Notificar al creador y al cliente
+    await notificationService.create({
+      tenantId: addendum.tenantId,
+      businessUnitId: addendum.businessUnitId,
+      type: "delivery_confirmed",
+      title: "📦 Entrega confirmada",
+      body: `El addendum ${addendum.code} fue entregado al cliente ${addendum.contract.client.displayName}. Los cargos diarios comenzarán a partir de ahora.`,
+      data: {
+        addendumId: addendum.id,
+        addendumCode: addendum.code,
+        contractId: addendum.contractId,
+        deliveredAt: deliveryDate.toISOString(),
+      },
+    });
+
+    return updated;
   }
 
   /**

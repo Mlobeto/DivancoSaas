@@ -16,6 +16,7 @@ export class AutoChargeService {
     console.log("[AutoCharge] Iniciando cargo diario de herramientas...");
 
     // Buscar todos los rentals de tipo TOOL actualmente activos
+    // Solo procesar rentals cuyo addendum haya sido entregado (deliveredAt !== null)
     const activeToolRentals = await prisma.assetRental.findMany({
       where: {
         trackingType: "TOOL",
@@ -23,12 +24,23 @@ export class AutoChargeService {
         contract: {
           status: "active",
         },
+        addendum: {
+          deliveredAt: {
+            not: null, // Solo procesar entregas confirmadas
+          },
+        },
       },
       include: {
         asset: true,
         contract: {
           include: {
             clientAccount: true,
+          },
+        },
+        addendum: {
+          select: {
+            code: true,
+            deliveredAt: true,
           },
         },
       },
@@ -132,6 +144,11 @@ export class AutoChargeService {
         contract: {
           status: "active",
         },
+        addendum: {
+          deliveredAt: {
+            not: null, // Solo verificar rentals de entregas confirmadas
+          },
+        },
         usageReports: {
           none: {
             date: {
@@ -148,6 +165,12 @@ export class AutoChargeService {
           },
         },
         creator: true, // Usuario que retiró el asset (posiblemente el operario)
+        addendum: {
+          select: {
+            code: true,
+            deliveredAt: true,
+          },
+        },
       },
     });
 

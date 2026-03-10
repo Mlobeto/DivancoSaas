@@ -379,6 +379,132 @@ export class ContractAddendumController {
       });
     }
   }
+
+  /**
+   * @swagger
+   * /api/v1/rental/addendums/{addendumId}/confirm-preparation:
+   *   post:
+   *     tags: [Contract Addendums]
+   *     summary: Confirmar preparación del addendum (mantenimiento)
+   *     parameters:
+   *       - in: path
+   *         name: addendumId
+   *         required: true
+   *         schema:
+   *           type: string
+   *     requestBody:
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               notes:
+   *                 type: string
+   *     responses:
+   *       200:
+   *         description: Addendum marcado como listo para enviar
+   */
+  async confirmPreparation(req: Request, res: Response): Promise<void> {
+    try {
+      const { addendumId } = req.params;
+      const { notes } = req.body;
+      const userId = req.user?.userId;
+
+      if (!userId) {
+        res.status(401).json({
+          success: false,
+          error: {
+            code: "UNAUTHORIZED",
+            message: "User not authenticated",
+          },
+        });
+        return;
+      }
+
+      const addendum = await contractAddendumService.confirmPreparation(
+        addendumId,
+        userId,
+        notes,
+      );
+
+      res.json({
+        success: true,
+        data: addendum,
+        message: "Preparación confirmada. El addendum está listo para enviar.",
+      });
+    } catch (error: any) {
+      res.status(400).json({
+        success: false,
+        error: {
+          code: "CONFIRM_PREPARATION_ERROR",
+          message: error.message,
+        },
+      });
+    }
+  }
+
+  /**
+   * @swagger
+   * /api/v1/rental/addendums/{addendumId}/confirm-delivery:
+   *   post:
+   *     tags: [Contract Addendums]
+   *     summary: Confirmar entrega del addendum al cliente
+   *     parameters:
+   *       - in: path
+   *         name: addendumId
+   *         required: true
+   *         schema:
+   *           type: string
+   *     requestBody:
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               notes:
+   *                 type: string
+   *     responses:
+   *       200:
+   *         description: Entrega confirmada, cargos diarios iniciados
+   */
+  async confirmDelivery(req: Request, res: Response): Promise<void> {
+    try {
+      const { addendumId } = req.params;
+      const { notes } = req.body;
+      const userId = req.user?.userId;
+
+      if (!userId) {
+        res.status(401).json({
+          success: false,
+          error: {
+            code: "UNAUTHORIZED",
+            message: "User not authenticated",
+          },
+        });
+        return;
+      }
+
+      const addendum = await contractAddendumService.confirmDelivery(
+        addendumId,
+        userId,
+        notes,
+      );
+
+      res.json({
+        success: true,
+        data: addendum,
+        message: "Entrega confirmada. Los cargos diarios han comenzado.",
+      });
+    } catch (error: any) {
+      res.status(400).json({
+        success: false,
+        error: {
+          code: "CONFIRM_DELIVERY_ERROR",
+          message: error.message,
+        },
+      });
+    }
+  }
 }
 
 export const contractAddendumController = new ContractAddendumController();

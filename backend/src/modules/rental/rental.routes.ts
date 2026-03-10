@@ -800,6 +800,22 @@ router.post(
   contractAddendumController.cancel.bind(contractAddendumController),
 );
 
+// Confirmar preparación del addendum (mantenimiento)
+router.post(
+  "/addendums/:addendumId/confirm-preparation",
+  authorize("contracts:update"),
+  contractAddendumController.confirmPreparation.bind(
+    contractAddendumController,
+  ),
+);
+
+// Confirmar entrega del addendum al cliente
+router.post(
+  "/addendums/:addendumId/confirm-delivery",
+  authorize("contracts:update"),
+  contractAddendumController.confirmDelivery.bind(contractAddendumController),
+);
+
 // -------- LIMIT CHANGE REQUESTS --------
 
 // Crear solicitud de ampliación de límites

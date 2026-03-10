@@ -77,6 +77,17 @@ export interface CreateAddendumDTO {
   }[];
   notes?: string;
   metadata?: Record<string, any>;
+  // Operario
+  hasOperator?: boolean;
+  operatorLicenseUrl?: string;
+  operatorCertificationUrl?: string;
+  operatorInsuranceUrl?: string;
+  operatorDocumentationNotes?: string;
+  // Transporte
+  transportType?: string;
+  vehicleId?: string;
+  driverName?: string;
+  transportNotes?: string;
 }
 
 export interface UpdateAddendumDTO {
@@ -156,6 +167,34 @@ export const addendumService = {
     const res = await apiClient.post(`${BASE}/addendums/${addendumId}/cancel`, {
       reason,
     });
+    return res.data.data ?? res.data;
+  },
+
+  /**
+   * Confirmar preparación (mantenimiento)
+   */
+  async confirmPreparation(
+    addendumId: string,
+    notes?: string,
+  ): Promise<ContractAddendum> {
+    const res = await apiClient.post(
+      `${BASE}/addendums/${addendumId}/confirm-preparation`,
+      { notes },
+    );
+    return res.data.data ?? res.data;
+  },
+
+  /**
+   * Confirmar entrega al cliente
+   */
+  async confirmDelivery(
+    addendumId: string,
+    notes?: string,
+  ): Promise<ContractAddendum> {
+    const res = await apiClient.post(
+      `${BASE}/addendums/${addendumId}/confirm-delivery`,
+      { notes },
+    );
     return res.data.data ?? res.data;
   },
 };
