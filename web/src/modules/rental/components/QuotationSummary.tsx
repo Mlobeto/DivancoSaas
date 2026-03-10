@@ -13,10 +13,11 @@ export function QuotationSummary({
   onTaxRateChange,
 }: QuotationSummaryProps) {
   // Calcular totales por modalidad (v5.0)
+  // Los precios de los activos YA INCLUYEN IVA, por lo que debemos descontarlo para obtener el subtotal
   const calculateTotals = () => {
-    let dailySubtotal = 0;
-    let weeklySubtotal = 0;
-    let monthlySubtotal = 0;
+    let dailyTotal = 0;
+    let weeklyTotal = 0;
+    let monthlyTotal = 0;
 
     items.forEach((item) => {
       if (item.selectedPeriods) {
@@ -26,21 +27,21 @@ export function QuotationSummary({
           const dailyPrice =
             (item.pricePerDay || 0) +
             (item.operatorIncluded ? item.operatorCostPerDay || 0 : 0);
-          dailySubtotal += dailyPrice * qty;
+          dailyTotal += dailyPrice * qty;
         }
 
         if (item.selectedPeriods.weekly) {
           const weeklyPrice =
             (item.pricePerWeek || 0) +
             (item.operatorIncluded ? item.operatorCostPerWeek || 0 : 0);
-          weeklySubtotal += weeklyPrice * qty;
+          weeklyTotal += weeklyPrice * qty;
         }
 
         if (item.selectedPeriods.monthly) {
           const monthlyPrice =
             (item.pricePerMonth || 0) +
             (item.operatorIncluded ? item.operatorCostPerMonth || 0 : 0);
-          monthlySubtotal += monthlyPrice * qty;
+          monthlyTotal += monthlyPrice * qty;
         }
       } else {
         // Fallback: usar precio legacy
@@ -48,31 +49,41 @@ export function QuotationSummary({
           ((item.calculatedUnitPrice || 0) +
             (item.calculatedOperatorCost || 0)) *
           item.quantity;
-        dailySubtotal += legacyPrice;
-        weeklySubtotal += legacyPrice;
-        monthlySubtotal += legacyPrice;
+        dailyTotal += legacyPrice;
+        weeklyTotal += legacyPrice;
+        monthlyTotal += legacyPrice;
       }
     });
 
-    const taxMultiplier = 1 + taxRate / 100;
+    // Calcular subtotal e IVA descontando del total (que ya incluye IVA)
+    const taxDivisor = 1 + taxRate / 100;
+
+    const dailySubtotal = dailyTotal / taxDivisor;
+    const dailyTax = dailyTotal - dailySubtotal;
+
+    const weeklySubtotal = weeklyTotal / taxDivisor;
+    const weeklyTax = weeklyTotal - weeklySubtotal;
+
+    const monthlySubtotal = monthlyTotal / taxDivisor;
+    const monthlyTax = monthlyTotal - monthlySubtotal;
 
     return {
       daily: {
         subtotal: dailySubtotal,
-        tax: dailySubtotal * (taxRate / 100),
-        total: dailySubtotal * taxMultiplier,
+        tax: dailyTax,
+        total: dailyTotal,
         hasItems: items.some((item) => item.selectedPeriods?.daily),
       },
       weekly: {
         subtotal: weeklySubtotal,
-        tax: weeklySubtotal * (taxRate / 100),
-        total: weeklySubtotal * taxMultiplier,
+        tax: weeklyTax,
+        total: weeklyTotal,
         hasItems: items.some((item) => item.selectedPeriods?.weekly),
       },
       monthly: {
         subtotal: monthlySubtotal,
-        tax: monthlySubtotal * (taxRate / 100),
-        total: monthlySubtotal * taxMultiplier,
+        tax: monthlyTax,
+        total: monthlyTotal,
         hasItems: items.some((item) => item.selectedPeriods?.monthly),
       },
     };
@@ -98,15 +109,15 @@ export function QuotationSummary({
       {/* Configuración de IVA */}
       <div className="flex items-center gap-3 mb-6 p-3 bg-white rounded-lg border border-gray-200">
         <span className="text-sm font-medium text-gray-700">Tasa de IVA:</span>
-        <input
-          type="number"
-          min="0"
-          max="100"
-          step="0.1"
+        <select
           value={taxRate}
-          onChange={(e) => onTaxRateChange(parseFloat(e.target.value) || 0)}
-          className="w-20 px-2 py-1 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-        />
+          onChange={(e) => onTaxRateChange(parseFloat(e.target.value))}
+          className="w-24 px-2 py-1 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+        >
+          <option value="0">0%</option>
+          <option value="5">5%</option>
+          <option value="19">19%</option>
+        </select>
         <span className="text-sm text-gray-600">%</span>
       </div>
 
