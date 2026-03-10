@@ -96,7 +96,7 @@ export function useQuotationForm(options?: UseQuotationFormOptions) {
   const [validityDays, setValidityDays] = useState(15);
   const [notes, setNotes] = useState("");
   const [terms, setTerms] = useState(
-    "• Los precios incluyen IVA\n• El pago se realizará 50% adelanto, 50% contra entrega\n• Los equipos deben ser devueltos en las mismas condiciones",
+    "• La entrega dependerá del saldo disponible en su cuenta\n• El servicio está sujeto al lapso de tiempo aprobado según su contrato\n• Los equipos deben ser devueltos en las mismas condiciones",
   );
   const [templateId, setTemplateId] = useState<string | undefined>(undefined);
 
