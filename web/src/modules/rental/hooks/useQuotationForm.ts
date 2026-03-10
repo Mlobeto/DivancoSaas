@@ -73,6 +73,9 @@ export interface QuotationItem {
   operatorCostPerDay?: number;
   operatorCostPerWeek?: number;
   operatorCostPerMonth?: number;
+  totalPerDay?: number;
+  totalPerWeek?: number;
+  totalPerMonth?: number;
 }
 
 export function useQuotationForm(options?: UseQuotationFormOptions) {
@@ -170,6 +173,32 @@ export function useQuotationForm(options?: UseQuotationFormOptions) {
             : undefined,
         calculatedUnitPrice: Number(item.calculatedUnitPrice) || 0,
         calculatedOperatorCost: Number(item.calculatedOperatorCost) || 0,
+
+        // v5.0: Multi-period pricing
+        selectedPeriods: item.selectedPeriods
+          ? typeof item.selectedPeriods === "string"
+            ? JSON.parse(item.selectedPeriods)
+            : item.selectedPeriods
+          : undefined,
+        pricePerDay: item.pricePerDay ? Number(item.pricePerDay) : undefined,
+        pricePerWeek: item.pricePerWeek ? Number(item.pricePerWeek) : undefined,
+        pricePerMonth: item.pricePerMonth
+          ? Number(item.pricePerMonth)
+          : undefined,
+        operatorCostPerDay: item.operatorCostPerDay
+          ? Number(item.operatorCostPerDay)
+          : undefined,
+        operatorCostPerWeek: item.operatorCostPerWeek
+          ? Number(item.operatorCostPerWeek)
+          : undefined,
+        operatorCostPerMonth: item.operatorCostPerMonth
+          ? Number(item.operatorCostPerMonth)
+          : undefined,
+        totalPerDay: item.totalPerDay ? Number(item.totalPerDay) : undefined,
+        totalPerWeek: item.totalPerWeek ? Number(item.totalPerWeek) : undefined,
+        totalPerMonth: item.totalPerMonth
+          ? Number(item.totalPerMonth)
+          : undefined,
       }),
     );
     setItems(mappedItems);
@@ -453,6 +482,18 @@ export function useQuotationForm(options?: UseQuotationFormOptions) {
 
           // Precio ya calculado en el modal (evita recálculo en backend si hay override)
           unitPrice: item.customUnitPrice ?? item.calculatedUnitPrice,
+
+          // v5.0: Multi-period pricing
+          selectedPeriods: item.selectedPeriods,
+          pricePerDay: item.pricePerDay,
+          pricePerWeek: item.pricePerWeek,
+          pricePerMonth: item.pricePerMonth,
+          operatorCostPerDay: item.operatorCostPerDay,
+          operatorCostPerWeek: item.operatorCostPerWeek,
+          operatorCostPerMonth: item.operatorCostPerMonth,
+          totalPerDay: item.totalPerDay,
+          totalPerWeek: item.totalPerWeek,
+          totalPerMonth: item.totalPerMonth,
         })),
       };
 
