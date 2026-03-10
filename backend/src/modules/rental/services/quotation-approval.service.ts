@@ -251,14 +251,14 @@ async function _sendContractEmail(
     where: { id: contractId },
     include: { client: true, businessUnit: true, template: true },
   });
-  if (!contract) return;
+  if (!contract) return receiptToken;
 
   const clientEmail = contract.client?.email;
   if (!clientEmail) {
     console.warn(
       `[QuotationApproval] Cliente sin email, no se envía contrato ${contractId}`,
     );
-    return;
+    return receiptToken;
   }
 
   const receiptUploadUrl = `${backendUrl}/api/v1/public/contracts/${receiptToken}/upload`;
