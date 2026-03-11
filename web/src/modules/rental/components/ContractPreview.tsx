@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { contractTemplateService } from "../services/contract-template.service";
 import { PaymentProofUploader } from "./PaymentProofUploader";
+import { useSmartPolling } from "@/hooks/useSmartPolling";
 
 interface ContractPreviewProps {
   contractId: string;
@@ -47,6 +48,9 @@ export function ContractPreview({
   const [previewHtml, setPreviewHtml] = useState<string>("");
   const queryClient = useQueryClient();
 
+  // Polling inteligente: solo cuando la pestaña está visible
+  const smartInterval = useSmartPolling(60000); // 60s cuando visible, pausa cuando oculta
+
   // Query: Obtener estado del comprobante de pago
   const { data: paymentProof, isLoading: loadingPayment } = useQuery({
     queryKey: ["paymentProof", contractId],
@@ -55,12 +59,12 @@ export function ContractPreview({
   });
 
   // Query: Obtener estado de firmas
-  // Polling cada 10 segundos cuando está habilitado
+  // Polling inteligente: solo cuando la pestaña está visible (reducido para evitar throttling)
   const { data: signatureInfo } = useQuery({
     queryKey: ["signature", contractId],
     queryFn: () => contractTemplateService.getSignatureStatus(contractId),
     enabled: requiresSignature,
-    refetchInterval: 10000, // Poll cada 10s cuando está habilitado
+    refetchInterval: smartInterval, // Poll cada 60s cuando está visible, se detiene cuando oculta
   });
 
   // Mutation: Renderizar contrato
@@ -96,12 +100,13 @@ export function ContractPreview({
   const downloadPdfMutation = useMutation({
     mutationFn: async () => {
       // Si requiere firma y ya está firmado, descargar PDF firmado
-      const shouldDownloadSigned = requiresSignature && signatureInfo?.status === "completed";
-      
+      const shouldDownloadSigned =
+        requiresSignature && signatureInfo?.status === "completed";
+
       const blob = shouldDownloadSigned
         ? await contractTemplateService.downloadSignedContractPdf(contractId)
         : await contractTemplateService.downloadContractPdf(contractId);
-      
+
       return { blob, isSigned: shouldDownloadSigned };
     },
     onSuccess: ({ blob, isSigned }) => {
@@ -372,7 +377,8 @@ export function ContractPreview({
 
           {sendToSignatureMutation.isError && (
             <p className="mt-3 text-sm text-red-400">
-              Error al enviar: {(sendToSignatureMutation.error as Error).message}
+              Error al enviar:{" "}
+              {(sendToSignatureMutation.error as Error).message}
             </p>
           )}
         </div>

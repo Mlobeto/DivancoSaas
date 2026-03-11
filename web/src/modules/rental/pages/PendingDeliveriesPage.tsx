@@ -19,6 +19,7 @@ import {
   addendumService,
   type ContractAddendum,
 } from "../services/addendum.service";
+import { useSmartPolling } from "@/hooks/useSmartPolling";
 
 // Utility function for date formatting
 const formatDate = (dateString: string) => {
@@ -122,13 +123,16 @@ export function PendingDeliveriesPage() {
   const [selectedAddendum, setSelectedAddendum] =
     useState<ContractAddendum | null>(null);
 
+  // Polling inteligente: solo cuando la pestaña está visible
+  const smartInterval = useSmartPolling(120000); // 2 min cuando visible, pausa cuando oculta
+
   // Fetch todos los addendums pendientes
   const { data: addendums, isLoading } = useQuery({
     queryKey: ["pending-deliveries"],
     queryFn: async () => {
       return await addendumService.getPendingDeliveries();
     },
-    refetchInterval: 30000, // Refetch cada 30 segundos
+    refetchInterval: smartInterval, // Polling inteligente
   });
 
   if (isLoading) {
