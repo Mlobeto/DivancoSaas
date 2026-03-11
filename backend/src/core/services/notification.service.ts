@@ -16,6 +16,8 @@ export interface CreateNotificationParams {
   userId?: string;
   /** Lista explícita de destinatarios (prioridad sobre userId/businessUnit auto) */
   userIds?: string[];
+  /** Filtrar solo usuarios con este permiso específico (ej: "accounts:update") */
+  requiredPermission?: string;
   type: string;
   title: string;
   body: string;
@@ -34,9 +36,18 @@ class NotificationService {
   /**
    * Crea una (o varias) notificaciones y las emite en tiempo real.
    * Si no se especifica userId, detecta todos los admins de la BU.
+   * Si se especifica requiredPermission, solo notifica a usuarios con ese permiso.
    */
   async create(params: CreateNotificationParams): Promise<void> {
-    const { tenantId, businessUnitId, type, title, body, data } = params;
+    const {
+      tenantId,
+      businessUnitId,
+      type,
+      title,
+      body,
+      data,
+      requiredPermission,
+    } = params;
 
     // Determinar destinatarios
     let userIds: string[] = [];
@@ -59,6 +70,27 @@ class NotificationService {
       });
       const ownerIds = owners.map((o) => o.id);
       userIds = [...new Set([...userIds, ...ownerIds])];
+    }
+
+    // Filtrar por permiso si se especificó
+    if (requiredPermission && businessUnitId && userIds.length > 0) {
+      const filteredUserIds: string[] = [];
+      const { permissionService } =
+        await import("@core/services/permission.service");
+
+      for (const userId of userIds) {
+        const [resource, action] = requiredPermission.split(":");
+        const hasPermission = await permissionService.hasPermission(
+          userId,
+          businessUnitId,
+          resource,
+          action,
+        );
+        if (hasPermission) {
+          filteredUserIds.push(userId);
+        }
+      }
+      userIds = filteredUserIds;
     }
 
     if (userIds.length === 0) return;

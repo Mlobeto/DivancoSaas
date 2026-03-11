@@ -150,10 +150,23 @@ class PublicContractController {
       businessUnitId: contract.businessUnitId,
     });
 
+    // Actualizar contrato con los campos nuevos (paymentProofUrl) y legacy (metadata)
     await prisma.rentalContract.update({
       where: { id: contract.id },
       data: {
         receiptUploadedAt: new Date(),
+        // Nuevos campos (Contract Template v2.0)
+        paymentType: "online",
+        paymentProofUrl: uploaded.url,
+        paymentDetails: {
+          uploadedAt: new Date().toISOString(),
+          uploadedViaPublicLink: true,
+          originalFilename: file.originalname,
+          fileSize: file.size,
+          mimeType: file.mimetype,
+          blobName: uploaded.blobName,
+        },
+        // Legacy metadata (mantener compatibilidad)
         metadata: {
           ...meta,
           receiptUrl: uploaded.url,
@@ -168,7 +181,7 @@ class PublicContractController {
       `✅ [PublicContract] Comprobante recibido: ${contract.code} → ${uploaded.url}`,
     );
 
-    // Notificar al equipo
+    // Notificar al equipo (solo usuarios con permisos de cuentas)
     try {
       await notificationService.create({
         tenantId: contract.tenantId,
@@ -176,10 +189,27 @@ class PublicContractController {
         type: "payment_receipt_received",
         title: "🧾 Comprobante de pago recibido",
         body: `${contract.client?.name ?? "Cliente"} subió el comprobante para el contrato ${contract.code}`,
+        requiredPermission: "accounts:update", // Solo usuarios que pueden gestionar cuentas
         data: {
           contractId: contract.id,
           contractCode: contract.code,
           receiptUrl: uploaded.url,
+          // Acciones rápidas
+          quickActions: [
+            {
+              label: "Verificar Pago",
+              action: "verify_payment",
+              variant: "primary",
+              endpoint: `/api/v1/rental/contracts/${contract.id}/payment-proof/verify`,
+              method: "POST",
+            },
+            {
+              label: "Ver Contrato",
+              action: "view_contract",
+              variant: "secondary",
+              route: `/alquileres/contratos/${contract.id}`,
+            },
+          ],
         },
       });
     } catch (err) {
