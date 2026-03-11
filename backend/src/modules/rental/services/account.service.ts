@@ -162,6 +162,20 @@ export class AccountService {
     }
 
     const newBalance = Number(account.balance) + params.amount;
+    const newTotalReloaded = Number(account.totalReloaded) + params.amount;
+
+    // Validar límites de Decimal(15, 2) - máximo: 9,999,999,999,999.99
+    const MAX_DECIMAL_VALUE = 9999999999999.99;
+    if (newBalance > MAX_DECIMAL_VALUE) {
+      throw new Error(
+        `El nuevo saldo (${newBalance.toLocaleString()}) excedería el límite máximo permitido`,
+      );
+    }
+    if (newTotalReloaded > MAX_DECIMAL_VALUE) {
+      throw new Error(
+        `El total recargado (${newTotalReloaded.toLocaleString()}) excedería el límite máximo permitido`,
+      );
+    }
 
     // Si hay archivo, subirlo a Azure
     let proofUrl: string | undefined;
@@ -183,14 +197,12 @@ export class AccountService {
       }
     }
 
-    // Actualizar cuenta
+    // Actualizar cuenta con valores calculados
     const updatedAccount = await prisma.clientAccount.update({
       where: { id: params.accountId },
       data: {
         balance: new Decimal(newBalance),
-        totalReloaded: {
-          increment: params.amount,
-        },
+        totalReloaded: new Decimal(newTotalReloaded),
         alertTriggered: false, // Reset alert
       },
     });
@@ -228,11 +240,29 @@ export class AccountService {
     const balanceBefore = Number(account.balance);
     const balanceAfter = balanceBefore + params.amount;
 
+    // Validar límite máximo para Decimal(15, 2)
+    const MAX_DECIMAL_VALUE = 9999999999999.99;
+    if (Math.abs(balanceAfter) > MAX_DECIMAL_VALUE) {
+      throw new Error(`El nuevo saldo excedería el límite máximo permitido`);
+    }
+
     // Validar que no quede negativo
     if (balanceAfter < 0) {
       throw new Error(
         `Insufficient balance. Current: ${balanceBefore}, Required: ${Math.abs(params.amount)}`,
       );
+    }
+
+    // Calcular nuevo totalConsumed si es un cargo negativo
+    let newTotalConsumed: number | undefined;
+    if (params.amount < 0) {
+      newTotalConsumed =
+        Number(account.totalConsumed) + Math.abs(params.amount);
+      if (newTotalConsumed > MAX_DECIMAL_VALUE) {
+        throw new Error(
+          `El total consumido excedería el límite máximo permitido`,
+        );
+      }
     }
 
     // Crear movimiento
@@ -261,30 +291,43 @@ export class AccountService {
       },
     });
 
-    // Actualizar balance de la cuenta
+    // Actualizar balance de la cuenta con valor calculado
     await prisma.clientAccount.update({
       where: { id: params.accountId },
       data: {
         balance: new Decimal(balanceAfter),
-        totalConsumed:
-          params.amount < 0
-            ? {
-                increment: Math.abs(params.amount),
-              }
-            : undefined,
+        totalConsumed: newTotalConsumed
+          ? new Decimal(newTotalConsumed)
+          : undefined,
       },
     });
 
     // Si es cargo de contrato, actualizar totalConsumed del contrato
     if (params.contractId && params.amount < 0) {
-      await prisma.rentalContract.update({
+      const contract = await prisma.rentalContract.findUnique({
         where: { id: params.contractId },
-        data: {
-          totalConsumed: {
-            increment: Math.abs(params.amount),
-          },
-        },
+        select: { totalConsumed: true },
       });
+
+      if (contract) {
+        const newContractConsumed =
+          Number(contract.totalConsumed) + Math.abs(params.amount);
+
+        // Validar límite
+        const MAX_DECIMAL_VALUE = 9999999999999.99;
+        if (newContractConsumed > MAX_DECIMAL_VALUE) {
+          throw new Error(
+            `El total consumido del contrato excedería el límite máximo`,
+          );
+        }
+
+        await prisma.rentalContract.update({
+          where: { id: params.contractId },
+          data: {
+            totalConsumed: new Decimal(newContractConsumed),
+          },
+        });
+      }
     }
 
     // Verificar alertas
