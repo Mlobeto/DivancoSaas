@@ -672,9 +672,9 @@ type BroadcastUseCase =
 
 const USE_CASE_LABELS: Record<BroadcastUseCase, string> = {
   GENERAL_ANNOUNCEMENT: "Mensaje general",
-  SITE_UPDATE: "Actualización de obra",
+  SITE_UPDATE: "Actualización",
   QUOTATION_CREATED: "Cotización creada",
-  CLIENT_PICKUP_APPROVED: "Cliente aprobado para retiro",
+  CLIENT_PICKUP_APPROVED: "Crédito  aprobado para retiro",
   CLIENT_PICKUP_ARRIVED: "Cliente llegó a retirar",
 };
 
