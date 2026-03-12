@@ -101,7 +101,7 @@ export interface MessagesResponse {
 // ─── SERVICE ──────────────────────────────────────────────────
 
 class LimitRequestService {
-  private baseUrl = "/api/v1/chat";
+  private baseUrl = "/chat";
 
   /**
    * Crear solicitud de aumento de límite

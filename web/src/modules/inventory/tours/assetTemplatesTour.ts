@@ -16,7 +16,7 @@ export const assetTemplatesListTour: Step[] = [
       React.createElement(
         "h2",
         { className: "text-lg font-bold mb-2" },
-        "👋 ¡Bienvenido a Plantillas de Activos!",
+        " ¡Bienvenido a Plantillas de Activos!",
       ),
       React.createElement(
         "p",

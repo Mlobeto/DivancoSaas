@@ -1,8 +1,7 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/store/auth.store";
 import { Layout } from "@/core/components/Layout";
-import { ManualNotificationModal } from "@/core/components/ManualNotificationModal";
 import { ChevronDown, ChevronUp, Settings, Briefcase } from "lucide-react";
 
 interface DashboardCard {
@@ -16,8 +15,8 @@ interface DashboardCard {
 
 export function DashboardPage() {
   const { businessUnit, role, permissions } = useAuthStore();
+  const navigate = useNavigate();
   const [showOwnerPanel, setShowOwnerPanel] = useState(true);
-  const [manualNotificationOpen, setManualNotificationOpen] = useState(false);
 
   const roleName = role || "USER";
   const userPermissions = permissions || [];
@@ -173,7 +172,7 @@ export function DashboardPage() {
           key={card.id}
           type="button"
           className={`${cardBaseClass} text-left`}
-          onClick={() => setManualNotificationOpen(true)}
+          onClick={() => navigate("/chat")}
         >
           <p className="text-[11px] tracking-[0.16em] text-dark-500 uppercase mb-1">
             {card.id.replace(/-/g, " ")}
@@ -275,11 +274,6 @@ export function DashboardPage() {
             )}
           </div>
         )}
-
-        <ManualNotificationModal
-          isOpen={manualNotificationOpen}
-          onClose={() => setManualNotificationOpen(false)}
-        />
       </div>
     </Layout>
   );

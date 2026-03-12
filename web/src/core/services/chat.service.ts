@@ -117,7 +117,7 @@ export function getRoomInitials(room: ChatRoom, currentUserId: string): string {
 
 // ─── SERVICE ──────────────────────────────────────────────────
 
-const BASE = "/api/v1/chat";
+const BASE = "/chat";
 
 class ChatService {
   /** Listar todas las salas del usuario actual */
@@ -175,7 +175,7 @@ class ChatService {
 
   /** Listar usuarios del tenant para iniciar DMs */
   async listUsers(): Promise<ChatUser[]> {
-    const res = await apiClient.get("/api/v1/users");
+    const res = await apiClient.get("/users");
     // response may be paginated or flat array
     const raw = res.data.data ?? res.data;
     return Array.isArray(raw) ? raw : (raw.data ?? []);

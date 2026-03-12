@@ -3,7 +3,13 @@
  * Layout de dos columnas: lista de salas (izquierda) + conversación (derecha)
  */
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
 import {
   Search,
   Plus,
@@ -16,8 +22,13 @@ import {
   Check,
   Image as ImageIcon,
   FileText,
+  Megaphone,
 } from "lucide-react";
 import { useAuthStore } from "@/store/auth.store";
+import {
+  notificationService,
+  type NotificationRecipient,
+} from "@/core/services/notification.service";
 import {
   chatService,
   type ChatRoom,
@@ -650,6 +661,265 @@ function RoomItem({
   );
 }
 
+// ─── BROADCAST MODAL ──────────────────────────────────────────
+
+type BroadcastUseCase =
+  | "GENERAL_ANNOUNCEMENT"
+  | "SITE_UPDATE"
+  | "QUOTATION_CREATED"
+  | "CLIENT_PICKUP_APPROVED"
+  | "CLIENT_PICKUP_ARRIVED";
+
+const USE_CASE_LABELS: Record<BroadcastUseCase, string> = {
+  GENERAL_ANNOUNCEMENT: "Mensaje general",
+  SITE_UPDATE: "Actualización de obra",
+  QUOTATION_CREATED: "Cotización creada",
+  CLIENT_PICKUP_APPROVED: "Cliente aprobado para retiro",
+  CLIENT_PICKUP_ARRIVED: "Cliente llegó a retirar",
+};
+
+const USE_CASE_HINTS: Record<BroadcastUseCase, string> = {
+  GENERAL_ANNOUNCEMENT: "Difusión general para todo el equipo.",
+  SITE_UPDATE: "Aviso operativo de obra/equipo para coordinación entre áreas.",
+  QUOTATION_CREATED:
+    "Dispara comunicación a OWNER, comercial, contabilidad y mantenimiento.",
+  CLIENT_PICKUP_APPROVED:
+    "Ventas avisa que el cliente está autorizado para retirar.",
+  CLIENT_PICKUP_ARRIVED: "Mantenimiento avisa que el cliente llegó a retiro.",
+};
+
+function BroadcastModal({ onClose }: { onClose: () => void }) {
+  const [useCase, setUseCase] = useState<BroadcastUseCase>(
+    "GENERAL_ANNOUNCEMENT",
+  );
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [recipientMode, setRecipientMode] = useState<"all" | "specific">("all");
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [recipients, setRecipients] = useState<NotificationRecipient[]>([]);
+  const [loadingRecipients, setLoadingRecipients] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLoadingRecipients(true);
+    notificationService
+      .listRecipients()
+      .then(setRecipients)
+      .catch(() => {})
+      .finally(() => setLoadingRecipients(false));
+  }, []);
+
+  const byRole = useMemo(() => {
+    const map = new Map<string, NotificationRecipient[]>();
+    recipients.forEach((r) => {
+      const role = r.roleName || "Sin rol";
+      if (!map.has(role)) map.set(role, []);
+      map.get(role)!.push(r);
+    });
+    return Array.from(map.entries());
+  }, [recipients]);
+
+  const canSendToAll =
+    useCase === "GENERAL_ANNOUNCEMENT" || useCase === "QUOTATION_CREATED";
+
+  const toggle = (id: string) =>
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+
+  const isDisabled =
+    sending ||
+    title.trim().length < 3 ||
+    body.trim().length < 3 ||
+    (recipientMode === "specific" && selectedIds.length === 0);
+
+  const handleSend = async () => {
+    setSending(true);
+    setError(null);
+    try {
+      const res = await notificationService.sendManual({
+        title: title.trim(),
+        body: body.trim(),
+        recipientMode,
+        recipientIds: recipientMode === "specific" ? selectedIds : undefined,
+        type: "manual_message",
+        useCase,
+        deliveryMode: "notification",
+      });
+      setSuccess(`Anuncio enviado a ${res.sent} usuario(s).`);
+      setTitle("");
+      setBody("");
+      setSelectedIds([]);
+    } catch (e: any) {
+      setError(e?.response?.data?.error || e?.message || "No se pudo enviar.");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-dark-800 border border-dark-700 rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-dark-700">
+          <div className="flex items-center gap-2">
+            <Megaphone className="w-5 h-5 text-primary-400" />
+            <h3 className="font-semibold text-white">Anuncio / Notificación</h3>
+          </div>
+          <button onClick={onClose} className="text-dark-400 hover:text-white">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          <div>
+            <label className="form-label">Tipo de flujo</label>
+            <select
+              className="input"
+              value={useCase}
+              onChange={(e) => {
+                const val = e.target.value as BroadcastUseCase;
+                setUseCase(val);
+                if (
+                  val !== "GENERAL_ANNOUNCEMENT" &&
+                  val !== "QUOTATION_CREATED"
+                ) {
+                  setRecipientMode("specific");
+                }
+              }}
+            >
+              {Object.entries(USE_CASE_LABELS).map(([k, v]) => (
+                <option key={k} value={k}>
+                  {v}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-dark-400 mt-1">
+              {USE_CASE_HINTS[useCase]}
+            </p>
+          </div>
+
+          <div>
+            <label className="form-label">Título</label>
+            <input
+              className="input"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Ej. Actualización de operación"
+              maxLength={120}
+            />
+          </div>
+
+          <div>
+            <label className="form-label">Mensaje</label>
+            <textarea
+              className="input min-h-[100px]"
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              placeholder="Escribí el mensaje para el equipo"
+              maxLength={1000}
+            />
+          </div>
+
+          <div>
+            <label className="form-label">Destinatarios</label>
+            <div className="flex gap-4 mb-3">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="radio"
+                  checked={recipientMode === "all"}
+                  onChange={() => setRecipientMode("all")}
+                  disabled={!canSendToAll}
+                />
+                Todos en la Business Unit
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="radio"
+                  checked={recipientMode === "specific"}
+                  onChange={() => setRecipientMode("specific")}
+                />
+                Usuarios específicos
+              </label>
+            </div>
+            {!canSendToAll && (
+              <p className="text-xs text-dark-400 mb-3">
+                Para este flujo el backend limita destinatarios por función.
+              </p>
+            )}
+            {recipientMode === "specific" && (
+              <div className="bg-dark-900 border border-dark-700 rounded-lg max-h-52 overflow-y-auto p-3">
+                {loadingRecipients ? (
+                  <p className="text-dark-400 text-sm">Cargando...</p>
+                ) : byRole.length === 0 ? (
+                  <p className="text-dark-400 text-sm">
+                    Sin destinatarios disponibles.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {byRole.map(([roleName, recs]) => (
+                      <div key={roleName}>
+                        <p className="text-xs uppercase tracking-wide text-dark-400 mb-1">
+                          {roleName}
+                        </p>
+                        <div className="space-y-1">
+                          {recs.map((r) => (
+                            <label
+                              key={r.id}
+                              className="flex items-center gap-3 text-sm cursor-pointer"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={selectedIds.includes(r.id)}
+                                onChange={() => toggle(r.id)}
+                              />
+                              <span className="text-white">
+                                {r.firstName} {r.lastName}
+                              </span>
+                              <span className="text-dark-400">{r.email}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {error && (
+            <div className="bg-red-900/20 border border-red-800 text-red-400 text-sm rounded-lg px-4 py-3">
+              {error}
+            </div>
+          )}
+          {success && (
+            <div className="bg-green-900/20 border border-green-800 text-green-400 text-sm rounded-lg px-4 py-3">
+              {success}
+            </div>
+          )}
+
+          <div className="flex justify-end gap-3 pt-1">
+            <button type="button" className="btn-ghost" onClick={onClose}>
+              Cerrar
+            </button>
+            <button
+              type="button"
+              className="btn-primary flex items-center gap-2"
+              disabled={isDisabled}
+              onClick={handleSend}
+            >
+              <Send className="w-4 h-4" />
+              {sending ? "Enviando..." : "Enviar anuncio"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── PAGE ──────────────────────────────────────────────────────
 
 export function ChatPage() {
@@ -660,7 +930,7 @@ export function ChatPage() {
   const [users, setUsers] = useState<ChatUser[]>([]);
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [modal, setModal] = useState<"dm" | "group" | null>(null);
+  const [modal, setModal] = useState<"dm" | "group" | "broadcast" | null>(null);
   const [showNewMenu, setShowNewMenu] = useState(false);
   const [loadingRooms, setLoadingRooms] = useState(true);
 
@@ -760,6 +1030,16 @@ export function ChatPage() {
                   <Users className="w-4 h-4" />
                   Nuevo grupo
                 </button>
+                <button
+                  onClick={() => {
+                    setShowNewMenu(false);
+                    setModal("broadcast");
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-dark-200 hover:text-white hover:bg-dark-600 transition-colors"
+                >
+                  <Megaphone className="w-4 h-4" />
+                  Anuncio
+                </button>
               </div>
             )}
           </div>
@@ -844,6 +1124,9 @@ export function ChatPage() {
           onCreate={handleCreateGroup}
           onClose={() => setModal(null)}
         />
+      )}
+      {modal === "broadcast" && (
+        <BroadcastModal onClose={() => setModal(null)} />
       )}
     </div>
   );
