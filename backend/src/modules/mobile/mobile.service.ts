@@ -153,7 +153,6 @@ export const mobileService = {
     };
   },
 
-  /**
   async getMyAssignments(userId: string, businessUnitId: string) {
     const assignments = await prisma.operatorAssignment.findMany({
       where: {
