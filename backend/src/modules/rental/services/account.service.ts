@@ -790,7 +790,7 @@ export class AccountService {
     });
 
     // Registrar auditoría como movimiento de nota
-    await prisma.accountMovement.create({
+    await prisma.clientAccountMovement.create({
       data: {
         clientAccountId: accountId,
         movementType: "limit_update",

@@ -130,7 +130,7 @@ export async function approveQuotationAsClient(
 
   // Enviar email al cliente con link para subir comprobante
   const receiptUploadUrl = `${backendUrl}/public/quotations/${receiptToken}/upload-receipt`;
-  await emailService.sendEmail({
+  await emailService.sendGenericEmail(quotation.businessUnitId, {
     to: quotation.client.email,
     subject: `✅ Cotización ${quotation.code} aprobada - Siguiente paso: Acreditar fondos`,
     html: `
