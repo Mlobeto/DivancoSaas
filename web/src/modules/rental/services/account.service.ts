@@ -253,6 +253,21 @@ class AccountService {
     }>("/rental/deliveries/check-availability", params);
     return response.data.data;
   }
+
+  /**
+   * Actualizar límites de crédito/tiempo directamente.
+   * El backend requiere permiso accounts:update (Owner/SuperAdmin lo tienen automáticamente).
+   */
+  async updateLimits(
+    accountId: string,
+    params: {
+      creditLimit?: number;
+      timeLimit?: number;
+      reason?: string;
+    },
+  ): Promise<void> {
+    await apiClient.put(`/rental/accounts/${accountId}/limits`, params);
+  }
 }
 
 export const accountService = new AccountService();

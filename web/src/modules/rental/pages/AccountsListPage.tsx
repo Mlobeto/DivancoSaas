@@ -13,10 +13,12 @@ import {
   Filter,
   Plus,
   DollarSign,
+  Settings,
 } from "lucide-react";
 import { accountService } from "@/modules/rental/services/account.service";
 import type { AccountListItem } from "@/modules/rental/services/account.service";
 import { Link } from "react-router-dom";
+import { ManageLimitsModal } from "../components/ManageLimitsModal";
 
 export function AccountsListPage() {
   const { businessUnit, tenant } = useAuthStore();
@@ -28,6 +30,7 @@ export function AccountsListPage() {
   );
   const [page, setPage] = useState(1);
   const [showReloadModal, setShowReloadModal] = useState(false);
+  const [showLimitsModal, setShowLimitsModal] = useState(false);
   const [selectedAccount, setSelectedAccount] =
     useState<AccountListItem | null>(null);
   const [reloadAmount, setReloadAmount] = useState("");
@@ -78,6 +81,11 @@ export function AccountsListPage() {
   const handleOpenReloadModal = (account: AccountListItem) => {
     setSelectedAccount(account);
     setShowReloadModal(true);
+  };
+
+  const handleOpenLimitsModal = (account: AccountListItem) => {
+    setSelectedAccount(account);
+    setShowLimitsModal(true);
   };
 
   const handleReload = () => {
@@ -248,6 +256,7 @@ export function AccountsListPage() {
                       key={account.id}
                       account={account}
                       onReload={handleOpenReloadModal}
+                      onManageLimits={handleOpenLimitsModal}
                     />
                   ))}
                 </div>
@@ -407,6 +416,26 @@ export function AccountsListPage() {
           </div>
         </div>
       )}
+
+      {/* Modal gestión de límites */}
+      {showLimitsModal && selectedAccount && (
+        <ManageLimitsModal
+          accountId={selectedAccount.id}
+          clientId={selectedAccount.clientId}
+          clientName={selectedAccount.clientName}
+          currentCreditLimit={selectedAccount.creditLimit}
+          currentTimeLimit={selectedAccount.timeLimit}
+          currency={selectedAccount.currency}
+          onClose={() => {
+            setShowLimitsModal(false);
+            setSelectedAccount(null);
+          }}
+          onSuccess={() => {
+            setShowLimitsModal(false);
+            setSelectedAccount(null);
+          }}
+        />
+      )}
     </>
   );
 }
@@ -415,9 +444,11 @@ export function AccountsListPage() {
 function AccountCard({
   account,
   onReload,
+  onManageLimits,
 }: {
   account: AccountListItem;
   onReload: (account: AccountListItem) => void;
+  onManageLimits: (account: AccountListItem) => void;
 }) {
   const balancePercent =
     account.creditLimit > 0 ? (account.balance / account.creditLimit) * 100 : 0;
@@ -466,6 +497,13 @@ function AccountCard({
         >
           <Plus className="w-3 h-3" />
           Recargar
+        </button>
+        <button
+          onClick={() => onManageLimits(account)}
+          className="btn-sm bg-dark-700 hover:bg-dark-600 text-dark-200 flex items-center gap-1 text-[10px] px-2 py-1"
+        >
+          <Settings className="w-3 h-3" />
+          Límites
         </button>
       </div>
 

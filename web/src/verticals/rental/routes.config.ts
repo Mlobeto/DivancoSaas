@@ -112,6 +112,12 @@ const PendingDeliveriesPage = lazy(() =>
   })),
 );
 
+const ContractCreationWizardPage = lazy(() =>
+  import("@/modules/rental/pages/ContractCreationWizardPage").then((m) => ({
+    default: m.ContractCreationWizardPage,
+  })),
+);
+
 //================================================================
 // RENTAL VERTICAL ROUTE CONFIGURATION
 //================================================================
@@ -185,6 +191,16 @@ export const rentalRoutes: VerticalRouteConfig = {
         icon: "file-contract",
       },
       chunkName: "contracts-list",
+    },
+    {
+      path: "contracts/new",
+      element: ContractCreationWizardPage,
+      permissions: ["contracts:create", "OWNER", "ADMIN"],
+      meta: {
+        title: "Crear Contrato Marco",
+        breadcrumb: "Nuevo Contrato",
+      },
+      chunkName: "contracts-wizard",
     },
     {
       path: "contracts/:id",

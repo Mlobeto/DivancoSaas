@@ -119,10 +119,35 @@ export const contractService = {
   },
 
   /**
+   * Crear Contrato Marco (v7.0) desde una cotización aprobada
+   */
+  async createMasterContract(params: {
+    quotationId: string;
+    startDate: string;
+    estimatedEndDate?: string;
+    agreedCreditLimit?: number;
+    agreedTimeLimit?: number;
+    clauseIds?: string[];
+    notes?: string;
+  }): Promise<RentalContract> {
+    const res = await apiClient.post(`${BASE}/contracts/master`, params);
+    return res.data.data ?? res.data;
+  },
+
+  /**
    * Reactivar contrato suspendido
    */
   async reactivate(id: string): Promise<RentalContract> {
     const res = await apiClient.post(`${BASE}/contracts/${id}/reactivate`);
+    return res.data.data ?? res.data;
+  },
+
+  /**
+   * Genera el PDF del contrato con branding y lo almacena en Azure.
+   * Devuelve la URL temporal (SAS) al PDF.
+   */
+  async generatePdf(id: string): Promise<{ pdfUrl: string }> {
+    const res = await apiClient.post(`${BASE}/contracts/${id}/generate-pdf`);
     return res.data.data ?? res.data;
   },
 };

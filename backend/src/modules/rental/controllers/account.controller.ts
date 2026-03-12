@@ -720,6 +720,58 @@ export class AccountController {
       });
     }
   }
+
+  /**
+   * Actualizar límites de crédito/tiempo de una cuenta.
+   * Requiere permiso accounts:update (Owner y SuperAdmin lo tienen automáticamente).
+   */
+  async updateLimits(req: Request, res: Response): Promise<void> {
+    try {
+      const { tenantId, userId } = req.context || {};
+      const { id } = req.params;
+      const { creditLimit, timeLimit, reason } = req.body;
+
+      if (!tenantId || !userId) {
+        res.status(401).json({
+          success: false,
+          error: { code: "UNAUTHORIZED", message: "Missing tenant context" },
+        });
+        return;
+      }
+
+      if (creditLimit === undefined && timeLimit === undefined) {
+        res.status(400).json({
+          success: false,
+          error: {
+            code: "VALIDATION_ERROR",
+            message: "Se debe especificar al menos creditLimit o timeLimit",
+          },
+        });
+        return;
+      }
+
+      const updated = await accountService.updateLimits(id, {
+        creditLimit:
+          creditLimit !== undefined ? Number(creditLimit) : undefined,
+        timeLimit: timeLimit !== undefined ? Number(timeLimit) : undefined,
+        updatedBy: userId,
+        reason,
+      });
+
+      res.json({
+        success: true,
+        data: updated,
+      });
+    } catch (error: any) {
+      res.status(400).json({
+        success: false,
+        error: {
+          code: "UPDATE_LIMITS_ERROR",
+          message: error.message,
+        },
+      });
+    }
+  }
 }
 
 export const accountController = new AccountController();

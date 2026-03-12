@@ -283,7 +283,7 @@ export class PublicQuotationController {
 
   /**
    * POST /api/v1/public/quotations/:token/approve
-   * El cliente aprueba la cotización → crea contrato automáticamente
+   * El cliente aprueba la cotización → debe acreditar fondos antes de generar contrato
    */
   async approveAction(req: Request, res: Response): Promise<void> {
     const { token } = req.params;
@@ -294,12 +294,11 @@ export class PublicQuotationController {
         selectedPeriodType || undefined,
       );
 
-      // Generar URLs para las opciones de pago
-      const uploadUrl = `${req.protocol}://${req.get("host")}/api/v1/public/contracts/${result.receiptToken}/upload`;
-      const localPaymentUrl = `${req.protocol}://${req.get("host")}/api/v1/public/contracts/${result.receiptToken}/mark-local-payment`;
+      // Generar URL para subir comprobante de pago
+      const uploadUrl = `${req.protocol}://${req.get("host")}/api/v1/public/quotations/${result.receiptToken}/upload-receipt`;
 
       res.send(
-        `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>¡Cotización Aprobada!</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:#f0f4f8;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px}.card{background:white;border-radius:16px;padding:40px 32px;box-shadow:0 8px 32px rgba(0,0,0,.12);max-width:520px;width:100%;text-align:center}h1{color:#38a169;font-size:26px;margin:12px 0}p{color:#4a5568;font-size:16px;line-height:1.6;margin:12px 0}.options{margin-top:32px}.option-btn{display:block;width:100%;padding:16px;margin:12px 0;border-radius:12px;text-decoration:none;font-weight:600;font-size:16px;transition:all .2s;border:2px solid}.primary{background:#3182ce;color:white;border-color:#3182ce}.primary:hover{background:#2c5aa0;transform:translateY(-2px);box-shadow:0 4px 12px rgba(49,130,206,.3)}.secondary{background:white;color:#3182ce;border-color:#3182ce}.secondary:hover{background:#e6f2ff;transform:translateY(-2px)}.icon{font-size:24px;margin-bottom:8px}</style></head><body><div class="card"><div style="font-size:72px;margin-bottom:20px">🎉</div><h1>¡Cotización aprobada!</h1><p>Hemos generado su contrato <strong>${result.contractCode}</strong>.</p><p style="margin-top:24px;font-size:18px;font-weight:600;color:#2d3748">Siguiente paso: Método de Pago</p><div class="options"><a href="${uploadUrl}" class="option-btn primary"><div class="icon">💳</div>Cargar dinero a mi cuenta<div style="font-size:13px;margin-top:4px;opacity:0.9">Sube tu comprobante de pago</div></a><a href="${localPaymentUrl}" class="option-btn secondary"><div class="icon">🏪</div>Pagar en el local<div style="font-size:13px;margin-top:4px;opacity:0.8">Coordinaremos el pago presencial</div></a></div><p style="margin-top:24px;font-size:14px;color:#718096">También recibirá un email con los detalles del contrato</p></div></body></html>`,
+        `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>¡Cotización Aprobada!</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:#f0f4f8;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px}.card{background:white;border-radius:16px;padding:40px 32px;box-shadow:0 8px 32px rgba(0,0,0,.12);max-width:520px;width:100%;text-align:center}h1{color:#38a169;font-size:26px;margin:12px 0}p{color:#4a5568;font-size:16px;line-height:1.6;margin:12px 0}.steps{margin-top:32px;text-align:left;background:#f7fafc;padding:24px;border-radius:12px}.step{display:flex;align-items:start;margin:16px 0}.step-number{background:#3182ce;color:white;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-weight:bold;margin-right:12px;flex-shrink:0}.step-text{flex:1;padding-top:4px}.btn{display:inline-block;padding:16px 32px;margin-top:24px;border-radius:12px;text-decoration:none;font-weight:600;font-size:16px;background:#3182ce;color:white;transition:all .2s}.btn:hover{background:#2c5aa0;transform:translateY(-2px);box-shadow:0 4px 12px rgba(49,130,206,.3)}.icon{font-size:72px;margin-bottom:20px}</style></head><body><div class="card"><div class="icon">🎉</div><h1>¡Cotización aprobada!</h1><p>Tu cotización ha sido aprobada exitosamente.</p><div class="steps"><h3 style="margin-bottom:16px;color:#2d3748">Próximos pasos:</h3><div class="step"><div class="step-number">1</div><div class="step-text"><strong>Realiza el pago</strong><br><span style="color:#718096;font-size:14px">Transfiere el monto acordado a nuestra cuenta</span></div></div><div class="step"><div class="step-number">2</div><div class="step-text"><strong>Sube tu comprobante</strong><br><span style="color:#718096;font-size:14px">Adjunta el voucher o recibo del pago</span></div></div><div class="step"><div class="step-number">3</div><div class="step-text"><strong>Generamos tu contrato</strong><br><span style="color:#718096;font-size:14px">Verificamos el pago y creamos el Contrato Marco</span></div></div><div class="step"><div class="step-number">4</div><div class="step-text"><strong>Firma digital</strong><br><span style="color:#718096;font-size:14px">Recibirás el contrato para firmar electrónicamente</span></div></div></div><a href="${uploadUrl}" class="btn">📤 Subir Comprobante de Pago</a><p style="margin-top:24px;font-size:14px;color:#718096">También recibirás un email con estos detalles</p></div></body></html>`,
       );
     } catch (err: any) {
       res
@@ -399,15 +398,19 @@ export class PublicQuotationController {
   }
 
   /**
-   * POST /api/v1/public/quotations/:token/upload  (LEGACY)
+   * POST /api/v1/public/quotations/:token/upload-receipt (v7.0 Master Contract)
    * Recibe el comprobante de pago (multipart), lo sube a Azure Blob y actualiza la cotización
    */
   async uploadReceipt(req: Request, res: Response): Promise<void> {
     const { token } = req.params;
 
+    // Buscar cotización por receiptToken (v7.0) o paymentReceiptToken (legacy)
     const quotation = await prisma.quotation.findFirst({
       where: {
-        metadata: { path: ["paymentReceiptToken"], equals: token },
+        OR: [
+          { metadata: { path: ["receiptToken"], equals: token } },
+          { metadata: { path: ["paymentReceiptToken"], equals: token } },
+        ],
       },
     });
 

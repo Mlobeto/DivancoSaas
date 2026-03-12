@@ -94,6 +94,12 @@ const WarehouseListPage = lazy(() =>
   })),
 );
 
+const ChatPage = lazy(() =>
+  import("@/core/pages/ChatPage").then((m) => ({
+    default: m.ChatPage,
+  })),
+);
+
 //================================================================
 // CORE ROUTE DEFINITIONS
 //================================================================
@@ -206,6 +212,16 @@ const coreProtectedRoutes: DynamicRouteDefinition[] = [
     meta: {
       title: "Zona horaria",
       icon: "clock",
+    },
+  },
+  {
+    path: "/chat",
+    element: ChatPage,
+    protection: RouteProtection.AUTHENTICATED,
+    layout: RouteLayout.APP,
+    meta: {
+      title: "Chat",
+      icon: "chat",
     },
   },
 ];

@@ -327,6 +327,17 @@ export function createApp(): Application {
     publicQuotationController.uploadReceipt.bind(publicQuotationController),
   );
 
+  // Alias para el nuevo flujo (v7.0 Master Contract)
+  app.get(
+    "/api/v1/public/quotations/:token/upload-receipt",
+    publicQuotationController.uploadForm.bind(publicQuotationController),
+  );
+  app.post(
+    "/api/v1/public/quotations/:token/upload-receipt",
+    receiptUpload.single("receipt"),
+    publicQuotationController.uploadReceipt.bind(publicQuotationController),
+  );
+
   // TODO: Cargar rutas de módulos dinámicamente
   // loadModuleRoutes(app);
 

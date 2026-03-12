@@ -770,7 +770,9 @@ export class ContractService {
   }
 
   /**
-   * Obtener PDF del contrato (usando template v2.0 si está disponible)
+   * Obtener PDF del contrato (usando template v2.0 si está disponible, con branding).
+   * Si el contrato no tiene templateId propio, busca el template activo de tipo "contract"
+   * en la BusinessUnit. Si tampoco existe, genera un HTML de fallback con branding.
    */
   async getContractPdf(contractId: string): Promise<Buffer> {
     const contract = await prisma.rentalContract.findUnique({
@@ -778,7 +780,9 @@ export class ContractService {
       include: {
         client: true,
         tenant: true,
-        businessUnit: true,
+        businessUnit: {
+          include: { branding: true },
+        },
         quotation: {
           include: {
             items: {
@@ -793,42 +797,60 @@ export class ContractService {
       throw new Error(`Contract ${contractId} not found`);
     }
 
-    // Si tiene templateId, intentar usar contract-template.service
-    if (contract.templateId) {
+    // Determinar templateId: del contrato o buscar uno activo en la BU
+    let resolvedTemplateId = contract.templateId;
+    if (!resolvedTemplateId) {
+      const { templateService } =
+        await import("@shared/templates/template.service");
+      const activeTmpl = await templateService.getActiveTemplateByType(
+        contract.businessUnitId,
+        "contract" as any,
+      );
+      if (activeTmpl) {
+        resolvedTemplateId = (activeTmpl as any).id;
+      }
+    }
+
+    // Helper reutilizable: construir BrandingConfig + BusinessUnitInfo
+    const buildBrandingParams = async () => {
+      const branding = await brandingService.getOrCreateDefault(
+        contract.businessUnitId,
+      );
+      const brandingConfig: BrandingConfig = {
+        logoUrl: branding.logoUrl || undefined,
+        primaryColor: branding.primaryColor,
+        secondaryColor: branding.secondaryColor,
+        fontFamily: branding.fontFamily,
+        contactInfo: branding.contactInfo,
+        headerConfig: branding.headerConfig,
+        footerConfig: branding.footerConfig,
+      };
+      const contactInfo = (branding.contactInfo as any) || {};
+      const businessUnitInfo: BusinessUnitInfo = {
+        name: contract.businessUnit.name,
+        taxId: (contract.businessUnit.settings as any)?.taxId,
+        email: contactInfo.email,
+        phone: contactInfo.phone,
+        address: contactInfo.address,
+        website: contactInfo.website,
+      };
+      return { brandingConfig, businessUnitInfo };
+    };
+
+    // Si hay template (propio o de BU), renderizar con branding
+    if (resolvedTemplateId) {
       try {
         const { contractTemplateService } =
           await import("./contract-template.service");
 
-        // Renderizar y generar PDF desde template v2.0
         const html = await contractTemplateService.renderContract({
-          templateId: contract.templateId,
+          templateId: resolvedTemplateId,
           contractId,
           tenantId: contract.tenantId,
         });
 
-        const branding = await brandingService.getOrCreateDefault(
-          contract.businessUnitId,
-        );
-
-        const brandingConfig: BrandingConfig = {
-          logoUrl: branding.logoUrl || undefined,
-          primaryColor: branding.primaryColor,
-          secondaryColor: branding.secondaryColor,
-          fontFamily: branding.fontFamily,
-          contactInfo: branding.contactInfo,
-          headerConfig: branding.headerConfig,
-          footerConfig: branding.footerConfig,
-        };
-
-        const contactInfo = branding.contactInfo || {};
-        const businessUnitInfo: BusinessUnitInfo = {
-          name: contract.businessUnit.name,
-          taxId: (contract.businessUnit.settings as any)?.taxId,
-          email: contactInfo.email,
-          phone: contactInfo.phone,
-          address: contactInfo.address,
-          website: contactInfo.website,
-        };
+        const { brandingConfig, businessUnitInfo } =
+          await buildBrandingParams();
 
         const styleBlocks = html.match(/<style[\s\S]*?<\/style>/gi) || [];
         const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
@@ -843,24 +865,269 @@ export class ContractService {
           `Contrato ${contract.code}`,
         );
 
-        // Generar PDF
         const { pdfGeneratorService } =
           await import("@core/services/pdf-generator.service");
         return pdfGeneratorService.generatePDF(brandedHtml, { format: "A4" });
       } catch (error) {
         console.warn(
-          "Failed to use contract template service, falling back to legacy:",
+          "Error al usar el template de contrato, generando PDF con branding por defecto:",
           error,
         );
       }
     }
 
-    // Fallback: usar templateService legacy
-    const { templateService } =
-      await import("@shared/templates/template.service");
-    return templateService
-      .generateContractPDF(contractId)
-      .then((result) => result.pdfBuffer);
+    // Fallback con branding: generar HTML del Contrato Marco con cláusulas seleccionadas
+    return this._buildBrandedFallbackPdf(contract, buildBrandingParams);
+  }
+
+  /**
+   * Genera un PDF de fallback usando el branding de la BU.
+   * Incluye las cláusulas de ContractClauseTemplate almacenadas en metadata.clauseIds.
+   */
+  private async _buildBrandedFallbackPdf(
+    contract: any,
+    buildBrandingParams: () => Promise<{
+      brandingConfig: BrandingConfig;
+      businessUnitInfo: BusinessUnitInfo;
+    }>,
+  ): Promise<Buffer> {
+    // Cargar cláusulas seleccionadas desde metadata (wizard v7.0)
+    const clauseIds: string[] = (contract.metadata as any)?.clauseIds || [];
+    const clauses =
+      clauseIds.length > 0
+        ? await prisma.contractClauseTemplate.findMany({
+            where: { id: { in: clauseIds } },
+            orderBy: [{ category: "asc" }, { displayOrder: "asc" }],
+          })
+        : [];
+
+    const fmt = (n: number, currency = contract.currency) =>
+      new Intl.NumberFormat("es-CO", {
+        style: "currency",
+        currency,
+        maximumFractionDigits: 0,
+      }).format(n);
+
+    const fmtDate = (d: Date | string | null) =>
+      d
+        ? new Date(d).toLocaleDateString("es-CO", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          })
+        : "—";
+
+    // Agrupar cláusulas por categoría
+    const clausesByCategory: Record<string, typeof clauses> = {};
+    for (const c of clauses) {
+      if (!clausesByCategory[c.category]) clausesByCategory[c.category] = [];
+      clausesByCategory[c.category].push(c);
+    }
+
+    const CATEGORY_LABELS: Record<string, string> = {
+      general: "Cláusulas Generales",
+      safety: "Seguridad y Operación",
+      maintenance: "Mantenimiento",
+      insurance: "Seguro y Cobertura",
+      liability: "Responsabilidad",
+      termination: "Terminación del Contrato",
+      custom: "Condiciones Especiales",
+    };
+
+    const clausesHtml =
+      clauses.length > 0
+        ? Object.entries(clausesByCategory)
+            .map(
+              ([cat, items], catIdx) => `
+        <h3>${CATEGORY_LABELS[cat] || cat}</h3>
+        <ol start="${catIdx === 0 ? 1 : undefined}">
+          ${items
+            .map((c) => `<li><strong>${c.name}:</strong> ${c.content}</li>`)
+            .join("")}
+        </ol>`,
+            )
+            .join("")
+        : `<p class="text-muted">Sin cláusulas específicas. Aplican los términos estándar de la empresa.</p>`;
+
+    const quotationItems =
+      contract.quotation?.items
+        ?.map(
+          (item: any) => `
+      <tr>
+        <td>${item.description || item.asset?.name || "—"}</td>
+        <td>${item.quantity}</td>
+        <td>${fmt(Number(item.unitPrice))}</td>
+        <td>${fmt(Number(item.total))}</td>
+      </tr>`,
+        )
+        .join("") ?? "";
+
+    const bodyContent = `
+      <style>
+        .contract-body { font-family: Arial, sans-serif; font-size: 11pt; color: #1a1a1a; }
+        .contract-title { text-align: center; margin-bottom: 24px; }
+        .contract-title h1 { font-size: 20pt; margin: 0; }
+        .contract-title p { color: #555; margin: 4px 0; }
+        .section { margin-bottom: 20px; }
+        .section h2 { font-size: 13pt; border-bottom: 2px solid #2563eb; padding-bottom: 6px; margin-bottom: 12px; color: #1e3a5f; }
+        .section h3 { font-size: 11pt; margin-top: 16px; margin-bottom: 6px; color: #374151; }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; margin-bottom: 16px; }
+        .info-item label { display: block; font-size: 9pt; color: #6b7280; margin-bottom: 2px; }
+        .info-item span { font-size: 11pt; font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+        th { background: #2563eb; color: white; padding: 8px 12px; text-align: left; font-size: 10pt; }
+        td { padding: 7px 12px; border-bottom: 1px solid #e5e7eb; font-size: 10pt; }
+        .totals-row td { font-weight: bold; background: #f3f4f6; }
+        ol { padding-left: 20px; }
+        ol li { margin: 8px 0; line-height: 1.5; }
+        .signature-block { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 32px; }
+        .signature-box { border-top: 2px solid #374151; padding-top: 8px; text-align: center; }
+        .signature-box .sig-line { height: 60px; }
+        .text-muted { color: #9ca3af; font-style: italic; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 9pt; font-weight: 600; }
+        .badge-master { background: #dbeafe; color: #1d4ed8; }
+      </style>
+      <div class="contract-body">
+        <div class="contract-title">
+          <h1>CONTRATO MARCO DE ARRENDAMIENTO</h1>
+          <p>No. <strong>${contract.code}</strong> &nbsp;·&nbsp; <span class="badge badge-master">Contrato Marco</span></p>
+          <p>Fecha: ${fmtDate(contract.startDate)}</p>
+        </div>
+
+        <div class="section">
+          <h2>1. Partes del Contrato</h2>
+          <div class="info-grid">
+            <div class="info-item">
+              <label>Arrendador</label>
+              <span>${contract.businessUnit.name}</span>
+            </div>
+            <div class="info-item">
+              <label>Arrendatario (Cliente)</label>
+              <span>${contract.client?.name || contract.client?.businessName || "—"}</span>
+            </div>
+            ${contract.client?.email ? `<div class="info-item"><label>Email</label><span>${contract.client.email}</span></div>` : ""}
+            ${contract.client?.phone ? `<div class="info-item"><label>Teléfono</label><span>${contract.client.phone}</span></div>` : ""}
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>2. Vigencia y Límites</h2>
+          <div class="info-grid">
+            <div class="info-item">
+              <label>Fecha de inicio</label>
+              <span>${fmtDate(contract.startDate)}</span>
+            </div>
+            <div class="info-item">
+              <label>Fecha de fin estimada</label>
+              <span>${fmtDate(contract.estimatedEndDate)}</span>
+            </div>
+            ${contract.agreedAmount ? `<div class="info-item"><label>Monto acordado</label><span>${fmt(Number(contract.agreedAmount))}</span></div>` : ""}
+            ${contract.agreedPeriod ? `<div class="info-item"><label>Período máximo</label><span>${contract.agreedPeriod} días</span></div>` : ""}
+          </div>
+        </div>
+
+        ${
+          quotationItems
+            ? `<div class="section">
+          <h2>3. Activos de Referencia (Cotización ${contract.quotation?.code || ""})</h2>
+          <table>
+            <thead><tr><th>Descripción</th><th>Cant.</th><th>Tarifa unit.</th><th>Subtotal</th></tr></thead>
+            <tbody>${quotationItems}</tbody>
+            <tfoot><tr class="totals-row"><td colspan="3">Total estimado</td><td>${fmt(Number(contract.quotation?.totalAmount || 0))}</td></tr></tfoot>
+          </table>
+        </div>`
+            : ""
+        }
+
+        <div class="section">
+          <h2>${quotationItems ? "4" : "3"}. Cláusulas y Condiciones</h2>
+          ${clausesHtml}
+        </div>
+
+        ${
+          contract.notes
+            ? `<div class="section">
+          <h2>${quotationItems ? "5" : "4"}. Observaciones</h2>
+          <p>${contract.notes}</p>
+        </div>`
+            : ""
+        }
+
+        <div class="signature-block">
+          <div class="signature-box">
+            <div class="sig-line"></div>
+            <strong>${contract.businessUnit.name}</strong><br/>
+            <span style="font-size:9pt;color:#6b7280">Arrendador</span>
+          </div>
+          <div class="signature-box">
+            <div class="sig-line"></div>
+            <strong>${contract.client?.name || "Cliente"}</strong><br/>
+            <span style="font-size:9pt;color:#6b7280">Arrendatario</span>
+          </div>
+        </div>
+      </div>`;
+
+    const { brandingConfig, businessUnitInfo } = await buildBrandingParams();
+    const brandedHtml = buildDocument(
+      brandingConfig,
+      businessUnitInfo,
+      bodyContent,
+      "contract",
+      `Contrato Marco ${contract.code}`,
+    );
+
+    const { pdfGeneratorService } =
+      await import("@core/services/pdf-generator.service");
+    return pdfGeneratorService.generatePDF(brandedHtml, { format: "A4" });
+  }
+
+  /**
+   * Genera el PDF del contrato, lo sube a Azure Blob Storage y actualiza contract.pdfUrl.
+   * Retorna la URL con SAS temporal (7 días).
+   */
+  async generateAndStorePdf(
+    contractId: string,
+    tenantId: string,
+  ): Promise<string> {
+    const contract = await prisma.rentalContract.findUnique({
+      where: { id: contractId, tenantId },
+      select: { code: true, tenantId: true, businessUnitId: true },
+    });
+
+    if (!contract) {
+      throw new Error(`Contrato ${contractId} no encontrado`);
+    }
+
+    // 1. Generar buffer del PDF (con branding)
+    const pdfBuffer = await this.getContractPdf(contractId);
+
+    // 2. Subir a Azure Blob Storage
+    const { azureBlobStorageService } =
+      await import("@shared/storage/azure-blob-storage.service");
+
+    const uploadResult = await azureBlobStorageService.uploadFile({
+      file: pdfBuffer,
+      fileName: `${contract.code}.pdf`,
+      contentType: "application/pdf",
+      folder: "contracts",
+      tenantId: contract.tenantId,
+      businessUnitId: contract.businessUnitId,
+    });
+
+    // 3. Actualizar pdfUrl en la BD
+    await prisma.rentalContract.update({
+      where: { id: contractId },
+      data: { pdfUrl: uploadResult.url },
+    });
+
+    // 4. Devolver URL con SAS (7 días)
+    const sasUrl = await azureBlobStorageService.generateSasUrl(
+      uploadResult.containerName,
+      uploadResult.blobName,
+      60 * 24 * 7,
+    );
+
+    return sasUrl;
   }
 }
 

@@ -207,6 +207,120 @@ export class ContractController {
   }
 
   /**
+   * POST /api/v1/rental/contracts/master
+   * Crear Contrato Marco (v7.0) desde una cotización aprobada.
+   * El admin selecciona cláusulas y fechas; el contrato se crea sin items específicos.
+   */
+  async createMasterContract(req: Request, res: Response): Promise<void> {
+    try {
+      const { tenantId, businessUnitId, userId } = req.context || {};
+
+      if (!tenantId || !userId) {
+        res.status(401).json({
+          success: false,
+          error: { code: "UNAUTHORIZED", message: "Missing context" },
+        });
+        return;
+      }
+
+      const {
+        quotationId,
+        startDate,
+        estimatedEndDate,
+        agreedCreditLimit,
+        agreedTimeLimit,
+        clauseIds,
+        notes,
+      } = req.body;
+
+      if (!quotationId || !startDate) {
+        res.status(400).json({
+          success: false,
+          error: {
+            code: "MISSING_FIELDS",
+            message: "quotationId y startDate son requeridos",
+          },
+        });
+        return;
+      }
+
+      // Verificar que la cotización existe, pertenece al tenant y está aprobada
+      const quotation = await prisma.quotation.findFirst({
+        where: { id: quotationId, tenantId },
+        include: { client: true },
+      });
+
+      if (!quotation) {
+        res.status(404).json({
+          success: false,
+          error: {
+            code: "QUOTATION_NOT_FOUND",
+            message: "Cotización no encontrada",
+          },
+        });
+        return;
+      }
+
+      if (quotation.clientResponse !== "approved") {
+        res.status(400).json({
+          success: false,
+          error: {
+            code: "QUOTATION_NOT_APPROVED",
+            message: `La cotización debe estar aprobada por el cliente (estado actual: ${quotation.clientResponse || "pendiente"})`,
+          },
+        });
+        return;
+      }
+
+      // Crear el Contrato Marco
+      const contract = await contractService.createMasterContract({
+        tenantId,
+        businessUnitId: businessUnitId || quotation.businessUnitId,
+        clientId: quotation.clientId,
+        startDate: new Date(startDate),
+        estimatedEndDate: estimatedEndDate
+          ? new Date(estimatedEndDate)
+          : undefined,
+        agreedCreditLimit,
+        agreedTimeLimit,
+        notes,
+        metadata: {
+          quotationId,
+          quotationCode: quotation.code,
+          clauseIds: clauseIds || [],
+          createdByWizard: true,
+        },
+        createdBy: userId,
+      });
+
+      // Actualizar la cotización para indicar que ya tiene contrato vinculado
+      await prisma.quotation.update({
+        where: { id: quotationId },
+        data: {
+          metadata: {
+            ...((quotation.metadata as any) || {}),
+            masterContractId: contract.id,
+            masterContractCode: contract.code,
+          },
+        },
+      });
+
+      res.status(201).json({
+        success: true,
+        data: contract,
+      });
+    } catch (error: any) {
+      res.status(400).json({
+        success: false,
+        error: {
+          code: error.code || "MASTER_CONTRACT_CREATE_ERROR",
+          message: error.message,
+        },
+      });
+    }
+  }
+
+  /**
    * @swagger
    * /api/v1/rental/contracts/{id}/withdraw:
    *   post:
@@ -1075,6 +1189,60 @@ export class ContractController {
    *               type: string
    *               format: binary
    */
+  /**
+   * @swagger
+   * /api/v1/rental/contracts/{id}/generate-pdf:
+   *   post:
+   *     tags: [Contracts]
+   *     summary: Genera y almacena el PDF del contrato con branding
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *     responses:
+   *       200:
+   *         description: URL temporal (SAS) al PDF generado
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 pdfUrl:
+   *                   type: string
+   */
+  async generatePdf(req: Request, res: Response): Promise<void> {
+    try {
+      const { tenantId } = req.context || {};
+      const { id } = req.params;
+
+      if (!tenantId) {
+        res.status(401).json({
+          success: false,
+          error: { code: "UNAUTHORIZED", message: "Missing tenant context" },
+        });
+        return;
+      }
+
+      const pdfUrl = await contractService.generateAndStorePdf(id, tenantId);
+
+      res.json({
+        success: true,
+        data: { pdfUrl },
+      });
+    } catch (error: any) {
+      console.error("Error generando PDF de contrato:", error);
+      res.status(400).json({
+        success: false,
+        error: {
+          code: "PDF_GENERATE_ERROR",
+          message: error.message,
+        },
+      });
+    }
+  }
+
   async downloadSignedPdf(req: Request, res: Response): Promise<void> {
     try {
       const { tenantId } = req.context || {};

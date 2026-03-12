@@ -24,6 +24,7 @@ import {
   Settings,
   Palette,
   Clock3,
+  MessageSquare,
 } from "lucide-react";
 
 /**
@@ -40,6 +41,7 @@ const iconMap: Record<string, React.ReactNode> = {
   settings: <Settings className="w-5 h-5" />,
   palette: <Palette className="w-5 h-5" />,
   clock: <Clock3 className="w-5 h-5" />,
+  chat: <MessageSquare className="w-5 h-5" />,
 };
 
 /**
@@ -355,6 +357,13 @@ export default function DynamicNavigation({
       children: settingsChildren,
     };
 
+    const chatNavItem: NavigationItem = {
+      id: "chat",
+      label: "Chat",
+      path: "/chat",
+      icon: "chat",
+    };
+
     console.log(
       "[DynamicNavigation] All navigation items:",
       allNavigation.map((n) => n.id),
@@ -371,7 +380,7 @@ export default function DynamicNavigation({
         filtered.map((n) => n.id),
       );
       // Always add settings section
-      return [...filtered, settingsNavigation];
+      return [...filtered, chatNavItem, settingsNavigation];
     }
 
     console.log(
@@ -380,7 +389,7 @@ export default function DynamicNavigation({
         : "[DynamicNavigation] Returning all navigation (no assignments)",
     );
     // Always add settings section
-    return [...allNavigation, settingsNavigation];
+    return [...allNavigation, chatNavItem, settingsNavigation];
   }, [user, tenant, businessUnit, role]);
 
   if (navigation.length === 0) {

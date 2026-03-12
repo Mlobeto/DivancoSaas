@@ -26,7 +26,7 @@ const backendUrl =
 export async function approveQuotationAsAdmin(
   quotationId: string,
   approvedBy: string,
-): Promise<{ contractId: string }> {
+): Promise<{ quotationId: string }> {
   const quotation = await prisma.quotation.findUnique({
     where: { id: quotationId },
     include: { client: true, items: true, businessUnit: true },
@@ -46,11 +46,10 @@ export async function approveQuotationAsAdmin(
     },
   });
 
-  // Crear contrato
-  const contract = await _createContractFromQuotation(quotation, approvedBy);
-
-  // Generar token de comprobante y enviar email
-  await _sendContractEmail(contract.id, quotation);
+  // ❌ NO CREAR CONTRATO AUTOMÁTICAMENTE
+  // ✅ El contrato se creará manualmente desde la UI cuando:
+  //    1. Cliente acredite fondos en su cuenta
+  //    2. Admin/Owner genere el Contrato Marco con cláusulas
 
   // Notificar al equipo
   await notificationService.create({
@@ -58,11 +57,11 @@ export async function approveQuotationAsAdmin(
     businessUnitId: quotation.businessUnitId,
     type: "quotation_approved",
     title: "✅ Cotización aprobada",
-    body: `${quotation.code} fue aprobada por el administrador. Contrato ${contract.code} creado.`,
-    data: { quotationId, contractId: contract.id },
+    body: `${quotation.code} fue aprobada por el administrador. Pendiente: Cliente debe acreditar fondos y generar contrato.`,
+    data: { quotationId },
   });
 
-  return { contractId: contract.id };
+  return { quotationId };
 }
 
 // ─── APROBACIÓN CLIENTE (desde el link de revisión) ───────────────────────────
@@ -74,7 +73,7 @@ export async function approveQuotationAsAdmin(
 export async function approveQuotationAsClient(
   clientReviewToken: string,
   selectedPeriodType?: string,
-): Promise<{ contractId: string; contractCode: string; receiptToken: string }> {
+): Promise<{ quotationId: string; receiptToken: string }> {
   const quotation = await prisma.quotation.findUnique({
     where: { clientReviewToken },
     include: { client: true, items: true, businessUnit: true },
@@ -117,14 +116,35 @@ export async function approveQuotationAsClient(
     },
   });
 
-  // Crear contrato
-  const contract = await _createContractFromQuotation(
-    quotation,
-    quotation.createdBy, // usar el creador original de la cotización
-  );
+  // ❌ NO CREAR CONTRATO AUTOMÁTICAMENTE
+  // ✅ El contrato se creará manualmente desde la UI cuando:
+  //    1. Cliente acredite fondos en su cuenta
+  //    2. Admin/Owner genere el Contrato Marco con cláusulas
 
-  // Enviar email del contrato al cliente y obtener receiptToken
-  const receiptToken = await _sendContractEmail(contract.id, quotation);
+  // Generar token para que cliente suba comprobante de pago
+  const receiptToken = uuidv4();
+  await prisma.quotation.update({
+    where: { id: quotation.id },
+    data: { metadata: { receiptToken } },
+  });
+
+  // Enviar email al cliente con link para subir comprobante
+  const receiptUploadUrl = `${backendUrl}/public/quotations/${receiptToken}/upload-receipt`;
+  await emailService.sendEmail({
+    to: quotation.client.email,
+    subject: `✅ Cotización ${quotation.code} aprobada - Siguiente paso: Acreditar fondos`,
+    html: `
+      <h2>¡Gracias por aprobar la cotización!</h2>
+      <p>Tu cotización <strong>${quotation.code}</strong> ha sido aprobada.</p>
+      <h3>Siguiente paso:</h3>
+      <ol>
+        <li>Realiza el pago/transferencia por el monto acordado</li>
+        <li>Sube el comprobante de pago: <a href="${receiptUploadUrl}">Subir comprobante</a></li>
+        <li>Nuestro equipo verificará el pago y generará tu contrato</li>
+      </ol>
+      <p>Una vez verificado el pago, generaremos el Contrato Marco y te lo enviaremos para firma digital.</p>
+    `,
+  });
 
   // Notificar al equipo
   await notificationService.create({
@@ -132,11 +152,11 @@ export async function approveQuotationAsClient(
     businessUnitId: quotation.businessUnitId,
     type: "quotation_approved_by_client",
     title: "🎉 Cliente aprobó la cotización",
-    body: `${quotation.client.name} aprobó ${quotation.code}. Contrato ${contract.code} creado automáticamente.`,
-    data: { quotationId: quotation.id, contractId: contract.id },
+    body: `${quotation.client.name} aprobó ${quotation.code}. Pendiente: Cliente debe acreditar fondos para generar contrato.`,
+    data: { quotationId: quotation.id },
   });
 
-  return { contractId: contract.id, contractCode: contract.code, receiptToken };
+  return { quotationId: quotation.id, receiptToken };
 }
 
 // ─── SOLICITUD DE CAMBIOS (CLIENTE) ───────────────────────────────────────────
@@ -205,8 +225,14 @@ export async function ensureClientReviewToken(
   return token;
 }
 
-// ─── INTERNOS ─────────────────────────────────────────────────────────────────
+// ─── INTERNOS (LEGACY - Ya no se usan con v7.0 Master Contract) ───────────────
 
+// NOTA: Con el sistema de Contratos Marco, ya NO se crean contratos automáticamente
+// al aprobar cotizaciones. El contrato se crea manualmente desde la UI cuando:
+// 1. Cliente acredita fondos en su cuenta
+// 2. Admin/Owner genera el Contrato Marco con cláusulas desde el wizard
+
+/*
 async function _createContractFromQuotation(quotation: any, createdBy: string) {
   // Si ya existe un contrato vinculado, devolver el existente
   const existing = await prisma.rentalContract.findUnique({
@@ -355,3 +381,4 @@ async function _sendContractEmail(
 
   return receiptToken;
 }
+*/

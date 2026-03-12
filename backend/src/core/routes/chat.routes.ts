@@ -9,8 +9,15 @@
  */
 
 import { Router, Request, Response } from "express";
+import multer from "multer";
 import { authenticate, authorize } from "@core/middlewares/auth.middleware";
 import { chatService } from "@core/services/chat.service";
+import { azureBlobStorageService } from "@shared/storage/azure-blob-storage.service";
+
+const chatUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
+});
 
 const router = Router();
 router.use(authenticate);
@@ -93,6 +100,36 @@ router.delete("/messages/:id", async (req: Request, res: Response) => {
   await chatService.deleteMessage(req.params.id, userId);
   res.json({ success: true });
 });
+
+// Subir archivo a una sala de chat
+router.post(
+  "/rooms/:id/upload",
+  chatUpload.single("file"),
+  async (req: Request, res: Response) => {
+    const userId = (req as any).user.userId;
+    const tenantId = (req as any).user.tenantId;
+    const { id: roomId } = req.params;
+    if (!req.file) {
+      res.status(400).json({ success: false, error: "Archivo requerido" });
+      return;
+    }
+    const result = await azureBlobStorageService.uploadFile({
+      file: req.file.buffer,
+      fileName: req.file.originalname,
+      contentType: req.file.mimetype,
+      folder: "chat",
+      tenantId,
+    });
+    const message = await chatService.sendMessage({
+      roomId,
+      senderId: userId,
+      body: req.file.originalname,
+      fileUrl: result.url,
+      fileMime: req.file.mimetype,
+    });
+    res.status(201).json({ success: true, data: message });
+  },
+);
 
 // ═══════════════════════════════════════════════════════════════
 // LIMIT INCREASE REQUESTS

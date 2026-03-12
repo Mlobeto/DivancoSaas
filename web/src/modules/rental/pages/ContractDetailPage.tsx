@@ -27,6 +27,7 @@ import {
   AlertCircle,
   CreditCard,
   FileSignature,
+  Download,
 } from "lucide-react";
 import {
   DeliveryFormModal,
@@ -119,6 +120,18 @@ export function ContractDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["contract", id] });
       alert("✅ Contrato completado");
+    },
+  });
+
+  const generatePdfMutation = useMutation({
+    mutationFn: () => contractService.generatePdf(id!),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["contract", id] });
+      // Abrir PDF en nueva pestaña
+      window.open(data.pdfUrl, "_blank");
+    },
+    onError: (error: any) => {
+      alert(`Error al generar PDF: ${error?.message || "Error desconocido"}`);
     },
   });
 
@@ -454,6 +467,28 @@ export function ContractDetailPage() {
               Acciones rápidas del contrato
             </div>
             <div className="flex gap-2">
+              {contract.pdfUrl ? (
+                <a
+                  href={contract.pdfUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-ghost btn-sm"
+                >
+                  <Download className="w-4 h-4" />
+                  Descargar PDF
+                </a>
+              ) : (
+                <button
+                  onClick={() => generatePdfMutation.mutate()}
+                  disabled={generatePdfMutation.isPending}
+                  className="btn-ghost btn-sm"
+                >
+                  <FileText className="w-4 h-4" />
+                  {generatePdfMutation.isPending
+                    ? "Generando..."
+                    : "Generar PDF"}
+                </button>
+              )}
               <button
                 onClick={() => suspendMutation.mutate()}
                 disabled={suspendMutation.isPending}

@@ -741,6 +741,78 @@ export class AccountService {
       timeLimit,
     };
   }
+
+  /**
+   * Actualizar límites de crédito y/o tiempo de la cuenta directamente.
+   * Solo puede ser llamado por usuarios con permiso `accounts:update` (Owner, SuperAdmin, Admin con permiso).
+   */
+  async updateLimits(
+    accountId: string,
+    params: {
+      creditLimit?: number;
+      timeLimit?: number;
+      updatedBy: string;
+      reason?: string;
+    },
+  ) {
+    const account = await prisma.clientAccount.findUnique({
+      where: { id: accountId },
+      select: {
+        id: true,
+        creditLimit: true,
+        timeLimit: true,
+        tenantId: true,
+        clientId: true,
+      },
+    });
+
+    if (!account) {
+      throw new Error("Cuenta no encontrada");
+    }
+
+    const updateData: any = {};
+    if (params.creditLimit !== undefined) {
+      updateData.creditLimit = new Decimal(params.creditLimit);
+    }
+    if (params.timeLimit !== undefined) {
+      updateData.timeLimit = params.timeLimit;
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      throw new Error(
+        "Se debe especificar al menos un límite a actualizar (creditLimit o timeLimit)",
+      );
+    }
+
+    const updated = await prisma.clientAccount.update({
+      where: { id: accountId },
+      data: updateData,
+    });
+
+    // Registrar auditoría como movimiento de nota
+    await prisma.accountMovement.create({
+      data: {
+        clientAccountId: accountId,
+        movementType: "limit_update",
+        amount: 0,
+        balanceBefore: Number(account.creditLimit),
+        balanceAfter: Number(updated.creditLimit),
+        description:
+          params.reason ||
+          `Límites actualizados directamente por usuario autorizado`,
+        metadata: {
+          previousCreditLimit: Number(account.creditLimit),
+          previousTimeLimit: account.timeLimit,
+          newCreditLimit: params.creditLimit ?? Number(account.creditLimit),
+          newTimeLimit: params.timeLimit ?? account.timeLimit,
+          updatedBy: params.updatedBy,
+        },
+        createdBy: params.updatedBy,
+      },
+    });
+
+    return updated;
+  }
 }
 
 export const accountService = new AccountService();

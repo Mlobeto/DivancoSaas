@@ -8,6 +8,7 @@ export { CreditApprovalModal } from "./CreditApprovalModal";
 export { DeliveryAvailabilityCheck } from "./DeliveryAvailabilityCheck";
 export { DeliveryFormModal } from "./DeliveryFormModal";
 export { LimitIncreaseRequestModal } from "./LimitIncreaseRequestModal";
+export { ManageLimitsModal } from "./ManageLimitsModal";
 export { PaymentProofUploader } from "./PaymentProofUploader";
 export { PaymentProofVerificationModal } from "./PaymentProofVerificationModal";
 export { PreviewPanel } from "./PreviewPanel";

@@ -148,6 +148,13 @@ router.post(
   accountController.checkAvailability.bind(accountController),
 );
 
+// Actualizar límites de crédito/tiempo (solo con permiso accounts:update)
+router.put(
+  "/accounts/:id/limits",
+  authorize("accounts:update"),
+  accountController.updateLimits.bind(accountController),
+);
+
 // ============================================
 // CONTRACT CLAUSES (Cláusulas Modulares)
 // ============================================
@@ -217,6 +224,13 @@ router.post(
   "/contracts",
   authorize("contracts:create"),
   contractController.create.bind(contractController),
+);
+
+// Crear Contrato Marco (v7.0) desde cotización aprobada
+router.post(
+  "/contracts/master",
+  authorize("contracts:create"),
+  contractController.createMasterContract.bind(contractController),
 );
 
 // Retirar asset
@@ -313,6 +327,13 @@ router.get(
   "/contracts/:id/pdf",
   authorize("contracts:read"),
   contractController.downloadPdf.bind(contractController),
+);
+
+// Generar y almacenar PDF del contrato (con branding)
+router.post(
+  "/contracts/:id/generate-pdf",
+  authorize("contracts:update"),
+  contractController.generatePdf.bind(contractController),
 );
 
 // Descargar PDF firmado del contrato

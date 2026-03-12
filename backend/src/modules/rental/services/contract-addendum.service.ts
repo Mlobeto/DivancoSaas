@@ -245,20 +245,38 @@ export class ContractAddendumService {
       return newAddendum;
     });
 
-    // 8. Notificar al sector de mantenimiento
+    // 8. Notificar al sector de mantenimiento (con nombres reales de assets)
+    const assetInfoForNotif = await prisma.asset.findMany({
+      where: { id: { in: params.items.map((i) => i.assetId) } },
+      select: {
+        id: true,
+        name: true,
+        requiresOperator: true,
+        trackingType: true,
+      },
+    });
+    const assetInfoMap = Object.fromEntries(
+      assetInfoForNotif.map((a) => [a.id, a]),
+    );
+
     const itemsList = params.items
       .map((item, idx) => {
-        const assetName = item.assetId; // Se resolverá en el frontend con el nombre real
-        return `${idx + 1}. Asset ${assetName} (${item.quantity || 1} unidad${item.quantity && item.quantity > 1 ? "es" : ""})`;
+        const info = assetInfoMap[item.assetId];
+        const reqs: string[] = [];
+        if (info?.requiresOperator) reqs.push("requiere operario");
+        if (info?.trackingType === "MACHINERY") reqs.push("con horómetro");
+        const qty =
+          item.quantity && item.quantity > 1 ? ` ×${item.quantity}` : "";
+        return `${idx + 1}. ${info?.name || item.assetId}${qty}${reqs.length ? ` (${reqs.join(", ")})` : ""}`;
       })
-      .join("\\n");
+      .join("\n");
 
     await notificationService.create({
       tenantId: params.tenantId,
       businessUnitId: params.businessUnitId,
       type: "delivery_pending_preparation",
       title: "🚚 Nueva entrega pendiente de preparación",
-      body: `Addendum ${addendum.code} para contrato ${contract.code} requiere preparación. ${params.hasOperator ? "⚠️ Requiere operario - verificar documentación." : ""} ${params.items.length} item(s) a entregar.`,
+      body: `Addendum ${addendum.code} — Cliente: ${contract.client.displayName}\n\nActivos a preparar:\n${itemsList}\n\n${params.hasOperator ? "⚠️ Verificar documentación del operario antes de la salida." : ""}`.trim(),
       data: {
         addendumId: addendum.id,
         addendumCode: addendum.code,
@@ -267,6 +285,9 @@ export class ContractAddendumService {
         clientName: contract.client.displayName,
         hasOperator: params.hasOperator,
         itemsCount: params.items.length,
+        assetNames: params.items.map(
+          (i) => assetInfoMap[i.assetId]?.name || i.assetId,
+        ),
       },
     });
 

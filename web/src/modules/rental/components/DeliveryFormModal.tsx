@@ -3,8 +3,8 @@
  * Modal para crear entregas con validación de disponibilidad
  */
 
-import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useState, useMemo, useEffect } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   X,
   Plus,
@@ -13,9 +13,17 @@ import {
   Package,
   User,
   Truck,
+  AlertTriangle,
+  TrendingDown,
+  Wallet,
+  Bell,
+  ClipboardList,
+  FileCheck,
 } from "lucide-react";
 import { addendumService } from "../services/addendum.service";
 import { accountService } from "../services/account.service";
+import { assetsService } from "@/modules/inventory/services/assets.service";
+import type { Asset } from "@/modules/inventory/services/assets.service";
 import {
   DeliveryAvailabilityCheck,
   type AvailabilityResult,
@@ -30,6 +38,8 @@ interface DeliveryItem {
   dailyRate: number;
   hourlyRate?: number;
   expectedReturnDate?: string;
+  initialHourometer?: number;
+  initialOdometer?: number;
   notes?: string;
 }
 
@@ -87,6 +97,78 @@ export function DeliveryFormModal({
   const [driverName, setDriverName] = useState("");
   const [transportNotes, setTransportNotes] = useState("");
 
+  // Cuenta del cliente — saldo en tiempo real
+  const { data: accountInfo } = useQuery({
+    queryKey: ["account-by-client", clientId],
+    queryFn: () => accountService.getByClientId(clientId),
+    enabled: !!clientId,
+    staleTime: 30_000, // 30 s
+  });
+
+  // Assets disponibles para el selector
+  const { data: allAssets = [] } = useQuery({
+    queryKey: ["assets-list-for-delivery"],
+    queryFn: () => assetsService.list(),
+  });
+
+  // Cálculos de saldo actualizados mientras el usuario modifica los ítems
+  const balanceSnapshot = useMemo(() => {
+    const currentBalance = accountInfo?.balance ?? 0;
+    const creditLimit = accountInfo?.creditLimit ?? 0;
+    const effectiveBalance = currentBalance + creditLimit;
+
+    const estimatedCost = items.reduce(
+      (sum, item) =>
+        sum +
+        (item.estimatedDays || 0) *
+          (item.dailyRate || 0) *
+          (item.quantity || 1),
+      0,
+    );
+
+    const remainingBalance = effectiveBalance - estimatedCost;
+    const pctUsed =
+      effectiveBalance > 0 ? (estimatedCost / effectiveBalance) * 100 : 100;
+
+    // Días
+    const timeLimit = accountInfo?.timeLimit ?? 0;
+    const activeDays = accountInfo?.activeDays ?? 0;
+    const deliveryDays = items.reduce(
+      (max, item) => Math.max(max, item.estimatedDays || 0),
+      0,
+    );
+    const remainingDays = timeLimit - activeDays - deliveryDays;
+
+    return {
+      currentBalance,
+      creditLimit,
+      effectiveBalance,
+      estimatedCost,
+      remainingBalance,
+      pctUsed: Math.min(pctUsed, 100),
+      canAfford: remainingBalance >= 0,
+      timeLimit,
+      activeDays,
+      deliveryDays,
+      remainingDays,
+      hasTimeLimit: timeLimit > 0,
+    };
+  }, [accountInfo, items]);
+
+  // Mapa id→Asset para acceso rápido
+  const assetsMap = useMemo<Record<string, Asset>>(
+    () => Object.fromEntries(allAssets.map((a: Asset) => [a.id, a])),
+    [allAssets],
+  );
+
+  // Auto-habilitar sección de operario si algún asset seleccionado lo requiere
+  useEffect(() => {
+    const anyRequiresOperator = items.some(
+      (item) => item.assetId && assetsMap[item.assetId]?.requiresOperator,
+    );
+    if (anyRequiresOperator) setHasOperator(true);
+  }, [items, assetsMap]);
+
   // Validar disponibilidad
   const checkAvailabilityMutation = useMutation({
     mutationFn: (validItems: DeliveryItem[]) => {
@@ -127,6 +209,8 @@ export function DeliveryFormModal({
         estimatedDailyRate: item.dailyRate,
         estimatedHourlyRate: item.hourlyRate,
         expectedReturnDate: item.expectedReturnDate,
+        initialHourometer: item.initialHourometer,
+        initialOdometer: item.initialOdometer,
         notes: item.notes,
       }));
 
@@ -237,11 +321,6 @@ export function DeliveryFormModal({
     setAvailabilityResult(null);
   };
 
-  const totalEstimated = items.reduce(
-    (sum, item) => sum + item.estimatedDays * item.dailyRate * item.quantity,
-    0,
-  );
-
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-dark-900 rounded-lg border border-dark-700 w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
@@ -304,16 +383,103 @@ export function DeliveryFormModal({
 
                     <div className="grid grid-cols-2 gap-3">
                       <div className="col-span-2">
-                        <label className="label">Asset ID *</label>
-                        <input
-                          type="text"
+                        <label className="label">Activo *</label>
+                        <select
                           value={item.assetId}
                           onChange={(e) =>
                             updateItem(index, "assetId", e.target.value)
                           }
-                          placeholder="ID del activo"
                           className="form-input"
-                        />
+                        >
+                          <option value="">Seleccionar activo...</option>
+                          {allAssets
+                            .filter(
+                              (a: Asset) =>
+                                !a.isCurrentlyRented || a.id === item.assetId,
+                            )
+                            .map((a: Asset) => (
+                              <option key={a.id} value={a.id}>
+                                {a.code} — {a.name}
+                              </option>
+                            ))}
+                        </select>
+
+                        {/* Panel de requerimientos del activo seleccionado */}
+                        {item.assetId &&
+                          assetsMap[item.assetId] &&
+                          (() => {
+                            const asset = assetsMap[item.assetId];
+                            const isMachinery =
+                              asset.requiresTracking ||
+                              asset.trackingType === "MACHINERY";
+                            return (
+                              <div className="mt-2 p-3 bg-dark-950 rounded-lg border border-dark-600 text-xs space-y-2">
+                                <div className="flex flex-wrap gap-1.5">
+                                  <span className="badge">
+                                    {asset.assetType}
+                                  </span>
+                                  {asset.requiresOperator && (
+                                    <span className="badge badge-warning flex items-center gap-1">
+                                      <User className="w-3 h-3" />
+                                      Requiere operario
+                                    </span>
+                                  )}
+                                  {isMachinery && (
+                                    <span className="badge badge-info flex items-center gap-1">
+                                      <FileCheck className="w-3 h-3" />
+                                      Con horómetro
+                                      {asset.currentHourMeter != null &&
+                                        ` (actual: ${asset.currentHourMeter} h)`}
+                                    </span>
+                                  )}
+                                </div>
+                                <div>
+                                  <p className="text-dark-400 flex items-center gap-1 mb-1">
+                                    <ClipboardList className="w-3 h-3" />
+                                    Evidencias requeridas para esta entrega:
+                                  </p>
+                                  <ul className="space-y-0.5 text-dark-300 pl-2">
+                                    <li>
+                                      • Fotos del estado actual antes de salida
+                                    </li>
+                                    <li>• Inspección visual completada</li>
+                                    {asset.requiresOperator && (
+                                      <>
+                                        <li>
+                                          • Licencia de conducir del operario
+                                          vigente
+                                        </li>
+                                        <li>
+                                          • Certificación del fabricante vigente
+                                        </li>
+                                        <li>
+                                          • Examen médico ocupacional vigente
+                                        </li>
+                                        <li>
+                                          • ARL activa — entrega de EPP
+                                          documentada
+                                        </li>
+                                      </>
+                                    )}
+                                    {isMachinery && (
+                                      <li>
+                                        • Lectura inicial de horómetro /
+                                        odómetro confirmada
+                                      </li>
+                                    )}
+                                    {asset.documentExpiries &&
+                                      Object.keys(asset.documentExpiries)
+                                        .length > 0 && (
+                                        <li className="text-yellow-400 mt-1">
+                                          ⚠️ Verificar documentos con fechas de
+                                          vencimiento registradas
+                                        </li>
+                                      )}
+                                  </ul>
+                                </div>
+                              </div>
+                            );
+                          })()}
                       </div>
 
                       <div>
@@ -391,6 +557,64 @@ export function DeliveryFormModal({
                           className="form-input"
                         />
                       </div>
+
+                      {/* Horómetro / Odómetro — solo para MACHINERY */}
+                      {item.assetId &&
+                        (assetsMap[item.assetId]?.requiresTracking ||
+                          assetsMap[item.assetId]?.trackingType ===
+                            "MACHINERY") && (
+                          <>
+                            <div>
+                              <label className="label">
+                                Horómetro inicial (h)
+                              </label>
+                              <input
+                                type="number"
+                                value={item.initialHourometer ?? ""}
+                                onChange={(e) =>
+                                  updateItem(
+                                    index,
+                                    "initialHourometer",
+                                    e.target.value
+                                      ? parseFloat(e.target.value)
+                                      : undefined,
+                                  )
+                                }
+                                placeholder={
+                                  assetsMap[item.assetId]?.currentHourMeter !=
+                                  null
+                                    ? `Actual: ${assetsMap[item.assetId].currentHourMeter} h`
+                                    : "Ingrese lectura"
+                                }
+                                className="form-input"
+                              />
+                            </div>
+                            <div>
+                              <label className="label">
+                                Odómetro inicial (km)
+                              </label>
+                              <input
+                                type="number"
+                                value={item.initialOdometer ?? ""}
+                                onChange={(e) =>
+                                  updateItem(
+                                    index,
+                                    "initialOdometer",
+                                    e.target.value
+                                      ? parseFloat(e.target.value)
+                                      : undefined,
+                                  )
+                                }
+                                placeholder={
+                                  assetsMap[item.assetId]?.currentKm != null
+                                    ? `Actual: ${assetsMap[item.assetId].currentKm} km`
+                                    : "Si aplica"
+                                }
+                                className="form-input"
+                              />
+                            </div>
+                          </>
+                        )}
 
                       <div className="col-span-2">
                         <label className="label">
@@ -578,17 +802,208 @@ export function DeliveryFormModal({
                 </div>
               </div>
 
-              {/* Total */}
-              <div className="card bg-dark-800">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">Total Estimado:</span>
-                  <span className="text-2xl font-bold text-orange-400">
-                    {currency} $
-                    {totalEstimated.toLocaleString("es-CO", {
-                      minimumFractionDigits: 2,
-                    })}
-                  </span>
+              {/* Notificación automática a Mantenimiento */}
+              {items.some((item) => item.assetId) && (
+                <div className="card bg-blue-900/10 border border-blue-800 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Bell className="w-4 h-4 text-blue-400" />
+                    <h3 className="font-semibold text-sm text-blue-300">
+                      Notificación automática a Mantenimiento
+                    </h3>
+                  </div>
+                  <p className="text-xs text-dark-400">
+                    Al confirmar, el área de mantenimiento recibirá una
+                    notificación con los requerimientos de preparación de cada
+                    activo:
+                  </p>
+                  <ul className="text-xs text-dark-300 space-y-1">
+                    {items
+                      .filter((item) => item.assetId && assetsMap[item.assetId])
+                      .map((item, i) => {
+                        const asset = assetsMap[item.assetId];
+                        const reqs: string[] = [];
+                        if (asset.requiresOperator)
+                          reqs.push("operario + docs");
+                        if (
+                          asset.requiresTracking ||
+                          asset.trackingType === "MACHINERY"
+                        )
+                          reqs.push("horómetro");
+                        return (
+                          <li key={i} className="flex items-start gap-1">
+                            <span className="text-blue-400 shrink-0">•</span>
+                            <span>
+                              <strong>{asset.name}</strong>
+                              {reqs.length > 0 && (
+                                <span className="text-dark-500 ml-1">
+                                  ({reqs.join(", ")})
+                                </span>
+                              )}
+                            </span>
+                          </li>
+                        );
+                      })}
+                  </ul>
                 </div>
+              )}
+
+              {/* Panel de Saldo en Tiempo Real */}
+              <div
+                className={`card border-2 transition-colors ${
+                  !accountInfo
+                    ? "bg-dark-800 border-dark-700"
+                    : balanceSnapshot.canAfford
+                      ? balanceSnapshot.pctUsed >= 80
+                        ? "bg-yellow-900/20 border-yellow-600"
+                        : "bg-green-900/20 border-green-700"
+                      : "bg-red-900/20 border-red-600"
+                }`}
+              >
+                <div className="flex items-center gap-2 mb-3">
+                  <Wallet className="w-5 h-5 text-primary-400" />
+                  <h3 className="font-semibold text-sm">
+                    Saldo de la cuenta — actualización en tiempo real
+                  </h3>
+                </div>
+
+                {!accountInfo ? (
+                  <p className="text-dark-400 text-sm">Cargando saldo...</p>
+                ) : (
+                  <>
+                    {/* Filas de saldo */}
+                    <div className="space-y-2 text-sm mb-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-dark-300">Saldo disponible</span>
+                        <span className="font-semibold text-green-400">
+                          {currency}{" "}
+                          {balanceSnapshot.effectiveBalance.toLocaleString(
+                            "es-CO",
+                            { minimumFractionDigits: 2 },
+                          )}
+                          {balanceSnapshot.creditLimit > 0 && (
+                            <span className="text-dark-400 font-normal text-xs ml-1">
+                              (inc. crédito {currency}{" "}
+                              {balanceSnapshot.creditLimit.toLocaleString(
+                                "es-CO",
+                                { maximumFractionDigits: 0 },
+                              )}
+                              )
+                            </span>
+                          )}
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between items-center">
+                        <span className="text-dark-300 flex items-center gap-1">
+                          <TrendingDown className="w-3.5 h-3.5 text-orange-400" />
+                          Costo estimado entrega
+                        </span>
+                        <span className="font-semibold text-orange-400">
+                          − {currency}{" "}
+                          {balanceSnapshot.estimatedCost.toLocaleString(
+                            "es-CO",
+                            { minimumFractionDigits: 2 },
+                          )}
+                        </span>
+                      </div>
+
+                      <div className="border-t border-dark-700 pt-2 flex justify-between items-center">
+                        <span className="font-medium">
+                          Saldo después de entrega
+                        </span>
+                        <span
+                          className={`text-lg font-bold ${
+                            balanceSnapshot.canAfford
+                              ? balanceSnapshot.pctUsed >= 80
+                                ? "text-yellow-400"
+                                : "text-green-400"
+                              : "text-red-400"
+                          }`}
+                        >
+                          {currency}{" "}
+                          {balanceSnapshot.remainingBalance.toLocaleString(
+                            "es-CO",
+                            { minimumFractionDigits: 2 },
+                          )}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Barra de progreso */}
+                    <div className="w-full bg-dark-700 rounded-full h-2 mb-2">
+                      <div
+                        className={`h-2 rounded-full transition-all duration-300 ${
+                          balanceSnapshot.canAfford
+                            ? balanceSnapshot.pctUsed >= 80
+                              ? "bg-yellow-500"
+                              : "bg-green-500"
+                            : "bg-red-500"
+                        }`}
+                        style={{ width: `${balanceSnapshot.pctUsed}%` }}
+                      />
+                    </div>
+                    <div className="text-xs text-dark-400 mb-3">
+                      {balanceSnapshot.pctUsed.toFixed(1)}% del saldo disponible
+                      consumido por esta entrega
+                    </div>
+
+                    {/* Días (si la cuenta tiene límite de tiempo) */}
+                    {balanceSnapshot.hasTimeLimit && (
+                      <div className="border-t border-dark-700 pt-3 grid grid-cols-3 gap-2 text-center text-xs">
+                        <div>
+                          <div className="text-dark-400">Días máx.</div>
+                          <div className="font-bold text-dark-200">
+                            {balanceSnapshot.timeLimit}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-dark-400">Días activos</div>
+                          <div className="font-bold text-orange-400">
+                            {balanceSnapshot.activeDays}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-dark-400">Días restantes</div>
+                          <div
+                            className={`font-bold ${balanceSnapshot.remainingDays < 0 ? "text-red-400" : "text-green-400"}`}
+                          >
+                            {balanceSnapshot.remainingDays}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Alertas */}
+                    {!balanceSnapshot.canAfford && (
+                      <div className="mt-3 flex items-start gap-2 text-xs text-red-300 bg-red-900/30 rounded-lg p-2">
+                        <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                        <span>
+                          Saldo insuficiente. Falta{" "}
+                          <strong>
+                            {currency}{" "}
+                            {Math.abs(
+                              balanceSnapshot.remainingBalance,
+                            ).toLocaleString("es-CO", {
+                              minimumFractionDigits: 2,
+                            })}
+                          </strong>
+                          . El sistema bloqueará la entrega al validar la
+                          disponibilidad.
+                        </span>
+                      </div>
+                    )}
+                    {balanceSnapshot.canAfford &&
+                      balanceSnapshot.pctUsed >= 80 && (
+                        <div className="mt-3 flex items-start gap-2 text-xs text-yellow-300 bg-yellow-900/30 rounded-lg p-2">
+                          <AlertTriangle className="w-4 h-4 text-yellow-400 shrink-0 mt-0.5" />
+                          <span>
+                            El costo de esta entrega consume más del 80% del
+                            saldo disponible.
+                          </span>
+                        </div>
+                      )}
+                  </>
+                )}
               </div>
             </div>
           ) : (

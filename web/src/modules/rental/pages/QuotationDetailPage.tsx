@@ -24,7 +24,11 @@ export function QuotationDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const { data: quotation, isLoading, error } = useQuery({
+  const {
+    data: quotation,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ["quotation", id],
     queryFn: () => quotationService.getById(id!),
     enabled: !!id,
@@ -88,7 +92,11 @@ export function QuotationDetailPage() {
 
   const statusLabels: Record<
     string,
-    { label: string; color: string; icon: React.ComponentType<{ className?: string }> }
+    {
+      label: string;
+      color: string;
+      icon: React.ComponentType<{ className?: string }>;
+    }
   > = {
     draft: {
       label: "Borrador",
@@ -134,7 +142,11 @@ export function QuotationDetailPage() {
 
   const clientResponseLabels: Record<
     string,
-    { label: string; color: string; icon: React.ComponentType<{ className?: string }> }
+    {
+      label: string;
+      color: string;
+      icon: React.ComponentType<{ className?: string }>;
+    }
   > = {
     pending_review: {
       label: "Pendiente de revisión",
@@ -176,7 +188,9 @@ export function QuotationDetailPage() {
 
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-white mb-2">{quotation.code}</h1>
+              <h1 className="text-3xl font-bold text-white mb-2">
+                {quotation.code}
+              </h1>
               <div className="flex items-center gap-3 flex-wrap">
                 <span
                   className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm font-medium ${status.color}`}
@@ -185,20 +199,21 @@ export function QuotationDetailPage() {
                   {status.label}
                 </span>
 
-                {quotation.clientResponse && clientResponseLabels[quotation.clientResponse] && (
-                  <span
-                    className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm font-medium ${
-                      clientResponseLabels[quotation.clientResponse].color
-                    }`}
-                  >
-                    {(() => {
-                      const ResponseIcon =
-                        clientResponseLabels[quotation.clientResponse].icon;
-                      return <ResponseIcon className="w-4 h-4" />;
-                    })()}
-                    {clientResponseLabels[quotation.clientResponse].label}
-                  </span>
-                )}
+                {quotation.clientResponse &&
+                  clientResponseLabels[quotation.clientResponse] && (
+                    <span
+                      className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm font-medium ${
+                        clientResponseLabels[quotation.clientResponse].color
+                      }`}
+                    >
+                      {(() => {
+                        const ResponseIcon =
+                          clientResponseLabels[quotation.clientResponse].icon;
+                        return <ResponseIcon className="w-4 h-4" />;
+                      })()}
+                      {clientResponseLabels[quotation.clientResponse].label}
+                    </span>
+                  )}
               </div>
             </div>
 
@@ -222,6 +237,33 @@ export function QuotationDetailPage() {
                 >
                   <Edit className="w-4 h-4" />
                   Editar
+                </button>
+              )}
+
+              {quotation.clientResponse === "approved" &&
+                !quotation.metadata?.masterContractId && (
+                  <button
+                    onClick={() =>
+                      navigate(`/rental/contracts/new?quotationId=${id}`)
+                    }
+                    className="btn-primary flex items-center gap-2 bg-green-600 hover:bg-green-500"
+                  >
+                    <FileText className="w-4 h-4" />
+                    Generar Contrato Marco
+                  </button>
+                )}
+
+              {quotation.metadata?.masterContractId && (
+                <button
+                  onClick={() =>
+                    navigate(
+                      `/rental/contracts/${quotation.metadata!.masterContractId}`,
+                    )
+                  }
+                  className="btn-secondary flex items-center gap-2"
+                >
+                  <FileText className="w-4 h-4" />
+                  Ver Contrato
                 </button>
               )}
             </div>
@@ -250,34 +292,51 @@ export function QuotationDetailPage() {
                   </p>
                 </div>
                 <div>
-                  <label className="text-sm text-dark-300">Fecha de cotización</label>
-                  <p className="text-white font-medium">{formatDate(quotation.quotationDate)}</p>
+                  <label className="text-sm text-dark-300">
+                    Fecha de cotización
+                  </label>
+                  <p className="text-white font-medium">
+                    {formatDate(quotation.quotationDate)}
+                  </p>
                 </div>
                 <div>
                   <label className="text-sm text-dark-300">Válida hasta</label>
-                  <p className="text-white font-medium">{formatDate(quotation.validUntil)}</p>
+                  <p className="text-white font-medium">
+                    {formatDate(quotation.validUntil)}
+                  </p>
                 </div>
-                {quotation.quotationType === "time_based" && quotation.estimatedDays && (
-                  <>
-                    <div>
-                      <label className="text-sm text-dark-300">Días estimados</label>
-                      <p className="text-white font-medium">{quotation.estimatedDays} días</p>
-                    </div>
-                    {quotation.estimatedStartDate && (
+                {quotation.quotationType === "time_based" &&
+                  quotation.estimatedDays && (
+                    <>
                       <div>
-                        <label className="text-sm text-dark-300">Inicio estimado</label>
+                        <label className="text-sm text-dark-300">
+                          Días estimados
+                        </label>
                         <p className="text-white font-medium">
-                          {formatDate(quotation.estimatedStartDate)}
+                          {quotation.estimatedDays} días
                         </p>
                       </div>
-                    )}
-                  </>
-                )}
+                      {quotation.estimatedStartDate && (
+                        <div>
+                          <label className="text-sm text-dark-300">
+                            Inicio estimado
+                          </label>
+                          <p className="text-white font-medium">
+                            {formatDate(quotation.estimatedStartDate)}
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  )}
                 {quotation.quotationType === "service_based" &&
                   quotation.serviceDescription && (
                     <div className="col-span-2">
-                      <label className="text-sm text-dark-300">Descripción del servicio</label>
-                      <p className="text-white font-medium">{quotation.serviceDescription}</p>
+                      <label className="text-sm text-dark-300">
+                        Descripción del servicio
+                      </label>
+                      <p className="text-white font-medium">
+                        {quotation.serviceDescription}
+                      </p>
                     </div>
                   )}
               </div>
@@ -328,7 +387,9 @@ export function QuotationDetailPage() {
                         <label className="text-sm text-dark-300 block mb-2">
                           Mensaje del cliente
                         </label>
-                        <p className="text-white whitespace-pre-wrap">{quotation.clientMessage}</p>
+                        <p className="text-white whitespace-pre-wrap">
+                          {quotation.clientMessage}
+                        </p>
                       </div>
                     )}
                   </div>
@@ -345,7 +406,9 @@ export function QuotationDetailPage() {
                 <table className="w-full">
                   <thead className="border-b border-dark-700">
                     <tr className="text-left">
-                      <th className="pb-3 text-sm font-medium text-dark-300">Descripción</th>
+                      <th className="pb-3 text-sm font-medium text-dark-300">
+                        Descripción
+                      </th>
                       <th className="pb-3 text-sm font-medium text-dark-300 text-center">
                         Cantidad
                       </th>
@@ -361,18 +424,25 @@ export function QuotationDetailPage() {
                     {quotation.items.map((item: any) => (
                       <tr key={item.id}>
                         <td className="py-3">
-                          <p className="text-white font-medium">{item.description}</p>
+                          <p className="text-white font-medium">
+                            {item.description}
+                          </p>
                           {item.notes && (
-                            <p className="text-sm text-dark-400 mt-1">{item.notes}</p>
+                            <p className="text-sm text-dark-400 mt-1">
+                              {item.notes}
+                            </p>
                           )}
                         </td>
-                        <td className="py-3 text-center text-white">{item.quantity}</td>
+                        <td className="py-3 text-center text-white">
+                          {item.quantity}
+                        </td>
                         <td className="py-3 text-right text-white">
                           {quotation.currency}{" "}
                           {Number(item.unitPrice).toLocaleString("es-CO")}
                         </td>
                         <td className="py-3 text-right text-white font-medium">
-                          {quotation.currency} {Number(item.subtotal).toLocaleString("es-CO")}
+                          {quotation.currency}{" "}
+                          {Number(item.subtotal).toLocaleString("es-CO")}
                         </td>
                       </tr>
                     ))}
@@ -387,7 +457,9 @@ export function QuotationDetailPage() {
                   <MessageSquare className="w-5 h-5 text-blue-400" />
                   Notas
                 </h2>
-                <p className="text-dark-200 whitespace-pre-wrap">{quotation.notes}</p>
+                <p className="text-dark-200 whitespace-pre-wrap">
+                  {quotation.notes}
+                </p>
               </div>
             )}
           </div>
@@ -403,19 +475,26 @@ export function QuotationDetailPage() {
                 <div className="flex justify-between">
                   <span className="text-dark-300">Subtotal</span>
                   <span className="text-white font-medium">
-                    {quotation.currency} {Number(quotation.subtotal).toLocaleString("es-CO")}
+                    {quotation.currency}{" "}
+                    {Number(quotation.subtotal).toLocaleString("es-CO")}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-dark-300">IVA ({Number(quotation.taxRate)}%)</span>
+                  <span className="text-dark-300">
+                    IVA ({Number(quotation.taxRate)}%)
+                  </span>
                   <span className="text-white font-medium">
-                    {quotation.currency} {Number(quotation.taxAmount).toLocaleString("es-CO")}
+                    {quotation.currency}{" "}
+                    {Number(quotation.taxAmount).toLocaleString("es-CO")}
                   </span>
                 </div>
                 <div className="pt-3 border-t border-dark-700 flex justify-between">
-                  <span className="text-white font-semibold text-lg">Total</span>
+                  <span className="text-white font-semibold text-lg">
+                    Total
+                  </span>
                   <span className="text-green-400 font-bold text-xl">
-                    {quotation.currency} {Number(quotation.totalAmount).toLocaleString("es-CO")}
+                    {quotation.currency}{" "}
+                    {Number(quotation.totalAmount).toLocaleString("es-CO")}
                   </span>
                 </div>
               </div>
@@ -430,21 +509,31 @@ export function QuotationDetailPage() {
               <div className="space-y-3 text-sm">
                 <div>
                   <label className="text-dark-300 block mb-1">Creado</label>
-                  <p className="text-white">{formatDateTime(quotation.createdAt)}</p>
+                  <p className="text-white">
+                    {formatDateTime(quotation.createdAt)}
+                  </p>
                 </div>
                 <div>
-                  <label className="text-dark-300 block mb-1">Actualizado</label>
-                  <p className="text-white">{formatDateTime(quotation.updatedAt)}</p>
+                  <label className="text-dark-300 block mb-1">
+                    Actualizado
+                  </label>
+                  <p className="text-white">
+                    {formatDateTime(quotation.updatedAt)}
+                  </p>
                 </div>
                 {quotation.assignedUser && (
                   <div>
-                    <label className="text-dark-300 block mb-1">Asignado a</label>
+                    <label className="text-dark-300 block mb-1">
+                      Asignado a
+                    </label>
                     <p className="text-white">{quotation.assignedUser.email}</p>
                   </div>
                 )}
                 {quotation.businessUnit && (
                   <div>
-                    <label className="text-dark-300 block mb-1">Business Unit</label>
+                    <label className="text-dark-300 block mb-1">
+                      Business Unit
+                    </label>
                     <p className="text-white">{quotation.businessUnit.name}</p>
                   </div>
                 )}
