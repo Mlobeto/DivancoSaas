@@ -5,10 +5,12 @@ import {
   Pressable,
   FlatList,
   ActivityIndicator,
+  Image,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "@/store/auth.store";
+import { useBrandingStore } from "@/store/branding.store";
 import api from "@/lib/api";
 
 interface Assignment {
@@ -26,6 +28,9 @@ export default function DashboardScreen() {
   const router = useRouter();
   const logout = useAuthStore((s) => s.logout);
   const fullName = useAuthStore((s) => s.fullName);
+  const logoUrl = useBrandingStore((s) => s.logoUrl);
+  const primaryColor = useBrandingStore((s) => s.primaryColor);
+  const businessUnitName = useBrandingStore((s) => s.businessUnitName);
 
   const { data, isLoading, isError, refetch } = useQuery<Assignment[]>({
     queryKey: ["my-assignments"],
@@ -67,9 +72,31 @@ export default function DashboardScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <View>
-          <Text style={styles.greeting}>Hola, {fullName()}</Text>
-          <Text style={styles.date}>Contratos asignados hoy</Text>
+        <View style={styles.headerLeft}>
+          {logoUrl ? (
+            <Image
+              source={{ uri: logoUrl }}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+          ) : (
+            <View
+              style={[
+                styles.logoPlaceholder,
+                { backgroundColor: primaryColor },
+              ]}
+            >
+              <Text style={styles.logoPlaceholderText}>
+                {businessUnitName ? businessUnitName[0].toUpperCase() : "D"}
+              </Text>
+            </View>
+          )}
+          <View>
+            <Text style={styles.greeting}>Hola, {fullName()}</Text>
+            <Text style={styles.date}>
+              {businessUnitName || "Contratos asignados hoy"}
+            </Text>
+          </View>
         </View>
         <Pressable onPress={handleLogout}>
           <Text style={styles.logoutLink}>Salir</Text>
@@ -87,7 +114,10 @@ export default function DashboardScreen() {
       {isError && (
         <View style={styles.emptyCard}>
           <Text style={styles.emptyText}>Error al cargar contratos</Text>
-          <Pressable onPress={() => refetch()} style={styles.retryBtn}>
+          <Pressable
+            onPress={() => refetch()}
+            style={[styles.retryBtn, { backgroundColor: primaryColor }]}
+          >
             <Text style={styles.retryText}>Reintentar</Text>
           </Pressable>
         </View>
@@ -134,6 +164,29 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 20,
     paddingTop: 8,
+  },
+  headerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    flex: 1,
+  },
+  logo: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+  },
+  logoPlaceholder: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  logoPlaceholderText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "bold",
   },
   greeting: {
     fontSize: 20,

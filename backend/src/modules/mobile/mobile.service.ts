@@ -128,9 +128,32 @@ async function uploadToAzure(
 
 export const mobileService = {
   /**
-   * Retorna los contratos activos donde el usuario logueado
-   * tiene una OperatorAssignment activa.
+   * Retorna el branding de la BusinessUnit del usuario logueado.
+   * El cliente mobile lo usa para aplicar logo y colores de la empresa.
    */
+  async getBranding(businessUnitId: string) {
+    const branding = await prisma.businessUnitBranding.findUnique({
+      where: { businessUnitId },
+      select: {
+        logoUrl: true,
+        primaryColor: true,
+        secondaryColor: true,
+        businessUnit: {
+          select: { name: true },
+        },
+      },
+    });
+
+    // Return safe defaults if no branding configured
+    return {
+      logoUrl: branding?.logoUrl ?? null,
+      primaryColor: branding?.primaryColor ?? "#1E40AF",
+      secondaryColor: branding?.secondaryColor ?? "#64748B",
+      businessUnitName: branding?.businessUnit.name ?? "",
+    };
+  },
+
+  /**
   async getMyAssignments(userId: string, businessUnitId: string) {
     const assignments = await prisma.operatorAssignment.findMany({
       where: {

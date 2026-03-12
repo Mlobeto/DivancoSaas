@@ -4,10 +4,12 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/auth.store";
+import { useBrandingStore } from "@/store/branding.store";
 
 export default function LoginScreen() {
   const router = useRouter();
   const setAuth = useAuthStore((s) => s.setAuth);
+  const resetBranding = useBrandingStore((s) => s.reset);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -22,6 +24,7 @@ export default function LoginScreen() {
       // data.data.user   — { id, email, firstName, lastName, role, ... }
       // data.data.context — { businessUnitId, tenantId }
       const { token, user, context } = data.data;
+      resetBranding(); // limpiar branding anterior antes de cargar el nuevo
       setAuth(token, {
         id: user.id,
         email: user.email,

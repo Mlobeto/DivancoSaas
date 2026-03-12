@@ -34,6 +34,12 @@ const photoUpload = multer({
 router.use(authenticate);
 
 /**
+ * GET /api/v1/mobile/branding
+ * Returns logo and brand colors for the logged-in user's business unit.
+ */
+router.get("/branding", mobileController.getBranding.bind(mobileController));
+
+/**
  * GET /api/v1/mobile/my-assignments
  * Returns active rental contracts assigned to the logged-in operator.
  */

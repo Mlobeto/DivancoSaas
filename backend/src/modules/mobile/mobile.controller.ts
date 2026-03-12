@@ -10,6 +10,36 @@ import { mobileService } from "./mobile.service";
 
 export class MobileController {
   /**
+   * GET /api/v1/mobile/branding
+   *
+   * Retorna el branding (logo, colores) de la BusinessUnit del usuario logueado.
+   */
+  async getBranding(req: Request, res: Response): Promise<void> {
+    try {
+      const { businessUnitId } = req.context || {};
+
+      if (!businessUnitId) {
+        res.status(401).json({
+          success: false,
+          error: {
+            code: "UNAUTHORIZED",
+            message: "Missing business unit context",
+          },
+        });
+        return;
+      }
+
+      const branding = await mobileService.getBranding(businessUnitId);
+      res.json({ success: true, data: branding });
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        error: { code: "BRANDING_ERROR", message: error.message },
+      });
+    }
+  }
+
+  /**
    * GET /api/v1/mobile/my-assignments
    *
    * Retorna los contratos activos del operario logueado.
