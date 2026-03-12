@@ -130,10 +130,11 @@ export async function approveQuotationAsClient(
 
   // Enviar email al cliente con link para subir comprobante
   const receiptUploadUrl = `${backendUrl}/public/quotations/${receiptToken}/upload-receipt`;
-  await emailService.sendGenericEmail(quotation.businessUnitId ?? "", {
-    to: quotation.client.email,
-    subject: `✅ Cotización ${quotation.code} aprobada - Siguiente paso: Acreditar fondos`,
-    html: `
+  if (quotation.client.email) {
+    await emailService.sendGenericEmail(quotation.businessUnitId ?? "", {
+      to: quotation.client.email,
+      subject: `✅ Cotización ${quotation.code} aprobada - Siguiente paso: Acreditar fondos`,
+      html: `
       <h2>¡Gracias por aprobar la cotización!</h2>
       <p>Tu cotización <strong>${quotation.code}</strong> ha sido aprobada.</p>
       <h3>Siguiente paso:</h3>
@@ -144,7 +145,8 @@ export async function approveQuotationAsClient(
       </ol>
       <p>Una vez verificado el pago, generaremos el Contrato Marco y te lo enviaremos para firma digital.</p>
     `,
-  });
+    });
+  }
 
   // Notificar al equipo
   await notificationService.create({
