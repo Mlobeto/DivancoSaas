@@ -1,21 +1,19 @@
 import { View, Text, StyleSheet, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { useEffect } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useAuthStore } from "@/store/auth.store";
 
 export default function Index() {
   const router = useRouter();
+  // Zustand rehydrata el store desde AsyncStorage al arrancar.
+  // Cuando token cambia de null → valor persistido, este useEffect redirige.
+  const token = useAuthStore((s) => s.token);
 
   useEffect(() => {
-    checkAuth();
-  }, []);
-
-  const checkAuth = async () => {
-    const token = await AsyncStorage.getItem("token");
     if (token) {
       router.replace("/dashboard");
     }
-  };
+  }, [token]);
 
   return (
     <View style={styles.container}>

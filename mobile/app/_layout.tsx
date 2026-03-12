@@ -28,7 +28,11 @@ export default function RootLayout() {
       >
         <Stack.Screen name="index" options={{ title: "DivancoSaaS" }} />
         <Stack.Screen name="login" options={{ title: "Iniciar Sesión" }} />
-        <Stack.Screen name="dashboard" options={{ title: "Dashboard" }} />
+        <Stack.Screen name="dashboard" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="assignment/[id]"
+          options={{ title: "Evidencias del día" }}
+        />
       </Stack>
     </QueryClientProvider>
   );

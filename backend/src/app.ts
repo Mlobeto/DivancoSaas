@@ -66,6 +66,7 @@ import dashboardRouter from "@core/routes/dashboard.routes";
 import brandingRouter from "@core/routes/branding.routes";
 import notificationRouter from "@core/routes/notification.routes";
 import chatRouter from "@core/routes/chat.routes";
+import { mobileRouter } from "./modules/mobile/mobile.routes";
 
 // Business Modules
 import { AssetsModule } from "./modules/assets/assets.module";
@@ -273,6 +274,7 @@ export function createApp(): Application {
   app.use("/api/v1/branding", brandingRouter);
   app.use("/api/v1/notifications", notificationRouter);
   app.use("/api/v1/chat", chatRouter);
+  app.use("/api/v1/mobile", mobileRouter);
 
   // Business Module routes
   app.use("/api/v1/modules/assets", assetsModule.getRoutes());

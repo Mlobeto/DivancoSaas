@@ -2,31 +2,43 @@ import { View, Text, TextInput, StyleSheet, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import api from "@/lib/api";
+import { useAuthStore } from "@/store/auth.store";
 
 export default function LoginScreen() {
   const router = useRouter();
+  const setAuth = useAuthStore((s) => s.setAuth);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const loginMutation = useMutation({
     mutationFn: async (data: { email: string; password: string }) => {
-      // TODO: Implementar llamada al API
-      const response = await fetch("http://localhost:3000/api/v1/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        throw new Error("Login failed");
-      }
-
-      return response.json();
+      const res = await api.post("/auth/login", data);
+      return res.data;
     },
-    onSuccess: async (data) => {
-      await AsyncStorage.setItem("token", data.data.token);
+    onSuccess: (data) => {
+      // data.data.token  — JWT
+      // data.data.user   — { id, email, firstName, lastName, role, ... }
+      // data.data.context — { businessUnitId, tenantId }
+      const { token, user, context } = data.data;
+      setAuth(token, {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        tenantId: context?.tenantId ?? user.tenantId ?? null,
+        businessUnitId: context?.businessUnitId ?? null,
+      });
       router.replace("/dashboard");
+    },
+    onError: (err: any) => {
+      const msg =
+        err?.response?.data?.error?.message ??
+        err?.message ??
+        "Error al iniciar sesión";
+      setErrorMsg(msg);
     },
   });
 
@@ -58,9 +70,7 @@ export default function LoginScreen() {
           secureTextEntry
         />
 
-        {loginMutation.error && (
-          <Text style={styles.error}>Error al iniciar sesión</Text>
-        )}
+        {errorMsg && <Text style={styles.error}>{errorMsg}</Text>}
 
         <Pressable
           style={[
