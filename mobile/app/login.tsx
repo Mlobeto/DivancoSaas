@@ -12,6 +12,7 @@ export default function LoginScreen() {
   const resetBranding = useBrandingStore((s) => s.reset);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const loginMutation = useMutation({
@@ -64,14 +65,22 @@ export default function LoginScreen() {
         />
 
         <Text style={styles.label}>Contraseña</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="••••••••"
-          placeholderTextColor="#64748b"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
+        <View style={styles.passwordContainer}>
+          <TextInput
+            style={styles.passwordInput}
+            placeholder="••••••••"
+            placeholderTextColor="#64748b"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry={!showPassword}
+          />
+          <Pressable
+            style={styles.eyeButton}
+            onPress={() => setShowPassword(!showPassword)}
+          >
+            <Text style={styles.eyeIcon}>{showPassword ? "👁️" : "👁️‍🗨️"}</Text>
+          </Pressable>
+        </View>
 
         {errorMsg && <Text style={styles.error}>{errorMsg}</Text>}
 
@@ -115,6 +124,28 @@ const styles = StyleSheet.create({
     padding: 12,
     color: "#f1f5f9",
     marginBottom: 16,
+  },
+  passwordContainer: {
+    position: "relative",
+    marginBottom: 16,
+  },
+  passwordInput: {
+    backgroundColor: "#1e293b",
+    borderWidth: 1,
+    borderColor: "#334155",
+    borderRadius: 8,
+    padding: 12,
+    paddingRight: 48,
+    color: "#f1f5f9",
+  },
+  eyeButton: {
+    position: "absolute",
+    right: 12,
+    top: 12,
+    padding: 4,
+  },
+  eyeIcon: {
+    fontSize: 20,
   },
   button: {
     backgroundColor: "#0284c7",
