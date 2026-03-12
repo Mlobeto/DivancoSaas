@@ -5,7 +5,14 @@ import { Layout } from "@/core/components/Layout";
 import { useAuthStore } from "@/store/auth.store";
 import { templateService } from "../services/template.service";
 import { Template, TemplateType } from "../types/quotation.types";
-import { Edit, Trash2, Eye, CheckCircle, XCircle } from "lucide-react";
+import {
+  Edit,
+  Trash2,
+  Eye,
+  CheckCircle,
+  XCircle,
+  FileText,
+} from "lucide-react";
 
 // Helper to get template type label in Spanish
 const getTemplateTypeLabel = (type: TemplateType): string => {
@@ -96,7 +103,14 @@ export function QuotationTemplatesPage() {
       title="Plantillas PDF"
       subtitle={`Gestión de plantillas personalizadas con Handlebars + Puppeteer - ${businessUnit.name}`}
       actions={
-        <>
+        <div className="flex gap-2">
+          <button
+            onClick={() => navigate("/rental/clause-templates")}
+            className="btn-ghost"
+          >
+            <FileText className="w-4 h-4 mr-2" />
+            Gestionar Cláusulas
+          </button>
           <button
             onClick={() => navigate("/rental/templates/new")}
             className="btn-primary"
@@ -106,7 +120,7 @@ export function QuotationTemplatesPage() {
           <a href="/rental/quotations" className="btn-ghost">
             ← Cotizaciones
           </a>
-        </>
+        </div>
       }
     >
       {/* Helper card */}

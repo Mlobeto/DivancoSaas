@@ -39,10 +39,10 @@ const SECTION_TYPES: Array<{
     type: "header",
     label: "Encabezado",
     icon: Layout,
-    description: "Logo, título y datos básicos del contrato",
+    description:
+      "Título del contrato (logo y branding se aplican automáticamente)",
     defaultConfig: {
       title: "CONTRATO DE ARRENDAMIENTO",
-      showCompanyInfo: true,
     },
   },
   {
@@ -368,7 +368,9 @@ function SectionConfigEditor({
       return (
         <div className="space-y-3">
           <div>
-            <label className="mb-1 block text-sm text-gray-400">Título</label>
+            <label className="mb-1 block text-sm text-gray-400">
+              Título del Contrato
+            </label>
             <input
               type="text"
               value={section.config.title || ""}
@@ -377,18 +379,11 @@ function SectionConfigEditor({
               className="w-full rounded border border-gray-600 bg-gray-800 px-3 py-1 text-sm text-white"
             />
           </div>
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={section.config.showCompanyInfo || false}
-              onChange={(e) =>
-                updateConfig("showCompanyInfo", e.target.checked)
-              }
-              className="rounded border-gray-600 bg-gray-800 text-blue-600"
-            />
-            <label className="text-sm text-gray-400">
-              Mostrar información de la empresa
-            </label>
+          <div className="rounded bg-blue-900/20 border border-blue-800/50 p-3">
+            <p className="text-xs text-blue-300">
+              ℹ️ El logo, colores y datos de contacto se aplican automáticamente
+              desde tu configuración de branding
+            </p>
           </div>
         </div>
       );

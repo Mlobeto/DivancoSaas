@@ -296,6 +296,85 @@ async function main() {
       isDefault: false,
       displayOrder: 53,
     },
+
+    // ────────────────────────────────────────────────────────
+    // 7. CLÁUSULAS ADICIONALES ESPECÍFICAS
+    // ────────────────────────────────────────────────────────
+    {
+      name: "Responsabilidad del Operador Proporcionado",
+      category: "safety",
+      content: `Cuando el ARRENDADOR proporcione operador certificado para el equipo, este personal permanecerá bajo supervisión del ARRENDADOR en términos laborales. Sin embargo, durante las operaciones, el operador seguirá las instrucciones del CLIENTE en cuanto a tareas específicas a realizar. El CLIENTE debe proporcionar condiciones seguras de trabajo, acceso a servicios sanitarios, y tiempos de descanso según la legislación laboral vigente.`,
+      applicableAssetTypes: [
+        "excavadora",
+        "retroexcavadora",
+        "grúa",
+        "minicargador",
+      ],
+      applicableContractTypes: ["master", "specific"],
+      isActive: true,
+      isDefault: false,
+      displayOrder: 14,
+    },
+    {
+      name: "Horarios de Operación",
+      category: "general",
+      content: `El equipo debe ser operado únicamente durante los horarios permitidos por las regulaciones locales y el plan de manejo ambiental del proyecto. Como regla general, la operación está permitida entre 6:00 AM y 6:00 PM de lunes a sábado. Operaciones en horarios especiales (nocturno, dominicales, festivos) requieren autorización previa del ARRENDADOR y pueden generar cargos adicionales.`,
+      applicableAssetTypes: ["excavadora", "retroexcavadora", "minicargador"],
+      applicableContractTypes: ["master", "specific"],
+      isActive: true,
+      isDefault: false,
+      displayOrder: 4,
+    },
+    {
+      name: "Combustible y Consumibles",
+      category: "general",
+      content: `El CLIENTE es responsable del suministro de combustible (diésel, gasolina) necesario para la operación del equipo. El equipo se entrega con tanque lleno y debe devolverse en las mismas condiciones. El CLIENTE debe utilizar combustible de la calidad especificada por el fabricante. Los consumibles menores (filtros de aire, aceite de motor en cambios programados) son responsabilidad del ARRENDADOR según el plan de mantenimiento.`,
+      applicableAssetTypes: [
+        "excavadora",
+        "retroexcavadora",
+        "minicargador",
+        "camioneta",
+      ],
+      applicableContractTypes: ["master", "specific"],
+      isActive: true,
+      isDefault: true,
+      displayOrder: 5,
+    },
+    {
+      name: "Condiciones de Terreno y Operación",
+      category: "safety",
+      content: `El CLIENTE debe informar al ARRENDADOR sobre las condiciones específicas del terreno donde operará el equipo (pendientes, zonas blandas, proximidad a estructuras, presencia de servicios públicos enterrados). El CLIENTE es responsable de verificar la capacidad portante del terreno y las restricciones de peso. La operación en condiciones no adecuadas para el tipo de equipo puede generar responsabilidad por daños.`,
+      applicableAssetTypes: [
+        "excavadora",
+        "retroexcavadora",
+        "grúa",
+        "minicargador",
+      ],
+      applicableContractTypes: ["master", "specific"],
+      isActive: true,
+      isDefault: true,
+      displayOrder: 15,
+    },
+    {
+      name: "Documentación y Permisos",
+      category: "general",
+      content: `El CLIENTE es responsable de obtener todos los permisos, licencias, y autorizaciones necesarias para la operación del equipo en el sitio de trabajo. Esto incluye: permisos de construcción, planes de manejo de tráfico, autorizaciones ambientales, y cualquier otro requisito local. El ARRENDADOR proporcionará la documentación del equipo (SOAT, revisión técnico-mecánica, certificados) necesaria para las inspecciones.`,
+      applicableAssetTypes: [],
+      applicableContractTypes: ["master", "specific"],
+      isActive: true,
+      isDefault: false,
+      displayOrder: 6,
+    },
+    {
+      name: "Transporte y Movilización",
+      category: "general",
+      content: `Los costos de transporte del equipo desde las instalaciones del ARRENDADOR hasta el sitio de trabajo y su devolución están incluidos en el precio acordado, siempre que la distancia no exceda 50 km. Traslados adicionales durante el periodo de alquiler o distancias superiores generarán cargos adicionales según tarifa vigente. El CLIENTE debe garantizar acceso adecuado para la cama baja o camión de transporte.`,
+      applicableAssetTypes: ["excavadora", "retroexcavadora", "minicargador"],
+      applicableContractTypes: ["master", "specific"],
+      isActive: true,
+      isDefault: false,
+      displayOrder: 7,
+    },
   ];
 
   console.log("📝 Creando cláusulas de contrato...\n");

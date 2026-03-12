@@ -64,6 +64,18 @@ const TemplatePreviewPage = lazy(() =>
   })),
 );
 
+const ClauseTemplatesListPage = lazy(() =>
+  import("@/modules/rental/pages/ClauseTemplatesListPage").then((m) => ({
+    default: m.ClauseTemplatesListPage,
+  })),
+);
+
+const ClauseTemplateFormPage = lazy(() =>
+  import("@/modules/rental/pages/ClauseTemplateFormPage").then((m) => ({
+    default: m.ClauseTemplateFormPage,
+  })),
+);
+
 const AccountsListPage = lazy(() =>
   import("@/modules/rental/pages/AccountsListPage").then((m) => ({
     default: m.AccountsListPage,
@@ -227,6 +239,55 @@ export const rentalRoutes: VerticalRouteConfig = {
         breadcrumb: "Preview",
       },
       chunkName: "templates-preview",
+    },
+
+    //------------------------------------------------------------
+    // CLAUSE TEMPLATES
+    //------------------------------------------------------------
+    {
+      path: "clause-templates",
+      element: ClauseTemplatesListPage,
+      protection: RouteProtection.AUTHENTICATED,
+      layout: RouteLayout.APP,
+      meta: {
+        title: "Contract Clauses",
+        breadcrumb: "Clauses",
+        icon: "file-text",
+      },
+      chunkName: "clause-templates-list",
+    },
+    {
+      path: "clause-templates/new",
+      element: ClauseTemplateFormPage,
+      protection: RouteProtection.OWNER,
+      permissions: ["rental:template:create", "OWNER", "ADMIN"],
+      meta: {
+        title: "New Clause",
+        breadcrumb: "New",
+      },
+      chunkName: "clause-templates-create",
+    },
+    {
+      path: "clause-templates/:id",
+      element: ClauseTemplatesListPage,
+      protection: RouteProtection.AUTHENTICATED,
+      layout: RouteLayout.APP,
+      meta: {
+        title: "Clause Details",
+        breadcrumb: "Details",
+      },
+      chunkName: "clause-templates-detail",
+    },
+    {
+      path: "clause-templates/:id/edit",
+      element: ClauseTemplateFormPage,
+      protection: RouteProtection.OWNER,
+      permissions: ["rental:template:update", "OWNER", "ADMIN"],
+      meta: {
+        title: "Edit Clause",
+        breadcrumb: "Edit",
+      },
+      chunkName: "clause-templates-edit",
     },
 
     //------------------------------------------------------------

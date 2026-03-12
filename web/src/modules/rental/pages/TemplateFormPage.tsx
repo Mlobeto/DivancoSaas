@@ -50,26 +50,25 @@ export function TemplateFormPage() {
     if (template) {
       setName(template.name);
       setType(template.type);
-      
+
       // Check if it's a v2.0 template (contract with JSON content)
-      if (template.type === "contract" && typeof template.content === "object") {
+      if (
+        template.type === "contract" &&
+        typeof template.content === "object"
+      ) {
         // V2.0 template
         setContentV2(template.content as unknown as TemplateV2);
-        setRequiresSignature(
-          (template as any).requiresSignature ?? false
-        );
+        setRequiresSignature((template as any).requiresSignature ?? false);
         setRequiresPaymentProof(
-          (template as any).requiresPaymentProof ?? false
+          (template as any).requiresPaymentProof ?? false,
         );
-        setAllowLocalPayment(
-          (template as any).allowLocalPayment ?? true
-        );
+        setAllowLocalPayment((template as any).allowLocalPayment ?? true);
       } else {
         // Legacy template (HTML string)
         setContent(
           typeof template.content === "string"
             ? template.content
-            : JSON.stringify(template.content)
+            : JSON.stringify(template.content),
         );
       }
     } else {
@@ -341,7 +340,7 @@ export function TemplateFormPage() {
                 <h3 className="text-lg font-semibold text-white mb-4">
                   ⚙️ Configuración de Contrato
                 </h3>
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <label className="flex items-start gap-3 cursor-pointer">
                     <input
                       type="checkbox"
@@ -360,49 +359,52 @@ export function TemplateFormPage() {
                     </div>
                   </label>
 
-                  <label className="flex items-start gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={requiresPaymentProof}
-                      onChange={(e) =>
-                        setRequiresPaymentProof(e.target.checked)
-                      }
-                      className="mt-1"
-                    />
-                    <div>
-                      <span className="text-white font-medium">
-                        Requiere comprobante de pago
-                      </span>
-                      <p className="text-sm text-gray-400">
-                        El cliente debe cargar un comprobante de pago
-                      </p>
-                    </div>
-                  </label>
+                  <div className="border-t border-gray-700 pt-4">
+                    <p className="text-sm font-medium text-gray-300 mb-3">
+                      Opciones de Pago
+                    </p>
+                    <div className="space-y-3 pl-4">
+                      <label className="flex items-start gap-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={requiresPaymentProof}
+                          onChange={(e) =>
+                            setRequiresPaymentProof(e.target.checked)
+                          }
+                          className="mt-1"
+                        />
+                        <div>
+                          <span className="text-white font-medium">
+                            Requiere comprobante de pago
+                          </span>
+                          <p className="text-sm text-gray-400">
+                            El cliente debe cargar un archivo con el comprobante
+                            de pago
+                          </p>
+                        </div>
+                      </label>
 
-                  <label className="flex items-start gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={allowLocalPayment}
-                      onChange={(e) => setAllowLocalPayment(e.target.checked)}
-                      className="mt-1"
-                      disabled={!requiresPaymentProof}
-                    />
-                    <div>
-                      <span
-                        className={
-                          requiresPaymentProof
-                            ? "text-white font-medium"
-                            : "text-gray-500 font-medium"
-                        }
-                      >
-                        Permitir marcar como "pago local"
-                      </span>
-                      <p className="text-sm text-gray-400">
-                        Permite indicar que el pago se realizó en efectivo/local
-                        sin cargar comprobante
-                      </p>
+                      <label className="flex items-start gap-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={allowLocalPayment}
+                          onChange={(e) =>
+                            setAllowLocalPayment(e.target.checked)
+                          }
+                          className="mt-1"
+                        />
+                        <div>
+                          <span className="text-white font-medium">
+                            Permitir marcar como "pago local"
+                          </span>
+                          <p className="text-sm text-gray-400">
+                            Permite indicar que el pago se realizó en
+                            efectivo/local sin cargar comprobante
+                          </p>
+                        </div>
+                      </label>
                     </div>
-                  </label>
+                  </div>
                 </div>
               </div>
             )}

@@ -80,11 +80,11 @@ class ContractTemplateService {
    * Renderizar contrato desde template v2.0
    */
   async renderContract(
-    params: RenderContractParams
+    params: RenderContractParams,
   ): Promise<RenderContractResponse> {
     const { data } = await apiClient.post<{ data: RenderContractResponse }>(
-      "/api/v1/rental/contracts/templates/render",
-      params
+      "/rental/contracts/templates/render",
+      params,
     );
     return data.data;
   }
@@ -102,8 +102,8 @@ class ContractTemplateService {
     allowLocalPayment?: boolean;
   }): Promise<ContractTemplate> {
     const { data } = await apiClient.post<{ data: ContractTemplate }>(
-      "/api/v1/rental/contracts/templates",
-      template
+      "/rental/contracts/templates",
+      template,
     );
     return data.data;
   }
@@ -113,7 +113,7 @@ class ContractTemplateService {
    */
   async migrateToV2(templateId: string): Promise<ContractTemplate> {
     const { data } = await apiClient.post<{ data: ContractTemplate }>(
-      `/api/v1/rental/contracts/templates/${templateId}/migrate-v2`
+      `/rental/contracts/templates/${templateId}/migrate-v2`,
     );
     return data.data;
   }
@@ -123,7 +123,7 @@ class ContractTemplateService {
    */
   async getTemplateMetadata(templateId: string): Promise<ContractTemplate> {
     const { data } = await apiClient.get<{ data: ContractTemplate }>(
-      `/api/v1/rental/contracts/templates/${templateId}/metadata`
+      `/rental/contracts/templates/${templateId}/metadata`,
     );
     return data.data;
   }
@@ -131,10 +131,13 @@ class ContractTemplateService {
   /**
    * Preview de sección
    */
-  async previewSection(section: TemplateSection, contractId: string): Promise<{ html: string }> {
+  async previewSection(
+    section: TemplateSection,
+    contractId: string,
+  ): Promise<{ html: string }> {
     const { data } = await apiClient.post<{ data: { html: string } }>(
-      "/api/v1/rental/contracts/templates/preview-section",
-      { section, contractId }
+      "/rental/contracts/templates/preview-section",
+      { section, contractId },
     );
     return data.data;
   }
@@ -153,7 +156,7 @@ class ContractTemplateService {
       transactionRef?: string;
       paymentDate?: string;
       notes?: string;
-    }
+    },
   ): Promise<any> {
     const formData = new FormData();
     formData.append("file", file);
@@ -168,13 +171,13 @@ class ContractTemplateService {
     }
 
     const { data } = await apiClient.post(
-      `/api/v1/rental/contracts/${contractId}/payment-proof`,
+      `/rental/contracts/${contractId}/payment-proof`,
       formData,
       {
         headers: {
           "Content-Type": "multipart/form-data",
         },
-      }
+      },
     );
     return data.data;
   }
@@ -188,11 +191,11 @@ class ContractTemplateService {
       receivedBy?: string;
       paymentDate?: string;
       notes?: string;
-    }
+    },
   ): Promise<any> {
     const { data } = await apiClient.post(
-      `/api/v1/rental/contracts/${contractId}/payment-proof/local`,
-      details
+      `/rental/contracts/${contractId}/payment-proof/local`,
+      details,
     );
     return data.data;
   }
@@ -202,7 +205,7 @@ class ContractTemplateService {
    */
   async getPaymentProof(contractId: string): Promise<PaymentProofInfo> {
     const { data } = await apiClient.get<{ data: PaymentProofInfo }>(
-      `/api/v1/rental/contracts/${contractId}/payment-proof`
+      `/rental/contracts/${contractId}/payment-proof`,
     );
     return data.data;
   }
@@ -210,13 +213,10 @@ class ContractTemplateService {
   /**
    * Verificar payment proof (admin)
    */
-  async verifyPaymentProof(
-    contractId: string,
-    notes?: string
-  ): Promise<any> {
+  async verifyPaymentProof(contractId: string, notes?: string): Promise<any> {
     const { data } = await apiClient.post(
-      `/api/v1/rental/contracts/${contractId}/payment-proof/verify`,
-      { notes }
+      `/rental/contracts/${contractId}/payment-proof/verify`,
+      { notes },
     );
     return data.data;
   }
@@ -234,15 +234,15 @@ class ContractTemplateService {
       email: string;
       name: string;
       role: string;
-    }>
+    }>,
   ): Promise<{
     requestId: string;
     status: string;
     signerUrls: Array<{ signerEmail: string; url: string }>;
   }> {
     const { data } = await apiClient.post(
-      `/api/v1/rental/contracts/${contractId}/request-signature`,
-      { signers }
+      `/rental/contracts/${contractId}/request-signature`,
+      { signers },
     );
     return data.data;
   }
@@ -259,7 +259,7 @@ class ContractTemplateService {
     }>;
   }> {
     const { data } = await apiClient.get(
-      `/api/v1/rental/contracts/${contractId}/signature-status`
+      `/rental/contracts/${contractId}/signature-status`,
     );
     return data.data;
   }
@@ -269,10 +269,10 @@ class ContractTemplateService {
    */
   async downloadContractPdf(contractId: string): Promise<Blob> {
     const response = await apiClient.get(
-      `/api/v1/rental/contracts/${contractId}/pdf`,
+      `/rental/contracts/${contractId}/pdf`,
       {
         responseType: "blob",
-      }
+      },
     );
     return response.data;
   }
@@ -282,10 +282,10 @@ class ContractTemplateService {
    */
   async downloadSignedContractPdf(contractId: string): Promise<Blob> {
     const response = await apiClient.get(
-      `/api/v1/rental/contracts/${contractId}/signed-pdf`,
+      `/rental/contracts/${contractId}/signed-pdf`,
       {
         responseType: "blob",
-      }
+      },
     );
     return response.data;
   }
