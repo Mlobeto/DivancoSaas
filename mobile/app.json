@@ -34,7 +34,7 @@
       "eas": {
         "projectId": "03053650-0cfa-435c-af35-22586cf5476e"
       },
-      "apiUrl": "https://divancosaas-backend-h4esckd7cwbxhcdx.centralus-01.azurewebsites.net"
+      "apiUrl": "https://divancosaas-api-prod.azurewebsites.net"
     }
   }
 }
