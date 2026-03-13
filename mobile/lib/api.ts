@@ -14,10 +14,13 @@
  */
 
 import axios from "axios";
+import Constants from "expo-constants";
 import { useAuthStore } from "@/store/auth.store";
 
 const BASE_URL =
-  (process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000") + "/api/v1";
+  (Constants.expoConfig?.extra?.apiUrl ??
+    process.env.EXPO_PUBLIC_API_URL ??
+    "http://localhost:3000") + "/api/v1";
 
 const api = axios.create({
   baseURL: BASE_URL,
