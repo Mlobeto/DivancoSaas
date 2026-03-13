@@ -1,0 +1,90 @@
+name: Deploy Backend to Azure (Production)
+
+on:
+    push:
+        branches:
+            - main
+        paths:
+            - "backend/**"
+            - ".github/workflows/deploy-backend-prod.yml"
+    workflow_dispatch:
+
+jobs:
+    build-and-deploy:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "20"
+                  cache: "npm"
+                  cache-dependency-path: backend/package-lock.json
+
+            - name: Install dependencies
+              working-directory: ./backend
+              run: npm ci --legacy-peer-deps
+
+            - name: Generate Prisma Client
+              working-directory: ./backend
+              run: npx prisma generate
+
+            - name: Build TypeScript
+              working-directory: ./backend
+              run: npm run build
+
+            - name: Create deployment package
+              working-directory: ./backend
+              run: |
+                  mkdir -p deploy
+                  cp -r dist deploy/
+                  cp -r node_modules deploy/
+                  cp -r prisma deploy/
+                  cp package.json deploy/
+                  cp package-lock.json deploy/
+
+                  # Create web.config for Azure
+                  cat > deploy/web.config << 'EOF'
+                  <?xml version="1.0" encoding="utf-8"?>
+                  <configuration>
+                    <system.webServer>
+                      <handlers>
+                        <add name="iisnode" path="dist/src/index.js" verb="*" modules="iisnode"/>
+                      </handlers>
+                      <rewrite>
+                        <rules>
+                          <rule name="NodeInspector" patternSyntax="ECMAScript" stopProcessing="true">
+                            <match url="^dist/src/index.js\/debug[\/]?" />
+                          </rule>
+                          <rule name="DynamicContent">
+                            <conditions>
+                              <add input="{REQUEST_FILENAME}" matchType="IsFile" negate="True"/>
+                            </conditions>
+                            <action type="Rewrite" url="dist/src/index.js"/>
+                          </rule>
+                        </rules>
+                      </rewrite>
+                      <httpErrors existingResponse="PassThrough" />
+                      <iisnode node_env="production" />
+                    </system.webServer>
+                  </configuration>
+                  EOF
+
+                  cd deploy
+                  zip -r ../deploy.zip .
+
+            - name: Deploy to Azure Web App
+              uses: azure/webapps-deploy@v2
+              with:
+                  app-name: "divancosaas-api-prod"
+                  publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_PROD }}
+                  package: backend/deploy.zip
+
+            - name: Run Prisma Migrations
+              working-directory: ./backend
+              env:
+                  DATABASE_URL: ${{ secrets.DATABASE_URL_PROD }}
+              run: npx prisma migrate deploy

@@ -9,6 +9,10 @@ coverage
 .idea
 backend/deploy.zip
 
+# Publish profiles (contienen credenciales)
+publish-profile-*.xml
+*.PublishSettings
+
 # Debug scripts con credenciales
 debug-*.ts
 investigate-*.ts
