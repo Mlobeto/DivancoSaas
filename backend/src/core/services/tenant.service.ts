@@ -1,6 +1,6 @@
 import prisma from "@config/database";
 import type { Tenant, TenantStatus } from "@prisma/client";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 
 export interface CreateTenantInput {
   name: string;

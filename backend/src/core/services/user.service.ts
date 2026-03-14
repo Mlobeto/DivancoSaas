@@ -4,7 +4,7 @@
  */
 
 import { prisma } from "@config/database";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import { AppError } from "@core/middlewares/error.middleware";
 import { emailService } from "./email.service";
 
