@@ -49,4 +49,4 @@ jobs:
         working-directory: ./backend
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL_PROD }}
-        run: npx prisma migrate deploy
+        run: npx prisma@6.19.2 migrate deploy
