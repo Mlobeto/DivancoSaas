@@ -15,7 +15,7 @@
  */
 
 import { PrismaClient } from "@prisma/client";
-import * as bcrypt from "bcrypt";
+import * as bcrypt from "bcryptjs";
 import { seedRentalTemplates } from "../scripts/seeds/asset-templates-rental.seed";
 
 const prisma = new PrismaClient();

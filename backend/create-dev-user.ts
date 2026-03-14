@@ -1,6 +1,6 @@
 /// <reference types="node" />
 import prisma from "./src/config/database";
-import * as bcrypt from "bcrypt";
+import * as bcrypt from "bcryptjs";
 
 async function createDevUser() {
   try {
