@@ -10,7 +10,7 @@
  */
 
 import { createBrowserRouter, Navigate, RouteObject } from "react-router-dom";
-import { verticalRegistry, type ModuleContext } from "@/product";
+import { verticalRegistry, moduleRegistry, type ModuleContext } from "@/product";
 import { RouteBuilder } from "@/product/route-builder";
 
 // Import core components
@@ -29,14 +29,18 @@ export function buildRoutes(context: ModuleContext): RouteObject[] {
   // Get route config from active vertical
   const verticalRouteConfig = verticalRegistry.getRouteConfig(context);
 
+  // Get module routes (maintenance, inventory, etc.)
+  const moduleConfigs = moduleRegistry.getRouteConfigs(context);
+
   // Build routes using RouteBuilder
   const builder = new RouteBuilder({ debug: import.meta.env.DEV });
   const platformRoutes = verticalRouteConfig
     ? (builder.buildFromVertical(verticalRouteConfig) as RouteObject[])
     : [];
+  const moduleRoutes = builder.buildFromModules(moduleConfigs) as RouteObject[];
 
   console.log(
-    `[AppRouter] Building routes: ${platformRoutes.length} total (core + vertical)`,
+    `[AppRouter] Building routes: ${platformRoutes.length} vertical + ${moduleRoutes.length} module routes`,
   );
 
   // Get active vertical info for logging
@@ -90,6 +94,8 @@ export function buildRoutes(context: ModuleContext): RouteObject[] {
         // Dynamic platform routes (core + vertical, all lazy-loaded)
         // Note: Each page handles its own Layout wrapper
         ...platformRoutes,
+        // Dynamic module routes (maintenance, etc.)
+        ...moduleRoutes,
         // 404 fallback (future)
         // {
         //   path: '*',
