@@ -15,7 +15,7 @@ function AssetCard({
   asset: MaintenanceAsset;
   actions?: React.ReactNode;
 }) {
-  const lastReturn = asset.rentals?.[0];
+  const lastReturn = asset.assetRentals?.[0];
   const lastEvent = asset.maintenanceEvents?.[0];
   const daysSinceReturn = lastReturn?.actualReturnDate
     ? Math.floor(

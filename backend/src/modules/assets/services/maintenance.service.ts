@@ -205,7 +205,7 @@ export class MaintenanceService {
           orderBy: { createdAt: "desc" },
           take: 1,
         },
-        rentals: {
+        assetRentals: {
           where: { actualReturnDate: { not: null } },
           orderBy: { actualReturnDate: "desc" },
           take: 1,
@@ -230,7 +230,7 @@ export class MaintenanceService {
           orderBy: { createdAt: "desc" },
           take: 1,
         },
-        preventiveConfig: true,
+        preventiveConfigs: true,
       },
       orderBy: { updatedAt: "asc" },
     });

@@ -22,14 +22,14 @@ export interface MaintenanceAsset {
     notes?: string;
     createdAt: string;
   }>;
-  rentals?: Array<{
+  assetRentals?: Array<{
     actualReturnDate?: string;
     contract?: { client?: { name: string } };
   }>;
-  preventiveConfig?: {
+  preventiveConfigs?: Array<{
     id: string;
     intervalHours?: number;
-  } | null;
+  }> | null;
 }
 
 export interface MaintenanceDashboard {
