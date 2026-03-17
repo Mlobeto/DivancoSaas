@@ -69,6 +69,9 @@ export interface PostObraPayload {
   notes?: string;
   suppliesUsed: Array<{ supplyId: string; quantity: number }>;
   evidenceUrls?: string[];
+  contractId?: string; // Contrato al que se carga
+  chargedTo?: "CLIENT" | "BUSINESS"; // Por defecto CLIENT
+  costAmount?: number; // Costo estimado del mantenimiento
 }
 
 export interface PreventivePayload {
@@ -90,6 +93,18 @@ export interface DecommissionPayload {
   notes?: string;
 }
 
+export interface LastRentalInfo {
+  id: string;
+  contractId: string;
+  actualReturnDate: string;
+  contract: {
+    id: string;
+    code: string;
+    clientId: string;
+    client: { name: string };
+  };
+}
+
 // ─── Service ─────────────────────────────────────────────────────────────────
 
 class MaintenanceService {
@@ -100,6 +115,14 @@ class MaintenanceService {
     );
     if (!res.data.data) throw new Error("No dashboard data");
     return res.data.data;
+  }
+
+  /** GET /modules/assets/assets/:assetId/last-rental */
+  async getLastRental(assetId: string): Promise<LastRentalInfo | null> {
+    const res = await api.get<ApiResponse<LastRentalInfo | null>>(
+      `/modules/assets/assets/${assetId}/last-rental`,
+    );
+    return res.data.data ?? null;
   }
 
   /** GET /modules/assets/assets/:assetId/maintenance/history */
@@ -129,6 +152,10 @@ class MaintenanceService {
       {
         notes: payload.notes,
         suppliesUsed: payload.suppliesUsed,
+        evidenceUrls: payload.evidenceUrls,
+        contractId: payload.contractId,
+        chargedTo: payload.chargedTo ?? "CLIENT",
+        costAmount: payload.costAmount,
       },
     );
   }

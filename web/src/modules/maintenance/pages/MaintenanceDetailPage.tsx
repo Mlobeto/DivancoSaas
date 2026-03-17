@@ -1,7 +1,11 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useNavigate } from "react-router-dom";
-import { maintenanceService, Supply } from "../services/maintenance.service";
+import {
+  maintenanceService,
+  Supply,
+  LastRentalInfo,
+} from "../services/maintenance.service";
 import api from "@/lib/api";
 import type { ApiResponse } from "@/core/types/api.types";
 
@@ -227,10 +231,18 @@ function PostObraForm({
   const [notes, setNotes] = useState("");
   const [lines, setLines] = useState<SupplyLine[]>([]);
   const [evidenceUrls, setEvidenceUrls] = useState<string[]>([]);
+  const [isBusinessException, setIsBusinessException] = useState(false);
+  const [costAmount, setCostAmount] = useState("");
 
   const { data: supplies = [] } = useQuery({
     queryKey: ["supplies"],
     queryFn: () => maintenanceService.listSupplies(),
+  });
+
+  /** Último alquiler completado del activo → vincula contrato automáticamente */
+  const { data: lastRental } = useQuery<LastRentalInfo | null>({
+    queryKey: ["last-rental", assetId],
+    queryFn: () => maintenanceService.getLastRental(assetId),
   });
 
   const mutation = useMutation({
@@ -240,6 +252,9 @@ function PostObraForm({
         notes,
         suppliesUsed: lines,
         evidenceUrls,
+        contractId: lastRental?.contractId ?? undefined,
+        chargedTo: isBusinessException ? "BUSINESS" : "CLIENT",
+        costAmount: costAmount ? parseFloat(costAmount) : undefined,
       }),
     onSuccess,
   });
@@ -249,6 +264,90 @@ function PostObraForm({
       <h3 className="font-semibold text-gray-900">
         Completar Mantenimiento Post-Obra
       </h3>
+
+      {/* ── Contrato vinculado ─────────────────── */}
+      {lastRental ? (
+        <div
+          className={`rounded-lg border p-4 space-y-3 transition ${
+            isBusinessException
+              ? "border-orange-300 bg-orange-50"
+              : "border-blue-200 bg-blue-50"
+          }`}
+        >
+          <div className="flex items-start justify-between gap-2">
+            <div className="space-y-0.5">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                Contrato origen del activo
+              </p>
+              <p className="text-sm font-bold text-gray-900">
+                {lastRental.contract.code}
+              </p>
+              <p className="text-sm text-gray-600">
+                Cliente:{" "}
+                <span className="font-medium">
+                  {lastRental.contract.client.name}
+                </span>
+              </p>
+              <p className="text-xs text-gray-400">
+                Devuelto:{" "}
+                {new Date(lastRental.actualReturnDate).toLocaleDateString(
+                  "es-AR",
+                  { day: "2-digit", month: "short", year: "numeric" },
+                )}
+              </p>
+            </div>
+            <span
+              className={`px-2 py-1 text-xs rounded-full font-semibold ${
+                isBusinessException
+                  ? "bg-orange-200 text-orange-800"
+                  : "bg-blue-200 text-blue-800"
+              }`}
+            >
+              {isBusinessException ? "Costo: Negocio" : "Costo: Cliente"}
+            </span>
+          </div>
+
+          {/* Checkbox excepción */}
+          <label className="flex items-start gap-2.5 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={isBusinessException}
+              onChange={(e) => setIsBusinessException(e.target.checked)}
+              className="mt-0.5 accent-orange-500 w-4 h-4 flex-shrink-0"
+            />
+            <span className="text-sm text-gray-700">
+              <strong>Excepción:</strong> El costo de este mantenimiento lo
+              absorbe el negocio (no se descuenta al cliente)
+            </span>
+          </label>
+
+          {/* Monto opcional */}
+          <div className="space-y-1">
+            <label className="block text-xs font-medium text-gray-600">
+              Costo estimado del mantenimiento (opcional)
+            </label>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-500">$</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={costAmount}
+                onChange={(e) => setCostAmount(e.target.value)}
+                placeholder="0.00"
+                className="w-36 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+          <p className="text-sm text-gray-500">
+            No se encontró contrato de alquiler previo. El mantenimiento se
+            registrará sin vinculación a contrato.
+          </p>
+        </div>
+      )}
 
       <SupplySelector supplies={supplies} lines={lines} onChange={setLines} />
 
@@ -281,11 +380,17 @@ function PostObraForm({
       <button
         onClick={() => mutation.mutate()}
         disabled={mutation.isPending}
-        className="w-full py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 transition"
+        className={`w-full py-2.5 text-white rounded-lg font-medium disabled:opacity-50 transition ${
+          isBusinessException
+            ? "bg-orange-500 hover:bg-orange-600"
+            : "bg-green-600 hover:bg-green-700"
+        }`}
       >
         {mutation.isPending
           ? "Guardando..."
-          : "Marcar como completado → Disponible"}
+          : isBusinessException
+            ? "Completar → Costo al Negocio"
+            : "Completar → Descontar al Cliente"}
       </button>
     </div>
   );

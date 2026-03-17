@@ -2292,6 +2292,7 @@ model RentalContract {
   bulkItems          BulkRentalItem[] // BULK inventory items in this contract
   addendums          ContractAddendum[] // Anexos por entrega (v7.0)
   specialAttachments ContractAttachment[] // Anexos especiales: operador, seguridad (v7.0)
+  maintenanceEvents  MaintenanceEvent[] // Mantenimientos post-alquiler vinculados
 
   // Legacy relations (mantener compatibilidad)
   contractAssets      ContractAsset[]
@@ -2700,6 +2701,11 @@ model MaintenanceEvent {
   context String // OBRA | TALLER
   notes   String?
 
+  // Vinculación con contrato de alquiler (post-obra)
+  contractId String? // Contrato al que pertenece este mantenimiento
+  chargedTo  String? // "CLIENT" | "BUSINESS" — por defecto CLIENT
+  costAmount Decimal? @db.Decimal(12, 2) // Costo del mantenimiento (opcional)
+
   // Relación con supplies usados
   suppliesUsed Json? // JSON con detalles de lo usado
 
@@ -2708,10 +2714,12 @@ model MaintenanceEvent {
 
   createdAt DateTime @default(now())
 
-  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  asset    Asset           @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  contract RentalContract? @relation(fields: [contractId], references: [id], onDelete: SetNull)
 
   @@index([assetId])
   @@index([type])
+  @@index([contractId])
   @@map("maintenance_events")
 }
 

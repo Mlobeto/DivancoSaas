@@ -491,6 +491,40 @@ export class SupplyService {
   }
 
   /**
+   * Get last completed rental for an asset (for linking post-obra maintenance)
+   */
+  async getLastRentalForAsset(
+    tenantId: string,
+    businessUnitId: string,
+    assetId: string,
+  ) {
+    const asset = await this.prisma.asset.findFirst({
+      where: { id: assetId, tenantId, businessUnitId },
+    });
+    if (!asset) throw new Error("Asset not found");
+
+    const rental = await this.prisma.assetRental.findFirst({
+      where: {
+        assetId,
+        actualReturnDate: { not: null },
+      },
+      orderBy: { actualReturnDate: "desc" },
+      include: {
+        contract: {
+          select: {
+            id: true,
+            code: true,
+            clientId: true,
+            client: { select: { name: true } },
+          },
+        },
+      },
+    });
+
+    return rental ?? null;
+  }
+
+  /**
    * Execute post-obra maintenance
    * Workflow 7: Mantenimiento Post-Obra (No Clínico)
    */
@@ -499,6 +533,9 @@ export class SupplyService {
     businessUnitId: string,
     data: CreateMaintenanceEventDTO & {
       suppliesUsed: Array<{ supplyId: string; quantity: number }>;
+      contractId?: string; // Contrato al que se carga el mantenimiento
+      chargedTo?: "CLIENT" | "BUSINESS"; // Por defecto CLIENT
+      costAmount?: number; // Costo total opcional
     },
   ) {
     // Verify asset exists and should be in MAINTENANCE state
@@ -545,6 +582,7 @@ export class SupplyService {
     }
 
     // 2. Crear evento de mantenimiento
+    const chargedTo = data.chargedTo ?? "CLIENT";
     const maintenanceEvent = await this.prisma.maintenanceEvent.create({
       data: {
         assetId: data.assetId,
@@ -553,6 +591,9 @@ export class SupplyService {
         notes: data.notes,
         suppliesUsed: data.suppliesUsed,
         evidenceUrls: data.evidenceUrls ?? [],
+        contractId: data.contractId ?? null,
+        chargedTo,
+        costAmount: data.costAmount ?? null,
       },
     });
 

@@ -450,6 +450,11 @@ export class AssetsModule implements ModuleContract {
     );
 
     // ========== MAINTENANCE EVENTS ==========
+    router.get(
+      "/assets/:assetId/last-rental",
+      authorize("assets:read"),
+      SupplyController.getLastRental,
+    );
     router.post(
       "/assets/:assetId/maintenance/preventive",
       authorize("assets:update"),

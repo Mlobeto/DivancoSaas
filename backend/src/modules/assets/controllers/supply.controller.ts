@@ -397,6 +397,30 @@ export class SupplyController {
   }
 
   /**
+   * Get last rental for asset (to link post-obra cost)
+   * GET /api/v1/assets/:assetId/last-rental
+   */
+  static async getLastRental(req: Request, res: Response, next: NextFunction) {
+    try {
+      const context = validateBusinessUnitContext(req, res);
+      if (!context) return;
+
+      const assetId = validatePathParam(req, res, "assetId");
+      if (!assetId) return;
+
+      const rental = await supplyService.getLastRentalForAsset(
+        context.tenantId,
+        context.businessUnitId,
+        assetId as string,
+      );
+
+      res.json({ success: true, data: rental });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
    * Execute post-obra maintenance (Workflow 7)
    * POST /api/v1/assets/:assetId/maintenance/post-obra
    */
@@ -412,9 +436,25 @@ export class SupplyController {
       const assetId = validatePathParam(req, res, "assetId");
       if (!assetId) return;
 
+      const { contractId, chargedTo, costAmount, ...rest } = req.body;
+
+      // Validar chargedTo si se envía
+      if (chargedTo && chargedTo !== "CLIENT" && chargedTo !== "BUSINESS") {
+        res
+          .status(400)
+          .json({
+            success: false,
+            error: "chargedTo debe ser CLIENT o BUSINESS",
+          });
+        return;
+      }
+
       const data = {
-        ...req.body,
+        ...rest,
         assetId,
+        contractId: contractId ?? undefined,
+        chargedTo: (chargedTo as "CLIENT" | "BUSINESS") ?? "CLIENT",
+        costAmount: costAmount ? Number(costAmount) : undefined,
       };
 
       const event = await supplyService.executePostObraMaintenance(
