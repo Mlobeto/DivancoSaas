@@ -42,8 +42,10 @@ export function PurchaseOrdersPage() {
     user?.role === "SUPER_ADMIN" ||
     permissions.includes("OWNER");
 
-  const canCreate = isPrivileged || permissions.includes("purchase-orders:create");
-  const canApprove = isPrivileged || permissions.includes("purchase-orders:approve");
+  const canCreate =
+    isPrivileged || permissions.includes("purchase-orders:create");
+  const canApprove =
+    isPrivileged || permissions.includes("purchase-orders:approve");
 
   // Fetch purchase orders list
   const { data, isLoading, error } = useQuery({
