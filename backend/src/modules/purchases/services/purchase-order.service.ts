@@ -21,6 +21,7 @@ import {
 } from "../types/purchases.types";
 import { SupplierService } from "./supplier.service";
 import { AssetService } from "../../assets/services/asset.service";
+import { notificationService } from "@core/services/notification.service";
 
 export class PurchaseOrderService {
   private supplierService: SupplierService;
@@ -429,7 +430,7 @@ export class PurchaseOrderService {
       throw new Error("No se puede enviar a aprobación una OC sin ítems");
     }
 
-    return await this.prisma.purchaseOrder.update({
+    const updatedOrder = await this.prisma.purchaseOrder.update({
       where: { id: orderId },
       data: {
         status: PurchaseOrderStatus.PENDING_APPROVAL,
@@ -447,6 +448,21 @@ export class PurchaseOrderService {
         items: { include: { supply: true } },
       },
     });
+
+    // Notificar a todos los usuarios con permiso de aprobación
+    notificationService
+      .create({
+        tenantId: order.tenantId,
+        businessUnitId: order.businessUnitId,
+        requiredPermission: "purchase-orders:approve",
+        type: "purchase_order_approval_required",
+        title: "🛒 OC pendiente de aprobación",
+        body: `La orden ${order.code} fue enviada a aprobación y requiere tu revisión.`,
+        data: { purchaseOrderId: orderId, code: order.code },
+      })
+      .catch(() => {}); // fire-and-forget, no bloquea la respuesta
+
+    return updatedOrder;
   }
 
   /**
