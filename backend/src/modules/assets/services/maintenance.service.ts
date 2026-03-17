@@ -183,4 +183,89 @@ export class MaintenanceService {
       orderBy: { startedAt: "desc" },
     });
   }
+
+  /**
+   * Maintenance Dashboard
+   * Returns assets grouped by maintenance state for the workshop view
+   */
+  async getDashboard(tenantId: string, businessUnitId: string) {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    // Activos pendientes de mantenimiento (recién devueltos de alquiler)
+    const pendingMaintenance = await this.prisma.asset.findMany({
+      where: {
+        tenantId,
+        businessUnitId,
+        state: { currentState: "PENDING_MAINTENANCE" },
+      },
+      include: {
+        state: true,
+        maintenanceEvents: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
+        rentals: {
+          where: { actualReturnDate: { not: null } },
+          orderBy: { actualReturnDate: "desc" },
+          take: 1,
+          include: {
+            contract: { include: { client: { select: { name: true } } } },
+          },
+        },
+      },
+      orderBy: { updatedAt: "asc" }, // Los más antiguos primero (mayor urgencia)
+    });
+
+    // Activos actualmente en mantenimiento
+    const inMaintenance = await this.prisma.asset.findMany({
+      where: {
+        tenantId,
+        businessUnitId,
+        state: { currentState: "MAINTENANCE" },
+      },
+      include: {
+        state: true,
+        maintenanceEvents: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
+        preventiveConfig: true,
+      },
+      orderBy: { updatedAt: "asc" },
+    });
+
+    // Mantenimientos completados este mes
+    const completedThisMonth = await this.prisma.maintenanceEvent.count({
+      where: {
+        asset: { tenantId, businessUnitId },
+        createdAt: { gte: startOfMonth },
+      },
+    });
+
+    // Activos fuera de servicio (descartados)
+    const outOfService = await this.prisma.asset.findMany({
+      where: {
+        tenantId,
+        businessUnitId,
+        state: { currentState: "OUT_OF_SERVICE" },
+      },
+      include: { state: true },
+      orderBy: { updatedAt: "desc" },
+      take: 20,
+    });
+
+    return {
+      pendingMaintenance,
+      inMaintenance,
+      completedThisMonth,
+      outOfService,
+      summary: {
+        totalPending: pendingMaintenance.length,
+        totalInMaintenance: inMaintenance.length,
+        totalOutOfService: outOfService.length,
+        completedThisMonth,
+      },
+    };
+  }
 }

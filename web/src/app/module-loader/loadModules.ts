@@ -28,18 +28,24 @@ export async function loadModules(): Promise<void> {
     // Import all module definitions
     // These imports are done dynamically to allow for code splitting in the future
     // NOTE: rental is now loaded as a VERTICAL in loadPlatformModules
-    const [{ inventoryModule }, { clientsModule }, { purchasesModule }] =
-      await Promise.all([
-        import("@/modules/inventory"),
-        import("@/modules/clients"),
-        import("@/modules/purchases"),
-      ]);
+    const [
+      { inventoryModule },
+      { clientsModule },
+      { purchasesModule },
+      { maintenanceModule },
+    ] = await Promise.all([
+      import("@/modules/inventory"),
+      import("@/modules/clients"),
+      import("@/modules/purchases"),
+      import("@/modules/maintenance"),
+    ]);
 
     // Register all modules (rental excluded - now a vertical)
     const results = moduleRegistry.registerAll([
       inventoryModule,
       clientsModule,
       purchasesModule,
+      maintenanceModule,
     ]);
 
     // Log results

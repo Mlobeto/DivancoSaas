@@ -252,11 +252,19 @@ export class ContractService {
       where: { id: params.assetId },
       include: {
         rentalProfile: true, // Extensión opcional para vertical rental
+        state: true, // Estado actual del activo
       },
     });
 
     if (!asset) {
       throw new Error("Asset not found");
+    }
+
+    // Bloquear retiro si el activo está pendiente de mantenimiento
+    if (asset.state?.currentState === "PENDING_MAINTENANCE") {
+      throw new Error(
+        "El activo requiere mantenimiento post-obra antes de ser retirado nuevamente",
+      );
     }
 
     // Determinar trackingType con fallback
@@ -393,6 +401,37 @@ export class ContractService {
       },
       notes: params.notes,
       createdBy: params.createdBy,
+    });
+
+    // 4. Marcar activo como pendiente de mantenimiento post-obra
+    await prisma.assetState.upsert({
+      where: { assetId: rental.assetId },
+      create: {
+        assetId: rental.assetId,
+        workflowId: "default",
+        currentState: "PENDING_MAINTENANCE",
+      },
+      update: { currentState: "PENDING_MAINTENANCE" },
+    });
+
+    await prisma.asset.update({
+      where: { id: rental.assetId },
+      data: { isCurrentlyRented: false, currentRentalContract: null },
+    });
+
+    await prisma.assetEvent.create({
+      data: {
+        tenantId: rental.contract.tenantId,
+        businessUnitId: rental.contract.businessUnitId,
+        assetId: rental.assetId,
+        eventType: "asset.pending_maintenance",
+        source: "system",
+        payload: {
+          rentalId: rental.id,
+          returnDate: params.returnDate,
+          condition: params.condition,
+        },
+      },
     });
 
     return updatedRental;

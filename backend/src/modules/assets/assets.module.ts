@@ -435,6 +435,19 @@ export class AssetsModule implements ModuleContract {
       SupplyController.getPreventiveConfig,
     );
 
+    // ========== MAINTENANCE DASHBOARD ==========
+    router.get(
+      "/maintenance/dashboard",
+      authorize("assets:read"),
+      AssetsController.getMaintenanceDashboard,
+    );
+    router.post(
+      "/assets/:assetId/maintenance/evidence",
+      authorize("assets:update"),
+      uploadDocuments.array("evidence", 10),
+      AssetsController.uploadMaintenanceEvidence,
+    );
+
     // ========== MAINTENANCE EVENTS ==========
     router.post(
       "/assets/:assetId/maintenance/preventive",

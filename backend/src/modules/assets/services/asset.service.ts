@@ -786,6 +786,21 @@ export class AssetService {
       };
     }
 
+    // Verificar si el estado del activo es PENDING_MAINTENANCE o MAINTENANCE
+    const assetState = await this.prisma.assetState.findUnique({
+      where: { assetId },
+    });
+
+    if (
+      assetState?.currentState === "PENDING_MAINTENANCE" ||
+      assetState?.currentState === "MAINTENANCE"
+    ) {
+      return {
+        available: false,
+        status: "maintenance",
+      };
+    }
+
     // Verificar si está en rental activo (AssetRental sin fecha de retorno)
     const activeRental = await this.prisma.assetRental.findFirst({
       where: {

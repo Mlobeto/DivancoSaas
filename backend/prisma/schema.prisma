@@ -2703,6 +2703,9 @@ model MaintenanceEvent {
   // Relación con supplies usados
   suppliesUsed Json? // JSON con detalles de lo usado
 
+  // Evidencia fotográfica del mantenimiento
+  evidenceUrls String[] @default([])
+
   createdAt DateTime @default(now())
 
   asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)

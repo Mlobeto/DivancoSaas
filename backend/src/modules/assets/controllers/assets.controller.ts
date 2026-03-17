@@ -1327,6 +1327,83 @@ export class AssetsController {
     }
   }
 
+  // ========== MAINTENANCE DASHBOARD ==========
+
+  /**
+   * Get maintenance dashboard
+   * GET /maintenance/dashboard
+   */
+  static async getMaintenanceDashboard(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      const context = validateBusinessUnitContext(req, res);
+      if (!context) return;
+
+      const dashboard = await maintenanceService.getDashboard(
+        context.tenantId,
+        context.businessUnitId,
+      );
+
+      res.json({
+        success: true,
+        data: dashboard,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Upload evidence files for a maintenance event
+   * POST /assets/:assetId/maintenance/evidence
+   */
+  static async uploadMaintenanceEvidence(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      const context = validateBusinessUnitContext(req, res);
+      if (!context) return;
+
+      const assetId = validatePathParam(req, res, "assetId");
+      if (!assetId) return;
+
+      if (!req.files || !Array.isArray(req.files) || req.files.length === 0) {
+        res.status(400).json({
+          success: false,
+          error: "Al menos un archivo de evidencia es requerido",
+        });
+        return;
+      }
+
+      const evidenceUrls = await Promise.all(
+        req.files.map(async (file) => {
+          const uploadResult = await azureBlobStorageService.uploadFile({
+            file: file.buffer,
+            fileName: file.originalname,
+            contentType: file.mimetype,
+            folder: "maintenance-evidence",
+            tenantId: context.tenantId,
+            businessUnitId: context.businessUnitId,
+          });
+          return uploadResult.url;
+        }),
+      );
+
+      res.json({
+        success: true,
+        data: { evidenceUrls },
+        message: `${evidenceUrls.length} archivo(s) de evidencia subidos correctamente`,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   // ========== QUOTATION SUPPORT ==========
 
   /**

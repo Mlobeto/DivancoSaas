@@ -459,6 +459,7 @@ export class SupplyService {
         context: data.context || "OBRA",
         notes: data.notes,
         suppliesUsed: data.suppliesUsed,
+        evidenceUrls: data.evidenceUrls ?? [],
       },
     });
 
@@ -514,8 +515,21 @@ export class SupplyService {
       throw new Error("Asset not found");
     }
 
-    if (asset.state?.currentState !== "MAINTENANCE") {
-      throw new Error("Asset is not in maintenance state");
+    if (
+      asset.state?.currentState !== "MAINTENANCE" &&
+      asset.state?.currentState !== "PENDING_MAINTENANCE"
+    ) {
+      throw new Error(
+        "El activo no está en estado de mantenimiento. Debe tener estado MAINTENANCE o PENDING_MAINTENANCE.",
+      );
+    }
+
+    // Si está en PENDING_MAINTENANCE, transicionarlo a MAINTENANCE primero
+    if (asset.state?.currentState === "PENDING_MAINTENANCE") {
+      await this.prisma.assetState.update({
+        where: { assetId: data.assetId },
+        data: { currentState: "MAINTENANCE" },
+      });
     }
 
     // 1. Registrar insumos usados
@@ -538,6 +552,7 @@ export class SupplyService {
         context: "TALLER",
         notes: data.notes,
         suppliesUsed: data.suppliesUsed,
+        evidenceUrls: data.evidenceUrls ?? [],
       },
     });
 

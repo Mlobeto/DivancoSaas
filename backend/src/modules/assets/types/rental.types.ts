@@ -138,6 +138,7 @@ export interface CreateMaintenanceEventDTO {
   context: string; // OBRA | TALLER
   notes?: string;
   suppliesUsed?: Record<string, any>;
+  evidenceUrls?: string[]; // URLs de fotos/archivos de evidencia
 }
 
 // ============================================
