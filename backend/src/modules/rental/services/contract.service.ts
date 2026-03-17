@@ -40,6 +40,13 @@ export interface CreateMasterContractParams {
   businessUnitId: string;
   clientId: string;
 
+  // Cotización origen (opcional — si viene, hereda selectedPeriodType y precios)
+  quotationId?: string;
+
+  // Período de facturación: heredado de la cotización o elegido manualmente
+  // "daily" | "weekly" | "monthly"  — default "daily" si no hay cotización
+  selectedPeriodType?: string;
+
   startDate: Date;
   estimatedEndDate?: Date;
 
@@ -191,13 +198,26 @@ export class ContractService {
       params.agreedCreditLimit || clientAccount.creditLimit.toNumber();
     const agreedTimeLimit = params.agreedTimeLimit || clientAccount.timeLimit;
 
-    // 5. Crear master contract
+    // 5. Heredar selectedPeriodType desde la cotización (si viene vinculada)
+    let selectedPeriodType = params.selectedPeriodType || "daily";
+    if (params.quotationId) {
+      const quotation = await prisma.quotation.findUnique({
+        where: { id: params.quotationId },
+        select: { selectedPeriodType: true },
+      });
+      if (quotation?.selectedPeriodType) {
+        selectedPeriodType = quotation.selectedPeriodType;
+      }
+    }
+
+    // 6. Crear master contract
     const contract = await prisma.rentalContract.create({
       data: {
         tenantId: params.tenantId,
         businessUnitId: params.businessUnitId,
         clientId: params.clientId,
         clientAccountId: clientAccount.id,
+        quotationId: params.quotationId,
         code,
 
         // Master contract específicos
@@ -207,6 +227,9 @@ export class ContractService {
           : clientAccount.creditLimit,
         agreedPeriod: agreedTimeLimit,
         totalActiveDays: 0,
+
+        // Período de facturación heredado de la cotización o elegido manualmente
+        selectedPeriodType,
 
         status: "active",
         startDate: params.startDate,
@@ -236,6 +259,14 @@ export class ContractService {
       where: { id: params.contractId },
       include: {
         clientAccount: true,
+        // Incluir cotización para resolver precios negociados
+        quotation: {
+          include: {
+            items: {
+              where: { assetId: params.assetId },
+            },
+          },
+        },
       },
     });
 
@@ -282,7 +313,51 @@ export class ContractService {
       );
     }
 
-    // 4. Crear AssetRental con fallback a valores legacy
+    // 4. Resolver precios según período del contrato
+    //    Prioridad: QuotationItem (precio negociado) > AssetRentalProfile (precio base)
+    const periodType = (contract as any).selectedPeriodType || "daily";
+    const quotationItem = (contract as any).quotation?.items?.[0] ?? null;
+    const quotationItemId = quotationItem?.id ?? null;
+
+    let dailyRate: Decimal | undefined;
+    let weeklyRate: Decimal | undefined;
+    let monthlyRate: Decimal | undefined;
+
+    if (quotationItem) {
+      // Activo cotizado: usar precios negociados del QuotationItem
+      dailyRate = quotationItem.pricePerDay
+        ? new Decimal(quotationItem.pricePerDay)
+        : asset.rentalProfile?.pricePerDay
+          ? new Decimal(asset.rentalProfile.pricePerDay)
+          : asset.pricePerDay
+            ? new Decimal(asset.pricePerDay)
+            : undefined;
+      weeklyRate = quotationItem.pricePerWeek
+        ? new Decimal(quotationItem.pricePerWeek)
+        : asset.rentalProfile?.pricePerWeek
+          ? new Decimal(asset.rentalProfile.pricePerWeek)
+          : undefined;
+      monthlyRate = quotationItem.pricePerMonth
+        ? new Decimal(quotationItem.pricePerMonth)
+        : asset.rentalProfile?.pricePerMonth
+          ? new Decimal(asset.rentalProfile.pricePerMonth)
+          : undefined;
+    } else {
+      // Activo NO cotizado: usar precio base del AssetRentalProfile según período
+      dailyRate = asset.rentalProfile?.pricePerDay
+        ? new Decimal(asset.rentalProfile.pricePerDay)
+        : asset.pricePerDay
+          ? new Decimal(asset.pricePerDay)
+          : undefined;
+      weeklyRate = asset.rentalProfile?.pricePerWeek
+        ? new Decimal(asset.rentalProfile.pricePerWeek)
+        : undefined;
+      monthlyRate = asset.rentalProfile?.pricePerMonth
+        ? new Decimal(asset.rentalProfile.pricePerMonth)
+        : undefined;
+    }
+
+    // 5. Crear AssetRental
     const rental = await prisma.assetRental.create({
       data: {
         contractId: params.contractId,
@@ -290,6 +365,10 @@ export class ContractService {
         withdrawalDate: await nowInBUTimezone(contract.businessUnitId),
         expectedReturnDate: params.expectedReturnDate,
         trackingType: trackingType,
+
+        // Período heredado del contrato
+        periodType,
+        quotationItemId,
 
         // Para MACHINERY - usar rentalProfile con fallback
         hourlyRate: asset.rentalProfile?.pricePerHour || asset.pricePerHour,
@@ -310,8 +389,10 @@ export class ContractService {
           ? new Decimal(params.initialOdometer)
           : undefined,
 
-        // Para TOOL - usar rentalProfile con fallback
-        dailyRate: asset.rentalProfile?.pricePerDay || asset.pricePerDay,
+        // Para TOOL - tasas por período
+        dailyRate,
+        weeklyRate,
+        monthlyRate,
 
         withdrawalEvidence: params.evidenceUrls || [],
         notes: params.notes,

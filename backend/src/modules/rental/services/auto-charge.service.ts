@@ -59,20 +59,61 @@ export class AutoChargeService {
 
     for (const rental of activeToolRentals) {
       try {
-        const dailyRate = Number(rental.dailyRate || 0);
+        const periodType: string = (rental as any).periodType || "daily";
 
-        if (dailyRate <= 0) {
+        // Determinar si hoy corresponde facturar según el período del contrato
+        // - daily:   factura cada día
+        // - weekly:  factura cada 7 días desde el withdrawalDate
+        // - monthly: factura cada 30 días desde el withdrawalDate
+        const now = new Date();
+        const lastCharge = rental.lastChargeDate
+          ? new Date(rental.lastChargeDate)
+          : new Date(rental.withdrawalDate);
+        const daysSinceLastCharge = Math.floor(
+          (now.getTime() - lastCharge.getTime()) / (1000 * 60 * 60 * 24),
+        );
+
+        const shouldCharge =
+          periodType === "daily"
+            ? daysSinceLastCharge >= 1
+            : periodType === "weekly"
+              ? daysSinceLastCharge >= 7
+              : periodType === "monthly"
+                ? daysSinceLastCharge >= 30
+                : daysSinceLastCharge >= 1;
+
+        if (!shouldCharge) {
+          // Hoy no corresponde cobro para este período
+          continue;
+        }
+
+        // Resolver la tasa según el período elegido en el contrato
+        const chargeRate =
+          periodType === "weekly"
+            ? Number((rental as any).weeklyRate || rental.dailyRate || 0)
+            : periodType === "monthly"
+              ? Number((rental as any).monthlyRate || rental.dailyRate || 0)
+              : Number(rental.dailyRate || 0);
+
+        const periodLabel =
+          periodType === "weekly"
+            ? "semanal"
+            : periodType === "monthly"
+              ? "mensual"
+              : "diario";
+
+        if (chargeRate <= 0) {
           console.warn(
-            `[AutoCharge] Rental ${rental.id} has no daily rate configured`,
+            `[AutoCharge] Rental ${rental.id} has no rate configured for period "${periodType}"`,
           );
           continue;
         }
 
         // Verificar balance
         const currentBalance = Number(rental.contract.clientAccount.balance);
-        if (currentBalance < dailyRate) {
+        if (currentBalance < chargeRate) {
           console.warn(
-            `[AutoCharge] Insufficient balance for rental ${rental.id}. Required: ${dailyRate}, Available: ${currentBalance}`,
+            `[AutoCharge] Insufficient balance for rental ${rental.id}. Required: ${chargeRate}, Available: ${currentBalance}`,
           );
           results.insufficientBalance++;
           // TODO: Enviar notificación
@@ -83,13 +124,10 @@ export class AutoChargeService {
         await prisma.assetRental.update({
           where: { id: rental.id },
           data: {
-            daysElapsed: {
-              increment: 1,
-            },
-            totalCost: {
-              increment: dailyRate,
-            },
-            lastChargeDate: new Date(),
+            daysElapsed: { increment: daysSinceLastCharge },
+            periodsElapsed: { increment: 1 },
+            totalCost: { increment: chargeRate },
+            lastChargeDate: now,
           },
         });
 
@@ -98,19 +136,21 @@ export class AutoChargeService {
           accountId: rental.contract.clientAccountId,
           contractId: rental.contractId,
           movementType: "DAILY_CHARGE",
-          amount: -dailyRate,
-          toolCost: dailyRate,
-          description: `Cargo automático diario - ${rental.asset.name} (${rental.asset.code}): $${dailyRate}/día`,
+          amount: -chargeRate,
+          toolCost: chargeRate,
+          description: `Cargo automático ${periodLabel} - ${rental.asset.name} (${rental.asset.code}): $${chargeRate}/${periodLabel.slice(0, -1)}`,
           assetRentalId: rental.id,
           metadata: {
             autoCharge: true,
-            chargeDate: new Date().toISOString(),
+            periodType,
+            chargeDate: now.toISOString(),
+            daysSinceLastCharge,
           },
         });
 
         results.processed++;
         console.log(
-          `[AutoCharge] ✓ Procesado rental ${rental.id}: $${dailyRate}`,
+          `[AutoCharge] ✓ Procesado rental ${rental.id} (${periodType}): $${chargeRate}`,
         );
       } catch (error: any) {
         results.failed++;
