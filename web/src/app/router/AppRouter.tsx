@@ -10,7 +10,11 @@
  */
 
 import { createBrowserRouter, Navigate, RouteObject } from "react-router-dom";
-import { verticalRegistry, moduleRegistry, type ModuleContext } from "@/product";
+import {
+  verticalRegistry,
+  moduleRegistry,
+  type ModuleContext,
+} from "@/product";
 import { RouteBuilder } from "@/product/route-builder";
 
 // Import core components
