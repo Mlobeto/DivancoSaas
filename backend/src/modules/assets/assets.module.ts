@@ -214,6 +214,12 @@ export class AssetsModule implements ModuleContract {
       authorize("assets:read"),
       AssetsController.getActiveMaintenance,
     );
+    // IMPORTANT: /maintenance/dashboard must be before /maintenance/:maintenanceId
+    router.get(
+      "/maintenance/dashboard",
+      authorize("assets:read"),
+      AssetsController.getMaintenanceDashboard,
+    );
     router.get(
       "/maintenance/:maintenanceId",
       authorize("assets:read"),
@@ -435,12 +441,7 @@ export class AssetsModule implements ModuleContract {
       SupplyController.getPreventiveConfig,
     );
 
-    // ========== MAINTENANCE DASHBOARD ==========
-    router.get(
-      "/maintenance/dashboard",
-      authorize("assets:read"),
-      AssetsController.getMaintenanceDashboard,
-    );
+    // (maintenance/dashboard moved above to avoid conflict with /maintenance/:maintenanceId)
     router.post(
       "/assets/:assetId/maintenance/evidence",
       authorize("assets:update"),
