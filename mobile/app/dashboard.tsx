@@ -6,12 +6,58 @@ import {
   FlatList,
   ActivityIndicator,
   Image,
+  ScrollView,
+  Dimensions,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "@/store/auth.store";
 import { useBrandingStore } from "@/store/branding.store";
 import api from "@/lib/api";
+
+// ─── Módulos web disponibles ────────────────────────────────────────────────
+
+interface WebModule {
+  id: string;
+  title: string;
+  subtitle: string;
+  permission: string; // permiso requerido
+  path: string; // ruta dentro del frontend web
+  icon: string;
+  color: string;
+}
+
+const ALL_MODULES: WebModule[] = [
+  {
+    id: "clients",
+    title: "Cuentas de Clientes",
+    subtitle: "Gestión de clientes y contratos",
+    permission: "clients:read",
+    path: "/clients",
+    icon: "👥",
+    color: "#0369a1",
+  },
+  {
+    id: "quotations",
+    title: "Cotizaciones",
+    subtitle: "Presupuestos y propuestas",
+    permission: "quotations:read",
+    path: "/quotations",
+    icon: "📋",
+    color: "#7c3aed",
+  },
+  {
+    id: "purchase-orders",
+    title: "Órdenes de Compra",
+    subtitle: "Solicitudes y aprobaciones",
+    permission: "purchase-orders:read",
+    path: "/purchase-orders",
+    icon: "🛒",
+    color: "#b45309",
+  },
+];
+
+// ─── Tipo para asignaciones del Operario ────────────────────────────────────
 
 interface Assignment {
   id: string;
@@ -24,13 +70,134 @@ interface Assignment {
   };
 }
 
+// ─── Pantalla principal ──────────────────────────────────────────────────────
+
 export default function DashboardScreen() {
   const router = useRouter();
   const logout = useAuthStore((s) => s.logout);
   const fullName = useAuthStore((s) => s.fullName);
+  const user = useAuthStore((s) => s.user);
   const logoUrl = useBrandingStore((s) => s.logoUrl);
   const primaryColor = useBrandingStore((s) => s.primaryColor);
   const businessUnitName = useBrandingStore((s) => s.businessUnitName);
+
+  const permissions = user?.permissions ?? [];
+  const isPrivileged =
+    user?.role === "SUPER_ADMIN" || user?.buRole?.toLowerCase() === "owner";
+
+  // Módulos visibles según permisos del usuario
+  const visibleModules = ALL_MODULES.filter(
+    (m) => isPrivileged || permissions.includes(m.permission),
+  );
+
+  // Si tiene módulos web → dashboard de gestión; si no → dashboard de operario
+  const showModules = visibleModules.length > 0;
+
+  const handleLogout = () => {
+    logout();
+    router.replace("/");
+  };
+
+  return (
+    <View style={styles.container}>
+      {/* ── Header común ── */}
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          {logoUrl ? (
+            <Image
+              source={{ uri: logoUrl }}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+          ) : (
+            <View
+              style={[
+                styles.logoPlaceholder,
+                { backgroundColor: primaryColor },
+              ]}
+            >
+              <Text style={styles.logoPlaceholderText}>
+                {businessUnitName ? businessUnitName[0].toUpperCase() : "D"}
+              </Text>
+            </View>
+          )}
+          <View style={{ flex: 1 }}>
+            <Text style={styles.greeting} numberOfLines={1}>
+              Hola, {fullName()}
+            </Text>
+            <Text style={styles.headerSub} numberOfLines={1}>
+              {user?.buRole ? `${user.buRole} · ` : ""}
+              {businessUnitName || "DivancoSaaS"}
+            </Text>
+          </View>
+        </View>
+        <Pressable onPress={handleLogout}>
+          <Text style={styles.logoutLink}>Salir</Text>
+        </Pressable>
+      </View>
+
+      {/* ── Contenido dinámico según rol ── */}
+      {showModules ? (
+        <ModulesView modules={visibleModules} />
+      ) : (
+        <AssignmentsView primaryColor={primaryColor} />
+      )}
+    </View>
+  );
+}
+
+// ─── Vista de módulos (Compras, Contable, Owner…) ────────────────────────────
+
+function ModulesView({ modules }: { modules: WebModule[] }) {
+  const router = useRouter();
+  const screenWidth = Dimensions.get("window").width;
+  const cardWidth = (screenWidth - 20 * 2 - 12) / 2; // 2 columnas con gap
+
+  return (
+    <ScrollView
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={styles.modulesGrid}
+    >
+      <Text style={styles.sectionTitle}>Módulos disponibles</Text>
+      <View style={styles.gridRow}>
+        {modules.map((mod) => (
+          <Pressable
+            key={mod.id}
+            style={[
+              styles.moduleCard,
+              { width: cardWidth, borderTopColor: mod.color },
+            ]}
+            onPress={() =>
+              router.push({
+                pathname: "/webview",
+                params: { url: mod.path, title: mod.title },
+              })
+            }
+          >
+            <Text style={styles.moduleIcon}>{mod.icon}</Text>
+            <Text style={styles.moduleTitle}>{mod.title}</Text>
+            <Text style={styles.moduleSubtitle}>{mod.subtitle}</Text>
+            <View
+              style={[
+                styles.moduleArrow,
+                { backgroundColor: mod.color + "22" },
+              ]}
+            >
+              <Text style={[styles.moduleArrowText, { color: mod.color }]}>
+                Abrir →
+              </Text>
+            </View>
+          </Pressable>
+        ))}
+      </View>
+    </ScrollView>
+  );
+}
+
+// ─── Vista de asignaciones (Operario) ────────────────────────────────────────
+
+function AssignmentsView({ primaryColor }: { primaryColor: string }) {
+  const router = useRouter();
 
   const { data, isLoading, isError, refetch } = useQuery<Assignment[]>({
     queryKey: ["my-assignments"],
@@ -39,11 +206,6 @@ export default function DashboardScreen() {
       return res.data.data;
     },
   });
-
-  const handleLogout = () => {
-    logout();
-    router.replace("/");
-  };
 
   const renderAssignment = ({ item }: { item: Assignment }) => (
     <Pressable
@@ -69,78 +231,52 @@ export default function DashboardScreen() {
     </Pressable>
   );
 
-  return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          {logoUrl ? (
-            <Image
-              source={{ uri: logoUrl }}
-              style={styles.logo}
-              resizeMode="contain"
-            />
-          ) : (
-            <View
-              style={[
-                styles.logoPlaceholder,
-                { backgroundColor: primaryColor },
-              ]}
-            >
-              <Text style={styles.logoPlaceholderText}>
-                {businessUnitName ? businessUnitName[0].toUpperCase() : "D"}
-              </Text>
-            </View>
-          )}
-          <View>
-            <Text style={styles.greeting}>Hola, {fullName()}</Text>
-            <Text style={styles.date}>
-              {businessUnitName || "Contratos asignados hoy"}
-            </Text>
-          </View>
-        </View>
-        <Pressable onPress={handleLogout}>
-          <Text style={styles.logoutLink}>Salir</Text>
+  if (isLoading) {
+    return (
+      <ActivityIndicator
+        color="#0284c7"
+        size="large"
+        style={{ marginTop: 40 }}
+      />
+    );
+  }
+
+  if (isError) {
+    return (
+      <View style={styles.emptyCard}>
+        <Text style={styles.emptyText}>Error al cargar contratos</Text>
+        <Pressable
+          onPress={() => refetch()}
+          style={[styles.retryBtn, { backgroundColor: primaryColor }]}
+        >
+          <Text style={styles.retryText}>Reintentar</Text>
         </Pressable>
       </View>
+    );
+  }
 
-      {isLoading && (
-        <ActivityIndicator
-          color="#0284c7"
-          size="large"
-          style={{ marginTop: 40 }}
-        />
-      )}
-
-      {isError && (
-        <View style={styles.emptyCard}>
-          <Text style={styles.emptyText}>Error al cargar contratos</Text>
-          <Pressable
-            onPress={() => refetch()}
-            style={[styles.retryBtn, { backgroundColor: primaryColor }]}
-          >
-            <Text style={styles.retryText}>Reintentar</Text>
-          </Pressable>
-        </View>
-      )}
-
-      {!isLoading && !isError && data?.length === 0 && (
+  return (
+    <FlatList
+      data={data ?? []}
+      keyExtractor={(item) => item.id}
+      renderItem={renderAssignment}
+      ListHeaderComponent={
+        <Text style={styles.sectionTitle}>Contratos asignados hoy</Text>
+      }
+      ListEmptyComponent={
         <View style={styles.emptyCard}>
           <Text style={styles.emptyText}>
             No tienes contratos activos asignados
           </Text>
         </View>
-      )}
-
-      <FlatList
-        data={data ?? []}
-        keyExtractor={(item) => item.id}
-        renderItem={renderAssignment}
-        contentContainerStyle={{ paddingBottom: 20 }}
-        showsVerticalScrollIndicator={false}
-      />
-    </View>
+      }
+      contentContainerStyle={{ paddingBottom: 20 }}
+      showsVerticalScrollIndicator={false}
+    />
   );
 }
+
+// ─── Badge de progreso ───────────────────────────────────────────────────────
 
 function ProgressBadge({ done, label }: { done: boolean; label: string }) {
   return (
@@ -152,17 +288,20 @@ function ProgressBadge({ done, label }: { done: boolean; label: string }) {
   );
 }
 
+// ─── Estilos ─────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#0f172a",
     padding: 20,
   },
+  // Header
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 24,
     paddingTop: 8,
   },
   headerLeft: {
@@ -189,12 +328,12 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   greeting: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "bold",
     color: "#f1f5f9",
   },
-  date: {
-    fontSize: 13,
+  headerSub: {
+    fontSize: 12,
     color: "#64748b",
     marginTop: 2,
   },
@@ -203,6 +342,59 @@ const styles = StyleSheet.create({
     color: "#ef4444",
     fontWeight: "600",
   },
+  // Section
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#64748b",
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+    marginBottom: 16,
+  },
+  // Modules grid
+  modulesGrid: {
+    paddingBottom: 20,
+  },
+  gridRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+  },
+  moduleCard: {
+    backgroundColor: "#1e293b",
+    borderRadius: 12,
+    padding: 16,
+    borderTopWidth: 3,
+    borderWidth: 1,
+    borderColor: "#334155",
+    gap: 6,
+  },
+  moduleIcon: {
+    fontSize: 28,
+    marginBottom: 4,
+  },
+  moduleTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#f1f5f9",
+  },
+  moduleSubtitle: {
+    fontSize: 12,
+    color: "#64748b",
+    lineHeight: 16,
+  },
+  moduleArrow: {
+    alignSelf: "flex-start",
+    marginTop: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  moduleArrowText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  // Assignment cards
   card: {
     backgroundColor: "#1e293b",
     borderWidth: 1,
@@ -278,7 +470,6 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingHorizontal: 20,
     paddingVertical: 8,
-    backgroundColor: "#0284c7",
     borderRadius: 8,
   },
   retryText: {

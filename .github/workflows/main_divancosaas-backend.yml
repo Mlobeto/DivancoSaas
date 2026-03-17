@@ -4,10 +4,7 @@
 name: Build and deploy Node.js app to Azure Web App - divancosaas-backend
 
 on:
-  push:
-    branches:
-      - main
-  workflow_dispatch:
+  workflow_dispatch: # desactivado — producción usa deploy-backend-prod.yml
 
 env:
   REGISTRY_NAME: divancosaas2026

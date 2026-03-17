@@ -22,9 +22,11 @@ export interface AuthUser {
   email: string;
   firstName: string;
   lastName: string;
-  role: string;
+  role: string; // rol global (SUPER_ADMIN | USER)
+  buRole: string | null; // nombre del rol en la BU (Operario, Compras, Contable...)
   tenantId: string | null;
   businessUnitId: string | null;
+  permissions: string[]; // permisos de la BU activa
 }
 
 interface AuthState {

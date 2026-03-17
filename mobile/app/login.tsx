@@ -21,10 +21,12 @@ export default function LoginScreen() {
       return res.data;
     },
     onSuccess: (data) => {
-      // data.data.token  — JWT
-      // data.data.user   — { id, email, firstName, lastName, role, ... }
-      // data.data.context — { businessUnitId, tenantId }
-      const { token, user, context } = data.data;
+      // data.data.token       — JWT
+      // data.data.user        — { id, email, firstName, lastName, role, ... }
+      // data.data.businessUnits — [{ id, name, slug, role, permissions }]
+      // data.data.permissions — permisos de la primera BU
+      const { token, user, businessUnits, permissions } = data.data;
+      const firstBU = businessUnits?.[0];
       resetBranding(); // limpiar branding anterior antes de cargar el nuevo
       setAuth(token, {
         id: user.id,
@@ -32,8 +34,10 @@ export default function LoginScreen() {
         firstName: user.firstName,
         lastName: user.lastName,
         role: user.role,
-        tenantId: context?.tenantId ?? user.tenantId ?? null,
-        businessUnitId: context?.businessUnitId ?? null,
+        buRole: firstBU?.role ?? null,
+        tenantId: user.tenantId ?? null,
+        businessUnitId: firstBU?.id ?? null,
+        permissions: permissions ?? [],
       });
       router.replace("/dashboard");
     },
