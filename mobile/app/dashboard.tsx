@@ -10,9 +10,11 @@ import {
   Dimensions,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "@/store/auth.store";
 import { useBrandingStore } from "@/store/branding.store";
+import { useOfflineQueueStore } from "@/store/offline-queue.store";
 import api from "@/lib/api";
 
 // ─── Módulos web disponibles ────────────────────────────────────────────────
@@ -93,6 +95,13 @@ export default function DashboardScreen() {
   // Si tiene módulos web → dashboard de gestión; si no → dashboard de operario
   const showModules = visibleModules.length > 0;
 
+  // Cola offline: inicializar al montar y leer conteo de pendientes
+  const pendingCount = useOfflineQueueStore((s) => s.pending.length);
+  const initQueue = useOfflineQueueStore((s) => s.init);
+  useEffect(() => {
+    initQueue();
+  }, []);
+
   const handleLogout = () => {
     logout();
     router.replace("/");
@@ -135,6 +144,23 @@ export default function DashboardScreen() {
           <Text style={styles.logoutLink}>Salir</Text>
         </Pressable>
       </View>
+
+      {/* ── Acceso a reportes (solo operarios) ── */}
+      {!showModules && (
+        <Pressable
+          style={styles.reportsBtn}
+          onPress={() => router.push("/my-reports")}
+        >
+          <Text style={styles.reportsBtnText}>📋 Mis Reportes</Text>
+          {pendingCount > 0 && (
+            <View style={styles.pendingPill}>
+              <Text style={styles.pendingPillText}>
+                {pendingCount} pendiente{pendingCount !== 1 ? "s" : ""}
+              </Text>
+            </View>
+          )}
+        </Pressable>
+      )}
 
       {/* ── Contenido dinámico según rol ── */}
       {showModules ? (
@@ -210,7 +236,12 @@ function AssignmentsView({ primaryColor }: { primaryColor: string }) {
   const renderAssignment = ({ item }: { item: Assignment }) => (
     <Pressable
       style={styles.card}
-      onPress={() => router.push(`/assignment/${item.id}`)}
+      onPress={() =>
+        router.push({
+          pathname: "/assignment/[id]",
+          params: { id: item.id, assetName: item.asset.name },
+        })
+      }
     >
       <View style={styles.cardHeader}>
         <Text style={styles.assetName}>{item.asset.name}</Text>
@@ -393,6 +424,36 @@ const styles = StyleSheet.create({
   moduleArrowText: {
     fontSize: 12,
     fontWeight: "600",
+  },
+  // Reports button
+  reportsBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#1e293b",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#334155",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 14,
+    gap: 8,
+  },
+  reportsBtnText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#f1f5f9",
+    flex: 1,
+  },
+  pendingPill: {
+    backgroundColor: "#c2410c",
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  pendingPillText: {
+    color: "#fff",
+    fontSize: 11,
+    fontWeight: "700",
   },
   // Assignment cards
   card: {

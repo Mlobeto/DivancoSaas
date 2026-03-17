@@ -71,6 +71,7 @@ export default function RootLayout() {
             headerStyle: { backgroundColor: primaryColor },
           }}
         />
+        <Stack.Screen name="my-reports" options={{ title: "Mis Reportes" }} />
       </Stack>
     </QueryClientProvider>
   );

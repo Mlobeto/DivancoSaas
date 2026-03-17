@@ -31,6 +31,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as ImagePicker from "expo-image-picker";
 import api from "@/lib/api";
 import { useBrandingStore } from "@/store/branding.store";
+import { useOfflineQueueStore } from "@/store/offline-queue.store";
 
 // ─── TYPES ────────────────────────────────────────────────────
 
@@ -74,6 +75,7 @@ interface UploadModalProps {
   visible: boolean;
   item: EvidenceItem | null;
   assignmentId: string;
+  assetName: string;
   primaryColor: string;
   onClose: () => void;
   onSuccess: () => void;
@@ -83,6 +85,7 @@ function UploadModal({
   visible,
   item,
   assignmentId,
+  assetName,
   primaryColor,
   onClose,
   onSuccess,
@@ -121,10 +124,31 @@ function UploadModal({
       onClose();
     },
     onError: (err: any) => {
-      Alert.alert(
-        "Error al subir",
-        err?.response?.data?.error?.message ?? "No se pudo subir la evidencia",
-      );
+      // Sin respuesta del servidor = error de red → guardar offline
+      const isNetworkError = !err.response;
+      if (isNetworkError && selectedImage && item) {
+        void useOfflineQueueStore.getState().enqueue({
+          assignmentId,
+          assetName,
+          photoType: item.photoType,
+          label: item.label,
+          photoUri: selectedImage.uri,
+          fileName: selectedImage.fileName ?? "evidence.jpg",
+          notes: notes.trim(),
+        });
+        Alert.alert(
+          "Sin conexión",
+          "La evidencia se guardó localmente. Se enviará automáticamente cuando recuperes señal.",
+        );
+        onSuccess();
+        onClose();
+      } else {
+        Alert.alert(
+          "Error al subir",
+          err?.response?.data?.error?.message ??
+            "No se pudo subir la evidencia",
+        );
+      }
     },
   });
 
@@ -377,7 +401,10 @@ function GroupSection({
 // ─── MAIN SCREEN ──────────────────────────────────────────────
 
 export default function AssignmentEvidenceScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, assetName = "" } = useLocalSearchParams<{
+    id: string;
+    assetName?: string;
+  }>();
   const navigation = useNavigation();
   const queryClient = useQueryClient();
 
@@ -487,6 +514,7 @@ export default function AssignmentEvidenceScreen() {
         visible={modalVisible}
         item={modalItem}
         assignmentId={id}
+        assetName={assetName}
         primaryColor={primaryColor}
         onClose={() => setModalVisible(false)}
         onSuccess={handleUploadSuccess}
