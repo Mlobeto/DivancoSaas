@@ -16,6 +16,7 @@ export interface FeatureFlags {
   "module.clients": boolean;
   "module.purchases": boolean;
   "module.rental": boolean;
+  "module.maintenance": boolean;
 
   // Feature toggles
   "feature.csv-import": boolean;
@@ -38,6 +39,7 @@ export const defaultFeatureFlags: FeatureFlags = {
   "module.clients": true,
   "module.purchases": true,
   "module.rental": true,
+  "module.maintenance": true,
 
   // Features
   "feature.csv-import": true,
