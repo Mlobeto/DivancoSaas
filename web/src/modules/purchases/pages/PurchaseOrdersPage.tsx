@@ -17,7 +17,7 @@ import {
 
 export function PurchaseOrdersPage() {
   const queryClient = useQueryClient();
-  const { tenant, businessUnit, permissions } = useAuthStore();
+  const { tenant, businessUnit, permissions, role, user } = useAuthStore();
   const [filters, setFilters] = useState<PurchaseOrderFilters>({
     page: 1,
     limit: 20,
@@ -36,8 +36,14 @@ export function PurchaseOrdersPage() {
   );
   const [approveNotes, setApproveNotes] = useState("");
 
-  const canCreate = permissions.includes("purchase-orders:create");
-  const canApprove = permissions.includes("purchase-orders:approve");
+  // OWNER (BU role) y SUPER_ADMIN tienen acceso completo, igual que el backend
+  const isPrivileged =
+    role === "OWNER" ||
+    user?.role === "SUPER_ADMIN" ||
+    permissions.includes("OWNER");
+
+  const canCreate = isPrivileged || permissions.includes("purchase-orders:create");
+  const canApprove = isPrivileged || permissions.includes("purchase-orders:approve");
 
   // Fetch purchase orders list
   const { data, isLoading, error } = useQuery({
