@@ -79,7 +79,7 @@ export function DashboardPage() {
         title: "Mantenimiento de activos",
         description:
           "Tablero para revisar que los mantenimientos se ejecuten correctamente.",
-        comingSoon: true,
+        path: "/maintenance",
       },
       {
         id: "reports",
