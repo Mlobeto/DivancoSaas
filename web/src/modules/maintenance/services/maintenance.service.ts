@@ -93,54 +93,59 @@ export interface DecommissionPayload {
 // ─── Service ─────────────────────────────────────────────────────────────────
 
 class MaintenanceService {
-  /** GET /maintenance/dashboard */
+  /** GET /modules/assets/maintenance/dashboard */
   async getDashboard(): Promise<MaintenanceDashboard> {
     const res = await api.get<ApiResponse<MaintenanceDashboard>>(
-      "/maintenance/dashboard",
+      "/modules/assets/maintenance/dashboard",
     );
     if (!res.data.data) throw new Error("No dashboard data");
     return res.data.data;
   }
 
-  /** GET /assets/:assetId/maintenance/history */
+  /** GET /modules/assets/assets/:assetId/maintenance/history */
   async getMaintenanceHistory(assetId: string): Promise<MaintenanceHistory[]> {
     const res = await api.get<ApiResponse<MaintenanceHistory[]>>(
-      `/assets/${assetId}/maintenance/history`,
+      `/modules/assets/assets/${assetId}/maintenance/history`,
     );
     return res.data.data ?? [];
   }
 
-  /** POST /assets/:assetId/maintenance/evidence */
+  /** POST /modules/assets/assets/:assetId/maintenance/evidence */
   async uploadEvidence(assetId: string, files: File[]): Promise<string[]> {
     const formData = new FormData();
     files.forEach((f) => formData.append("evidence", f));
     const res = await api.post<ApiResponse<{ evidenceUrls: string[] }>>(
-      `/assets/${assetId}/maintenance/evidence`,
+      `/modules/assets/assets/${assetId}/maintenance/evidence`,
       formData,
       { headers: { "Content-Type": "multipart/form-data" } },
     );
     return res.data.data?.evidenceUrls ?? [];
   }
 
-  /** POST /assets/:assetId/maintenance/post-obra */
+  /** POST /modules/assets/assets/:assetId/maintenance/post-obra */
   async executePostObra(payload: PostObraPayload): Promise<void> {
-    await api.post(`/assets/${payload.assetId}/maintenance/post-obra`, {
-      notes: payload.notes,
-      suppliesUsed: payload.suppliesUsed,
-    });
+    await api.post(
+      `/modules/assets/assets/${payload.assetId}/maintenance/post-obra`,
+      {
+        notes: payload.notes,
+        suppliesUsed: payload.suppliesUsed,
+      },
+    );
   }
 
-  /** POST /assets/:assetId/decommission */
+  /** POST /modules/assets/assets/:assetId/decommission */
   async decommissionAsset(payload: DecommissionPayload): Promise<void> {
-    await api.post(`/assets/${payload.assetId}/decommission`, {
+    await api.post(`/modules/assets/assets/${payload.assetId}/decommission`, {
       reason: payload.reason,
       notes: payload.notes,
     });
   }
 
-  /** GET /supplies */
+  /** GET /modules/assets/supplies */
   async listSupplies(): Promise<Supply[]> {
-    const res = await api.get<ApiResponse<Supply[]>>("/supplies");
+    const res = await api.get<ApiResponse<Supply[]>>(
+      "/modules/assets/supplies",
+    );
     return res.data.data ?? [];
   }
 }
