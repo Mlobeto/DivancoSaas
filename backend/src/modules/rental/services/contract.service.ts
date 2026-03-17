@@ -1168,6 +1168,162 @@ export class ContractService {
 
     return sasUrl;
   }
+
+  /**
+   * Listar contratos activos con sus activos en campo
+   * Para el panel de recepción de devoluciones en taller
+   */
+  async listActiveContractsWithFieldAssets(
+    tenantId: string,
+    businessUnitId: string,
+  ) {
+    return prisma.rentalContract.findMany({
+      where: {
+        tenantId,
+        businessUnitId,
+        status: "active",
+        activeRentals: {
+          some: { actualReturnDate: null },
+        },
+      },
+      orderBy: { startDate: "desc" },
+      include: {
+        client: { select: { id: true, name: true } },
+        clientAccount: {
+          select: { balance: true, creditLimit: true },
+        },
+        activeRentals: {
+          where: { actualReturnDate: null },
+          include: {
+            asset: {
+              select: {
+                id: true,
+                code: true,
+                name: true,
+                assetType: true,
+                imageUrl: true,
+                currentLocation: true,
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  /**
+   * Devolución parcial por lotes con destino configurable
+   * destination: "MAINTENANCE" → PENDING_MAINTENANCE (default)
+   * destination: "STOCK"        → AVAILABLE (sin mantenimiento)
+   */
+  async batchReturnAssets(
+    tenantId: string,
+    businessUnitId: string,
+    params: {
+      contractId: string;
+      returns: Array<{
+        rentalId: string;
+        destination: "MAINTENANCE" | "STOCK";
+        notes?: string;
+        condition?: string;
+      }>;
+      createdBy: string;
+    },
+  ) {
+    // Validate contract belongs to tenant/BU
+    const contract = await prisma.rentalContract.findFirst({
+      where: { id: params.contractId, tenantId, businessUnitId },
+      include: { clientAccount: true },
+    });
+    if (!contract) throw new Error("Contract not found");
+
+    const results = [];
+
+    for (const ret of params.returns) {
+      const rental = await prisma.assetRental.findUnique({
+        where: { id: ret.rentalId },
+        include: { asset: true },
+      });
+
+      if (!rental || rental.contractId !== params.contractId) continue;
+      if (rental.actualReturnDate) continue; // Ya devuelto
+
+      const returnDate = await nowInBUTimezone(businessUnitId);
+
+      // 1. Cerrar el rental
+      const updatedRental = await prisma.assetRental.update({
+        where: { id: ret.rentalId },
+        data: {
+          actualReturnDate: returnDate,
+          needsPostObraMaintenance: ret.destination === "MAINTENANCE",
+          notes: ret.notes ?? rental.notes,
+        },
+      });
+
+      // 2. Cambiar estado del activo según destino
+      const newState =
+        ret.destination === "MAINTENANCE" ? "PENDING_MAINTENANCE" : "AVAILABLE";
+
+      await prisma.assetState.upsert({
+        where: { assetId: rental.assetId },
+        create: {
+          assetId: rental.assetId,
+          workflowId: "default",
+          currentState: newState,
+        },
+        update: { currentState: newState },
+      });
+
+      await prisma.asset.update({
+        where: { id: rental.assetId },
+        data: { isCurrentlyRented: false, currentRentalContract: null },
+      });
+
+      // 3. Evento de auditoría
+      const eventType =
+        ret.destination === "MAINTENANCE"
+          ? "asset.pending_maintenance"
+          : "asset.returned_to_stock";
+
+      await prisma.assetEvent.create({
+        data: {
+          tenantId,
+          businessUnitId,
+          assetId: rental.assetId,
+          eventType,
+          source: "system",
+          payload: {
+            rentalId: rental.id,
+            contractId: params.contractId,
+            returnDate,
+            destination: ret.destination,
+            condition: ret.condition,
+          },
+        },
+      });
+
+      // 4. Movimiento en cuenta (informativo, sin monto)
+      await accountService.createMovement({
+        accountId: contract.clientAccountId,
+        contractId: params.contractId,
+        movementType: "RETURN_END",
+        amount: 0,
+        description: `Devolución de ${rental.asset.name} (${rental.asset.code}) → ${ret.destination === "MAINTENANCE" ? "Mantenimiento" : "Stock directo"}`,
+        assetRentalId: rental.id,
+        notes: ret.notes,
+        createdBy: params.createdBy,
+      });
+
+      results.push({
+        rentalId: ret.rentalId,
+        assetId: rental.assetId,
+        destination: ret.destination,
+        newState,
+      });
+    }
+
+    return results;
+  }
 }
 
 export const contractService = new ContractService();

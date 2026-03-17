@@ -130,9 +130,7 @@ function ReturnEntryRow({
         <div className="flex items-center gap-1 flex-shrink-0">
           <button
             onClick={() =>
-              onChangeDestination(
-                isMaintenance ? "STOCK" : "MAINTENANCE",
-              )
+              onChangeDestination(isMaintenance ? "STOCK" : "MAINTENANCE")
             }
             title="Cambiar destino"
             className={`text-xs px-2 py-1 rounded-lg font-medium transition ${
@@ -214,9 +212,7 @@ function DropZoneArea({
         </div>
         <p className="text-xs text-gray-400">{sublabel}</p>
         {isOver && (
-          <p className="text-xs text-gray-600 mt-1 font-medium">
-            Soltar aquí
-          </p>
+          <p className="text-xs text-gray-600 mt-1 font-medium">Soltar aquí</p>
         )}
       </div>
     </div>
@@ -305,9 +301,7 @@ export function AssetReturnPanel() {
       const existing = prev.find((e) => e.asset.rentalId === rental.id);
       if (existing) {
         return prev.map((e) =>
-          e.asset.rentalId === rental.id
-            ? { ...e, destination: zone }
-            : e,
+          e.asset.rentalId === rental.id ? { ...e, destination: zone } : e,
         );
       }
       return [...prev, { asset, destination: zone, notes: "" }];
@@ -372,8 +366,7 @@ export function AssetReturnPanel() {
                 <option value="">— Seleccionar contrato —</option>
                 {contracts.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.code} · {c.client.name} (
-                    {c.activeRentals.length} activo
+                    {c.code} · {c.client.name} ({c.activeRentals.length} activo
                     {c.activeRentals.length !== 1 ? "s" : ""} en campo)
                   </option>
                 ))}
@@ -394,7 +387,10 @@ export function AssetReturnPanel() {
                 <div>
                   <span className="text-gray-500">Saldo:</span>{" "}
                   <span className="font-medium text-green-700">
-                    ${Number(selectedContract.clientAccount.balance).toLocaleString("es-AR")}
+                    $
+                    {Number(
+                      selectedContract.clientAccount.balance,
+                    ).toLocaleString("es-AR")}
                   </span>
                 </div>
                 <div>
@@ -510,8 +506,7 @@ export function AssetReturnPanel() {
                       onRemove={() =>
                         setReturnEntries((prev) =>
                           prev.filter(
-                            (e) =>
-                              e.asset.rentalId !== entry.asset.rentalId,
+                            (e) => e.asset.rentalId !== entry.asset.rentalId,
                           ),
                         )
                       }

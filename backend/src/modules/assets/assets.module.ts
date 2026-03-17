@@ -327,6 +327,12 @@ export class AssetsModule implements ModuleContract {
     );
 
     // ========== RENTAL CONTRACTS ==========
+    // IMPORTANT: /active-with-assets must be before /:contractId
+    router.get(
+      "/rental/contracts/active-with-assets",
+      authorize("rental-contracts:read"),
+      RentalController.listActiveWithAssets,
+    );
     router.post(
       "/rental/contracts",
       authorize("rental-contracts:create"),
@@ -351,6 +357,11 @@ export class AssetsModule implements ModuleContract {
       "/rental/contracts/:contractId/assign-asset",
       authorize("rental-contracts:update"),
       RentalController.assignAsset,
+    );
+    router.post(
+      "/rental/contracts/:contractId/batch-return",
+      authorize("rental-contracts:update"),
+      RentalController.batchReturn,
     );
     router.post(
       "/rental/contracts/:contractId/finalize",

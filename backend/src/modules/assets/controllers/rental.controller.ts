@@ -7,6 +7,7 @@
 
 import { Request, Response, NextFunction } from "express";
 import { RentalService } from "../services/rental.service";
+import { contractService } from "../../../modules/rental/services/contract.service";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
@@ -242,6 +243,75 @@ export class RentalController {
         success: true,
         data: result,
       });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // ========== DEVOLUCIÓN PARCIAL POR LOTES ==========
+
+  /**
+   * List active contracts with field assets (for return panel)
+   * GET /api/v1/modules/assets/rental/contracts/active-with-assets
+   */
+  static async listActiveWithAssets(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      const context = validateBusinessUnitContext(req, res);
+      if (!context) return;
+
+      const data = await contractService.listActiveContractsWithFieldAssets(
+        context.tenantId,
+        context.businessUnitId,
+      );
+
+      res.json({ success: true, data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Batch return assets with destination
+   * POST /api/v1/modules/assets/rental/contracts/:contractId/batch-return
+   */
+  static async batchReturn(req: Request, res: Response, next: NextFunction) {
+    try {
+      const context = validateBusinessUnitContext(req, res);
+      if (!context) return;
+
+      const contractId = validatePathParam(req, res, "contractId");
+      if (!contractId) return;
+
+      const { returns, createdBy } = req.body as {
+        returns: Array<{
+          rentalId: string;
+          destination: "MAINTENANCE" | "STOCK";
+          notes?: string;
+          condition?: string;
+        }>;
+        createdBy?: string;
+      };
+
+      if (!Array.isArray(returns) || returns.length === 0) {
+        res
+          .status(400)
+          .json({ success: false, error: "returns array is required" });
+        return;
+      }
+
+      const userId = (req as any).user?.id ?? createdBy ?? "system";
+
+      const result = await contractService.batchReturnAssets(
+        context.tenantId,
+        context.businessUnitId,
+        { contractId, returns, createdBy: userId },
+      );
+
+      res.json({ success: true, data: result });
     } catch (error) {
       next(error);
     }

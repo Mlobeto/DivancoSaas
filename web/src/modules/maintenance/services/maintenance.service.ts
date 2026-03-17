@@ -105,6 +105,42 @@ export interface LastRentalInfo {
   };
 }
 
+// ─── Return Panel Types ───────────────────────────────────────────────────────
+
+export interface ActiveContractWithAssets {
+  id: string;
+  code: string;
+  status: string;
+  startDate: string;
+  client: { id: string; name: string };
+  clientAccount: { balance: string | number; creditLimit: string | number };
+  activeRentals: Array<{
+    id: string;
+    assetId: string;
+    withdrawalDate: string;
+    asset: {
+      id: string;
+      code: string;
+      name: string;
+      assetType: string;
+      imageUrl?: string;
+      currentLocation?: string;
+    };
+  }>;
+}
+
+export interface BatchReturnItem {
+  rentalId: string;
+  destination: "MAINTENANCE" | "STOCK";
+  notes?: string;
+  condition?: string;
+}
+
+export interface BatchReturnPayload {
+  contractId: string;
+  returns: BatchReturnItem[];
+}
+
 // ─── Service ─────────────────────────────────────────────────────────────────
 
 class MaintenanceService {
@@ -174,6 +210,22 @@ class MaintenanceService {
       "/modules/assets/supplies",
     );
     return res.data.data ?? [];
+  }
+
+  /** GET /modules/assets/rental/contracts/active-with-assets */
+  async listActiveContractsWithAssets(): Promise<ActiveContractWithAssets[]> {
+    const res = await api.get<ApiResponse<ActiveContractWithAssets[]>>(
+      "/modules/assets/rental/contracts/active-with-assets",
+    );
+    return res.data.data ?? [];
+  }
+
+  /** POST /modules/assets/rental/contracts/:contractId/batch-return */
+  async batchReturnAssets(payload: BatchReturnPayload): Promise<void> {
+    await api.post(
+      `/modules/assets/rental/contracts/${payload.contractId}/batch-return`,
+      { returns: payload.returns },
+    );
   }
 }
 
