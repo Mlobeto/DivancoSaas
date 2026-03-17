@@ -10,6 +10,7 @@ import prisma from "@config/database";
 import { Decimal } from "@prisma/client/runtime/library";
 import type { ContractAddendum, AssetRental } from "@prisma/client";
 import { notificationService } from "@core/services/notification.service";
+import { resolveRentalRates } from "../utils/resolve-rental-rates";
 
 // ============================================
 // TYPES
@@ -87,6 +88,21 @@ export class ContractAddendumService {
       include: {
         client: true,
         clientAccount: true,
+        // Incluir cotización para resolver precios negociados por asset
+        quotation: {
+          select: {
+            selectedPeriodType: true,
+            items: {
+              select: {
+                id: true,
+                assetId: true,
+                pricePerDay: true,
+                pricePerWeek: true,
+                pricePerMonth: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -194,6 +210,16 @@ export class ContractAddendumService {
             operatorCostRate: true,
             currentHourMeter: true,
             currentKm: true,
+            rentalProfile: {
+              select: {
+                pricePerHour: true,
+                pricePerDay: true,
+                pricePerWeek: true,
+                pricePerMonth: true,
+                operatorCostType: true,
+                operatorCostRate: true,
+              },
+            },
           },
         });
 
@@ -201,31 +227,52 @@ export class ContractAddendumService {
           throw new Error(`Asset ${item.assetId} not found`);
         }
 
+        // Resolver tasas desde cotización > rentalProfile > asset (mismo algoritmo que withdrawAsset)
+        const rates = await resolveRentalRates({
+          contractId: params.contractId,
+          assetId: item.assetId,
+          contract: contract as any,
+          asset: asset as any,
+        });
+
+        // El frontend puede sobrescribir tasas explícitamente (precio especial por addendum)
+        const finalDailyRate = item.dailyRate
+          ? new Decimal(item.dailyRate)
+          : rates.dailyRate;
+        const finalHourlyRate = item.hourlyRate
+          ? new Decimal(item.hourlyRate)
+          : rates.hourlyRate;
+        const finalOperatorCostType =
+          item.operatorCostType || rates.operatorCostType;
+        const finalOperatorCostRate = item.operatorCostRate
+          ? new Decimal(item.operatorCostRate)
+          : rates.operatorCostRate;
+
         // Crear rental vinculado al addendum
         await tx.assetRental.create({
           data: {
             contractId: params.contractId,
             assetId: item.assetId,
-            addendumId: newAddendum.id, // Vincular al addendum
+            addendumId: newAddendum.id,
             trackingType: asset.trackingType || "TOOL",
             withdrawalDate: item.startDate,
             expectedReturnDate: item.estimatedEndDate,
 
+            // Período heredado del contrato / cotización
+            periodType: rates.periodType,
+            quotationItemId: rates.quotationItemId,
+
             // Para MACHINERY
-            hourlyRate: item.hourlyRate
-              ? new Decimal(item.hourlyRate)
-              : asset.pricePerHour,
-            operatorCostType: item.operatorCostType || asset.operatorCostType,
-            operatorCostRate: item.operatorCostRate
-              ? new Decimal(item.operatorCostRate)
-              : asset.operatorCostRate,
+            hourlyRate: finalHourlyRate,
+            operatorCostType: finalOperatorCostType,
+            operatorCostRate: finalOperatorCostRate,
             initialHourometer: asset.currentHourMeter,
             initialOdometer: asset.currentKm,
 
-            // Para TOOL
-            dailyRate: item.dailyRate
-              ? new Decimal(item.dailyRate)
-              : asset.pricePerDay,
+            // Para TOOL — tasas por período
+            dailyRate: finalDailyRate,
+            weeklyRate: rates.weeklyRate,
+            monthlyRate: rates.monthlyRate,
 
             withdrawalEvidence: [],
             createdBy: params.createdBy || "system",
