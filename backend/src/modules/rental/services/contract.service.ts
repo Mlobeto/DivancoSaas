@@ -1299,7 +1299,6 @@ export class ContractService {
         where: { id: ret.rentalId },
         data: {
           actualReturnDate: returnDate,
-          needsPostObraMaintenance: ret.destination === "MAINTENANCE",
           notes: ret.notes ?? rental.notes,
         },
       });
