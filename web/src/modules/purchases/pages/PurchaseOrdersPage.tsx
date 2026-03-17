@@ -17,7 +17,7 @@ import {
 
 export function PurchaseOrdersPage() {
   const queryClient = useQueryClient();
-  const { tenant, businessUnit } = useAuthStore();
+  const { tenant, businessUnit, permissions } = useAuthStore();
   const [filters, setFilters] = useState<PurchaseOrderFilters>({
     page: 1,
     limit: 20,
@@ -27,6 +27,17 @@ export function PurchaseOrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<PurchaseOrder | null>(
     null,
   );
+  const [rejectModal, setRejectModal] = useState<{ orderId: string } | null>(
+    null,
+  );
+  const [rejectReason, setRejectReason] = useState("");
+  const [approveModal, setApproveModal] = useState<{ orderId: string } | null>(
+    null,
+  );
+  const [approveNotes, setApproveNotes] = useState("");
+
+  const canCreate = permissions.includes("purchase-orders:create");
+  const canApprove = permissions.includes("purchase-orders:approve");
 
   // Fetch purchase orders list
   const { data, isLoading, error } = useQuery({
@@ -35,37 +46,47 @@ export function PurchaseOrdersPage() {
     enabled: !!tenant?.id && !!businessUnit?.id,
   });
 
-  // Confirm mutation
-  const confirmMutation = useMutation({
-    mutationFn: purchaseOrderService.confirm,
+  const invalidate = () =>
+    queryClient.invalidateQueries({ queryKey: ["purchase-orders"] });
+
+  const submitMutation = useMutation({
+    mutationFn: purchaseOrderService.submitForApproval,
+    onSuccess: invalidate,
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: ({ id, notes }: { id: string; notes?: string }) =>
+      purchaseOrderService.approve(id, notes),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["purchase-orders"] });
+      invalidate();
+      setApproveModal(null);
+      setApproveNotes("");
     },
   });
 
-  // Cancel mutation
+  const rejectMutation = useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
+      purchaseOrderService.reject(id, reason),
+    onSuccess: () => {
+      invalidate();
+      setRejectModal(null);
+      setRejectReason("");
+    },
+  });
+
+  const confirmMutation = useMutation({
+    mutationFn: purchaseOrderService.confirm,
+    onSuccess: invalidate,
+  });
+
   const cancelMutation = useMutation({
     mutationFn: purchaseOrderService.cancel,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["purchase-orders"] });
-    },
+    onSuccess: invalidate,
   });
 
   const handleEdit = (order: PurchaseOrder) => {
     setEditingOrder(order);
     setShowModal(true);
-  };
-
-  const handleConfirm = async (id: string) => {
-    if (confirm("¿Confirmar esta orden de compra?")) {
-      confirmMutation.mutate(id);
-    }
-  };
-
-  const handleCancel = async (id: string) => {
-    if (confirm("¿Cancelar esta orden de compra?")) {
-      cancelMutation.mutate(id);
-    }
   };
 
   const handleCloseModal = () => {
@@ -74,25 +95,63 @@ export function PurchaseOrdersPage() {
   };
 
   const handleSuccess = () => {
-    queryClient.invalidateQueries({ queryKey: ["purchase-orders"] });
+    invalidate();
     handleCloseModal();
   };
 
-  const statusColors: Record<PurchaseOrderStatus, string> = {
-    DRAFT: "bg-gray-700/30 text-gray-400 border-gray-600",
-    CONFIRMED: "bg-blue-900/30 text-blue-400 border-blue-800",
-    CANCELLED: "bg-red-900/30 text-red-400 border-red-800",
-    PARTIALLY_RECEIVED: "bg-yellow-900/30 text-yellow-400 border-yellow-800",
-    COMPLETED: "bg-green-900/30 text-green-400 border-green-800",
+  const statusConfig: Record<
+    PurchaseOrderStatus,
+    { label: string; className: string }
+  > = {
+    DRAFT: {
+      label: "Borrador",
+      className: "bg-gray-700/30 text-gray-400 border-gray-600",
+    },
+    PENDING_APPROVAL: {
+      label: "Pendiente Aprobación",
+      className: "bg-orange-900/30 text-orange-400 border-orange-800",
+    },
+    REJECTED: {
+      label: "Rechazada",
+      className: "bg-red-900/30 text-red-400 border-red-800",
+    },
+    APPROVED: {
+      label: "Aprobada",
+      className: "bg-teal-900/30 text-teal-400 border-teal-800",
+    },
+    SENT: {
+      label: "Enviada",
+      className: "bg-blue-900/30 text-blue-400 border-blue-800",
+    },
+    CONFIRMED: {
+      label: "Confirmada",
+      className: "bg-indigo-900/30 text-indigo-400 border-indigo-800",
+    },
+    PARTIALLY_RECEIVED: {
+      label: "Parcial",
+      className: "bg-yellow-900/30 text-yellow-400 border-yellow-800",
+    },
+    RECEIVED: {
+      label: "Recibida",
+      className: "bg-green-900/30 text-green-400 border-green-800",
+    },
+    CANCELLED: {
+      label: "Cancelada",
+      className: "bg-gray-900/30 text-gray-500 border-gray-700",
+    },
   };
 
-  const statusLabels: Record<PurchaseOrderStatus, string> = {
-    DRAFT: "Borrador",
-    CONFIRMED: "Confirmada",
-    CANCELLED: "Cancelada",
-    PARTIALLY_RECEIVED: "Parcial",
-    COMPLETED: "Completada",
-  };
+  const editableStatuses: PurchaseOrderStatus[] = [
+    PurchaseOrderStatus.DRAFT,
+    PurchaseOrderStatus.REJECTED,
+  ];
+
+  const cancellableStatuses: PurchaseOrderStatus[] = [
+    PurchaseOrderStatus.DRAFT,
+    PurchaseOrderStatus.PENDING_APPROVAL,
+    PurchaseOrderStatus.REJECTED,
+    PurchaseOrderStatus.APPROVED,
+  ];
 
   // Validar contexto
   if (!tenant || !businessUnit) {
@@ -100,10 +159,7 @@ export function PurchaseOrdersPage() {
       <Layout>
         <div className="p-8">
           <div className="card bg-yellow-900/20 border-yellow-800 text-yellow-400">
-            <p>
-              No se ha seleccionado un tenant o business unit. Por favor,
-              configura tu contexto.
-            </p>
+            <p>No se ha seleccionado un tenant o business unit.</p>
           </div>
         </div>
       </Layout>
@@ -119,9 +175,11 @@ export function PurchaseOrdersPage() {
           <a href="/dashboard" className="btn-ghost">
             ← Dashboard
           </a>
-          <button onClick={() => setShowModal(true)} className="btn-primary">
-            + Nueva Orden
-          </button>
+          {canCreate && (
+            <button onClick={() => setShowModal(true)} className="btn-primary">
+              + Nueva Orden
+            </button>
+          )}
         </>
       }
     >
@@ -133,7 +191,7 @@ export function PurchaseOrdersPage() {
             onChange={(e) =>
               setFilters({
                 ...filters,
-                status: e.target.value as PurchaseOrderStatus | undefined,
+                status: (e.target.value as PurchaseOrderStatus) || undefined,
                 page: 1,
               })
             }
@@ -141,12 +199,18 @@ export function PurchaseOrdersPage() {
           >
             <option value="">Todos los estados</option>
             <option value={PurchaseOrderStatus.DRAFT}>Borrador</option>
+            <option value={PurchaseOrderStatus.PENDING_APPROVAL}>
+              Pendiente Aprobación
+            </option>
+            <option value={PurchaseOrderStatus.REJECTED}>Rechazada</option>
+            <option value={PurchaseOrderStatus.APPROVED}>Aprobada</option>
+            <option value={PurchaseOrderStatus.SENT}>Enviada</option>
             <option value={PurchaseOrderStatus.CONFIRMED}>Confirmada</option>
-            <option value={PurchaseOrderStatus.CANCELLED}>Cancelada</option>
             <option value={PurchaseOrderStatus.PARTIALLY_RECEIVED}>
               Parcialmente Recibida
             </option>
-            <option value={PurchaseOrderStatus.COMPLETED}>Completada</option>
+            <option value={PurchaseOrderStatus.RECEIVED}>Recibida</option>
+            <option value={PurchaseOrderStatus.CANCELLED}>Cancelada</option>
           </select>
 
           <input
@@ -182,9 +246,6 @@ export function PurchaseOrdersPage() {
       {error && (
         <div className="card bg-red-900/20 border-red-800 text-red-400">
           <p>Error al cargar órdenes de compra</p>
-          <p className="text-sm mt-2">
-            {error instanceof Error ? error.message : "Error desconocido"}
-          </p>
         </div>
       )}
 
@@ -233,56 +294,116 @@ export function PurchaseOrdersPage() {
                         </td>
                         <td>
                           <span
-                            className={`status-badge ${statusColors[order.status]}`}
+                            className={`status-badge ${statusConfig[order.status].className}`}
                           >
-                            {statusLabels[order.status]}
+                            {statusConfig[order.status].label}
                           </span>
                         </td>
                         <td className="text-right font-semibold text-blue-400">
                           {order.total !== undefined
-                            ? `$${order.total.toFixed(2)}`
+                            ? `$${Number(order.total).toFixed(2)}`
                             : "-"}
                         </td>
                         <td className="text-center">
-                          {order.items?.length || 0}
+                          {(order as any)._count?.items ??
+                            order.items?.length ??
+                            0}
                         </td>
                         <td>
-                          <div className="flex gap-2">
+                          <div className="flex gap-1 flex-wrap">
                             <button
                               onClick={() => setSelectedOrder(order)}
-                              className="btn-ghost text-sm"
-                              title="Ver detalles"
+                              className="btn-ghost text-xs"
                             >
                               Ver
                             </button>
-                            {order.status === PurchaseOrderStatus.DRAFT && (
-                              <>
+
+                            {/* Creador: editar en DRAFT o REJECTED */}
+                            {canCreate &&
+                              editableStatuses.includes(order.status) && (
                                 <button
                                   onClick={() => handleEdit(order)}
-                                  className="btn-ghost text-sm"
+                                  className="btn-ghost text-xs"
                                 >
                                   Editar
                                 </button>
+                              )}
+
+                            {/* Creador: enviar a aprobación */}
+                            {canCreate &&
+                              editableStatuses.includes(order.status) && (
                                 <button
-                                  onClick={() => handleConfirm(order.id)}
-                                  className="btn-ghost text-sm text-blue-400"
+                                  onClick={() =>
+                                    submitMutation.mutate(order.id)
+                                  }
+                                  className="btn-ghost text-xs text-orange-400"
+                                  disabled={submitMutation.isPending}
+                                >
+                                  Enviar
+                                </button>
+                              )}
+
+                            {/* Aprobador: aprobar */}
+                            {canApprove &&
+                              order.status ===
+                                PurchaseOrderStatus.PENDING_APPROVAL && (
+                                <button
+                                  onClick={() =>
+                                    setApproveModal({ orderId: order.id })
+                                  }
+                                  className="btn-ghost text-xs text-teal-400"
+                                >
+                                  Aprobar
+                                </button>
+                              )}
+
+                            {/* Aprobador: rechazar */}
+                            {canApprove &&
+                              order.status ===
+                                PurchaseOrderStatus.PENDING_APPROVAL && (
+                                <button
+                                  onClick={() =>
+                                    setRejectModal({ orderId: order.id })
+                                  }
+                                  className="btn-ghost text-xs text-red-400"
+                                >
+                                  Rechazar
+                                </button>
+                              )}
+
+                            {/* Enviar al proveedor (tras aprobación) */}
+                            {canCreate &&
+                              order.status === PurchaseOrderStatus.APPROVED && (
+                                <button
+                                  onClick={() => {
+                                    if (
+                                      confirm("¿Enviar esta OC al proveedor?")
+                                    )
+                                      confirmMutation.mutate(order.id);
+                                  }}
+                                  className="btn-ghost text-xs text-blue-400"
                                   disabled={confirmMutation.isPending}
                                 >
-                                  Confirmar
+                                  Enviar OC
                                 </button>
-                              </>
-                            )}
-                            {(order.status === PurchaseOrderStatus.DRAFT ||
-                              order.status ===
-                                PurchaseOrderStatus.CONFIRMED) && (
-                              <button
-                                onClick={() => handleCancel(order.id)}
-                                className="btn-ghost text-sm text-red-400"
-                                disabled={cancelMutation.isPending}
-                              >
-                                Cancelar
-                              </button>
-                            )}
+                              )}
+
+                            {/* Cancelar */}
+                            {canCreate &&
+                              cancellableStatuses.includes(order.status) && (
+                                <button
+                                  onClick={() => {
+                                    if (
+                                      confirm("¿Cancelar esta orden de compra?")
+                                    )
+                                      cancelMutation.mutate(order.id);
+                                  }}
+                                  className="btn-ghost text-xs text-red-400"
+                                  disabled={cancelMutation.isPending}
+                                >
+                                  Cancelar
+                                </button>
+                              )}
                           </div>
                         </td>
                       </tr>
@@ -351,6 +472,112 @@ export function PurchaseOrdersPage() {
         </div>
       )}
 
+      {/* Approve Modal */}
+      {approveModal && (
+        <div className="modal-overlay">
+          <div className="modal-content max-w-lg">
+            <h2 className="text-xl font-bold mb-4">Aprobar Orden de Compra</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1 text-gray-400">
+                  Notas de aprobación (opcional)
+                </label>
+                <textarea
+                  value={approveNotes}
+                  onChange={(e) => setApproveNotes(e.target.value)}
+                  className="form-input w-full"
+                  rows={3}
+                  placeholder="Ej: Aprobada según presupuesto trimestral"
+                />
+              </div>
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => {
+                    setApproveModal(null);
+                    setApproveNotes("");
+                  }}
+                  className="btn-ghost"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() =>
+                    approveMutation.mutate({
+                      id: approveModal.orderId,
+                      notes: approveNotes || undefined,
+                    })
+                  }
+                  className="btn-primary bg-teal-600 hover:bg-teal-700"
+                  disabled={approveMutation.isPending}
+                >
+                  Confirmar Aprobación
+                </button>
+              </div>
+              {approveMutation.isError && (
+                <p className="text-red-400 text-sm">
+                  {approveMutation.error instanceof Error
+                    ? approveMutation.error.message
+                    : "Error al aprobar"}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reject Modal */}
+      {rejectModal && (
+        <div className="modal-overlay">
+          <div className="modal-content max-w-lg">
+            <h2 className="text-xl font-bold mb-4">Rechazar Orden de Compra</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Motivo del rechazo <span className="text-red-400">*</span>
+                </label>
+                <textarea
+                  value={rejectReason}
+                  onChange={(e) => setRejectReason(e.target.value)}
+                  className="form-input w-full"
+                  rows={3}
+                  placeholder="Ej: El precio supera el límite autorizado. Requiere nueva cotización."
+                />
+              </div>
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => {
+                    setRejectModal(null);
+                    setRejectReason("");
+                  }}
+                  className="btn-ghost"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() =>
+                    rejectMutation.mutate({
+                      id: rejectModal.orderId,
+                      reason: rejectReason,
+                    })
+                  }
+                  className="btn-primary bg-red-600 hover:bg-red-700"
+                  disabled={rejectMutation.isPending || !rejectReason.trim()}
+                >
+                  Rechazar Orden
+                </button>
+              </div>
+              {rejectMutation.isError && (
+                <p className="text-red-400 text-sm">
+                  {rejectMutation.error instanceof Error
+                    ? rejectMutation.error.message
+                    : "Error al rechazar"}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Order Details Modal */}
       {selectedOrder && (
         <div className="modal-overlay">
@@ -378,9 +605,9 @@ export function PurchaseOrdersPage() {
                   <label className="text-sm text-gray-400">Estado</label>
                   <p>
                     <span
-                      className={`status-badge ${statusColors[selectedOrder.status]}`}
+                      className={`status-badge ${statusConfig[selectedOrder.status].className}`}
                     >
-                      {statusLabels[selectedOrder.status]}
+                      {statusConfig[selectedOrder.status].label}
                     </span>
                   </p>
                 </div>
@@ -392,6 +619,50 @@ export function PurchaseOrdersPage() {
                   {selectedOrder.supplier?.name || "-"}
                 </p>
               </div>
+
+              {/* Info de aprobación */}
+              {selectedOrder.requestedBy && (
+                <div className="bg-gray-800/30 rounded p-3">
+                  <p className="text-xs text-gray-400 mb-1">
+                    Enviada a aprobación por
+                  </p>
+                  <p className="text-sm">
+                    {selectedOrder.requestedBy.firstName}{" "}
+                    {selectedOrder.requestedBy.lastName}
+                  </p>
+                </div>
+              )}
+              {selectedOrder.approvedBy && (
+                <div className="bg-teal-900/20 border border-teal-800 rounded p-3">
+                  <p className="text-xs text-teal-400 mb-1">
+                    ✓ Aprobada por {selectedOrder.approvedBy.firstName}{" "}
+                    {selectedOrder.approvedBy.lastName}
+                  </p>
+                  {selectedOrder.approvedAt && (
+                    <p className="text-xs text-gray-400">
+                      {new Date(selectedOrder.approvedAt).toLocaleString()}
+                    </p>
+                  )}
+                  {selectedOrder.approvalNotes && (
+                    <p className="text-sm mt-1 text-gray-300">
+                      {selectedOrder.approvalNotes}
+                    </p>
+                  )}
+                </div>
+              )}
+              {selectedOrder.rejectedBy && (
+                <div className="bg-red-900/20 border border-red-800 rounded p-3">
+                  <p className="text-xs text-red-400 mb-1">
+                    ✗ Rechazada por {selectedOrder.rejectedBy.firstName}{" "}
+                    {selectedOrder.rejectedBy.lastName}
+                  </p>
+                  {selectedOrder.rejectionReason && (
+                    <p className="text-sm mt-1 text-red-300">
+                      Motivo: {selectedOrder.rejectionReason}
+                    </p>
+                  )}
+                </div>
+              )}
 
               {selectedOrder.expectedDate && (
                 <div>
@@ -414,30 +685,55 @@ export function PurchaseOrdersPage() {
                     {selectedOrder.items.map((item) => (
                       <div
                         key={item.id}
-                        className="bg-gray-800/40 rounded p-3 grid grid-cols-12 gap-3 items-center"
+                        className="bg-gray-800/40 rounded p-3 space-y-2"
                       >
-                        <div className="col-span-5">
-                          <p className="font-semibold">
-                            {item.supply?.name || "Insumo"}
-                          </p>
-                          <p className="text-xs text-gray-400 font-mono">
-                            {item.supplyId}
-                          </p>
+                        <div className="grid grid-cols-12 gap-3 items-center">
+                          <div className="col-span-5">
+                            <p className="font-semibold">
+                              {item.supply?.name || "Insumo"}
+                            </p>
+                            {item.createsAsset && item.assetTemplate && (
+                              <p className="text-xs text-teal-400">
+                                → Crear activo: {item.assetTemplate.name}
+                              </p>
+                            )}
+                          </div>
+                          <div className="col-span-2 text-right">
+                            <p className="text-sm text-gray-400">Cantidad</p>
+                            <p>{item.quantity}</p>
+                          </div>
+                          <div className="col-span-2 text-right">
+                            <p className="text-sm text-gray-400">P. Unit</p>
+                            <p>${Number(item.unitPrice).toFixed(2)}</p>
+                          </div>
+                          <div className="col-span-3 text-right">
+                            <p className="text-sm text-gray-400">Subtotal</p>
+                            <p className="font-semibold text-blue-400">
+                              $
+                              {(
+                                Number(item.quantity) * Number(item.unitPrice)
+                              ).toFixed(2)}
+                            </p>
+                          </div>
                         </div>
-                        <div className="col-span-2 text-right">
-                          <p className="text-sm text-gray-400">Cantidad</p>
-                          <p>{item.quantity}</p>
-                        </div>
-                        <div className="col-span-2 text-right">
-                          <p className="text-sm text-gray-400">P. Unit</p>
-                          <p>${item.unitPrice.toFixed(2)}</p>
-                        </div>
-                        <div className="col-span-3 text-right">
-                          <p className="text-sm text-gray-400">Subtotal</p>
-                          <p className="font-semibold text-blue-400">
-                            ${(item.quantity * item.unitPrice).toFixed(2)}
-                          </p>
-                        </div>
+                        {/* Preview specs del template de activo */}
+                        {item.createsAsset &&
+                          item.assetTemplate?.technicalSpecs && (
+                            <div className="text-xs text-gray-400 bg-gray-900/40 rounded p-2">
+                              <span className="font-medium">
+                                Specs técnicas:{" "}
+                              </span>
+                              {Object.entries(
+                                item.assetTemplate.technicalSpecs as Record<
+                                  string,
+                                  string
+                                >,
+                              )
+                                .slice(0, 4)
+                                .map(([k, v]) => `${k}: ${v}`)
+                                .join(" · ")}
+                            </div>
+                          )}
                       </div>
                     ))}
                   </div>
@@ -446,7 +742,7 @@ export function PurchaseOrdersPage() {
                     <div className="text-right">
                       <span className="text-gray-400 mr-3">Total:</span>
                       <span className="text-2xl font-bold text-blue-400">
-                        ${selectedOrder.total?.toFixed(2) || "0.00"}
+                        ${Number(selectedOrder.total ?? 0).toFixed(2)}
                       </span>
                     </div>
                   </div>
@@ -463,8 +759,8 @@ export function PurchaseOrdersPage() {
               )}
 
               <div className="flex gap-3 pt-4 border-t border-gray-700">
-                {selectedOrder.status === PurchaseOrderStatus.DRAFT && (
-                  <>
+                {canCreate &&
+                  editableStatuses.includes(selectedOrder.status) && (
                     <button
                       onClick={() => {
                         handleEdit(selectedOrder);
@@ -474,17 +770,46 @@ export function PurchaseOrdersPage() {
                     >
                       Editar
                     </button>
+                  )}
+                {canCreate &&
+                  editableStatuses.includes(selectedOrder.status) && (
                     <button
                       onClick={() => {
-                        handleConfirm(selectedOrder.id);
+                        submitMutation.mutate(selectedOrder.id);
                         setSelectedOrder(null);
                       }}
-                      className="btn-primary bg-blue-600 hover:bg-blue-700"
+                      className="btn-primary bg-orange-600 hover:bg-orange-700"
+                      disabled={submitMutation.isPending}
                     >
-                      Confirmar
+                      Enviar a Aprobación
                     </button>
-                  </>
-                )}
+                  )}
+                {canApprove &&
+                  selectedOrder.status ===
+                    PurchaseOrderStatus.PENDING_APPROVAL && (
+                    <button
+                      onClick={() => {
+                        setSelectedOrder(null);
+                        setApproveModal({ orderId: selectedOrder.id });
+                      }}
+                      className="btn-primary bg-teal-600 hover:bg-teal-700"
+                    >
+                      Aprobar
+                    </button>
+                  )}
+                {canApprove &&
+                  selectedOrder.status ===
+                    PurchaseOrderStatus.PENDING_APPROVAL && (
+                    <button
+                      onClick={() => {
+                        setSelectedOrder(null);
+                        setRejectModal({ orderId: selectedOrder.id });
+                      }}
+                      className="btn-primary bg-red-600 hover:bg-red-700"
+                    >
+                      Rechazar
+                    </button>
+                  )}
                 <button
                   onClick={() => setSelectedOrder(null)}
                   className="btn-ghost"

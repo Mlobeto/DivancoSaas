@@ -210,6 +210,11 @@ model User {
   sentMessages                ChatMessage[]
   rentalCreditProfilesUpdated RentalClientCreditProfile[] @relation("RentalCreditProfileUpdater")
 
+  // Purchase Order approval relations
+  purchaseOrdersRequested PurchaseOrder[] @relation("PurchaseOrderRequestedBy")
+  purchaseOrdersApproved  PurchaseOrder[] @relation("PurchaseOrderApprovedBy")
+  purchaseOrdersRejected  PurchaseOrder[] @relation("PurchaseOrderRejectedBy")
+
   @@unique([tenantId, email])
   @@index([tenantId])
   @@index([email])
@@ -2078,6 +2083,17 @@ model PurchaseOrder {
 
   notes String?
 
+  // ============================================
+  // FLUJO DE APROBACIÓN
+  // ============================================
+  requestedById   String? // Usuario que envió a aprobación
+  approvedById    String? // Usuario que aprobó
+  approvedAt      DateTime? // Fecha de aprobación
+  rejectedById    String? // Usuario que rechazó
+  rejectedAt      DateTime? // Fecha de rechazo
+  rejectionReason String? // Motivo del rechazo
+  approvalNotes   String? // Notas del aprobador
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   createdBy String?
@@ -2085,6 +2101,9 @@ model PurchaseOrder {
   tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   businessUnit BusinessUnit @relation(fields: [businessUnitId], references: [id], onDelete: Cascade)
   supplier     Supplier     @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  requestedBy  User?        @relation("PurchaseOrderRequestedBy", fields: [requestedById], references: [id], onDelete: SetNull)
+  approvedBy   User?        @relation("PurchaseOrderApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  rejectedBy   User?        @relation("PurchaseOrderRejectedBy", fields: [rejectedById], references: [id], onDelete: SetNull)
 
   items           PurchaseOrderItem[]
   accountEntries  SupplierAccountEntry[]
@@ -2099,10 +2118,14 @@ model PurchaseOrder {
 }
 
 enum PurchaseOrderStatus {
-  DRAFT // Borrador
+  DRAFT // Borrador — solo el creador puede editar
+  PENDING_APPROVAL // Enviada a aprobación
+  REJECTED // Rechazada — vuelve a DRAFT para corregir
+  APPROVED // Aprobada — lista para enviar al proveedor
   SENT // Enviada al proveedor
   CONFIRMED // Confirmada por proveedor
-  RECEIVED // Mercadería recibida
+  PARTIALLY_RECEIVED // Recibida parcialmente
+  RECEIVED // Mercadería recibida completa
   CANCELLED // Cancelada
 }
 

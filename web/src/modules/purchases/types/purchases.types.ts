@@ -202,10 +202,14 @@ export interface QuoteComparison {
 
 export enum PurchaseOrderStatus {
   DRAFT = "DRAFT",
+  PENDING_APPROVAL = "PENDING_APPROVAL",
+  REJECTED = "REJECTED",
+  APPROVED = "APPROVED",
+  SENT = "SENT",
   CONFIRMED = "CONFIRMED",
-  CANCELLED = "CANCELLED",
   PARTIALLY_RECEIVED = "PARTIALLY_RECEIVED",
-  COMPLETED = "COMPLETED",
+  RECEIVED = "RECEIVED",
+  CANCELLED = "CANCELLED",
 }
 
 export interface PurchaseOrderItem {
@@ -214,13 +218,14 @@ export interface PurchaseOrderItem {
   supplyId: string;
   quantity: number;
   unitPrice: number;
+  totalPrice: number;
   receivedQty: number;
   notes?: string;
 
   // Integración con módulo de activos
-  createsAsset?: boolean; // Si true, al recibir se crea el activo
-  assetTemplateId?: string; // Template del activo a crear
-  generatedAssetId?: string; // ID del activo creado (una vez recibido)
+  createsAsset?: boolean;
+  assetTemplateId?: string;
+  generatedAssetId?: string;
 
   createdAt: string;
   updatedAt: string;
@@ -230,6 +235,22 @@ export interface PurchaseOrderItem {
     code: string;
     unit: string;
   };
+  assetTemplate?: {
+    id: string;
+    name: string;
+    category: string;
+    technicalSpecs?: Record<string, unknown>;
+    rentalPricing?: Record<string, unknown>;
+    businessRules?: Record<string, unknown>;
+    requiresPreventiveMaintenance: boolean;
+  };
+}
+
+export interface PurchaseOrderUser {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
 }
 
 export interface PurchaseOrder {
@@ -239,14 +260,32 @@ export interface PurchaseOrder {
   code: string;
   supplierId: string;
   status: PurchaseOrderStatus;
+  orderDate: string;
   expectedDate?: string;
   receivedDate?: string;
+  subtotal: number;
+  tax: number;
+  total: number;
+  currency: string;
   notes?: string;
   createdAt: string;
   updatedAt: string;
+  createdBy?: string;
+
+  // Flujo de aprobación
+  requestedById?: string;
+  approvedById?: string;
+  approvedAt?: string;
+  approvalNotes?: string;
+  rejectedById?: string;
+  rejectedAt?: string;
+  rejectionReason?: string;
+
   supplier?: Supplier;
   items?: PurchaseOrderItem[];
-  total?: number;
+  requestedBy?: PurchaseOrderUser;
+  approvedBy?: PurchaseOrderUser;
+  rejectedBy?: PurchaseOrderUser;
 }
 
 export interface CreatePurchaseOrderDTO {

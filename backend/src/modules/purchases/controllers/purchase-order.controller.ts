@@ -177,6 +177,111 @@ export class PurchaseOrderController {
   }
 
   /**
+   * Enviar orden de compra a aprobación
+   * POST /api/v1/modules/purchases/purchase-orders/:orderId/submit
+   */
+  static async submitForApproval(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      const context = validateBusinessUnitContext(req, res);
+      if (!context) return;
+
+      if (!context.userId) {
+        res
+          .status(401)
+          .json({ success: false, error: "User context required" });
+        return;
+      }
+
+      const order = await purchaseOrderService.submitForApproval(
+        req.params.orderId as string,
+        context.userId,
+      );
+
+      res.json({ success: true, data: order });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Aprobar orden de compra
+   * POST /api/v1/modules/purchases/purchase-orders/:orderId/approve
+   */
+  static async approvePurchaseOrder(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      const context = validateBusinessUnitContext(req, res);
+      if (!context) return;
+
+      if (!context.userId) {
+        res
+          .status(401)
+          .json({ success: false, error: "User context required" });
+        return;
+      }
+
+      const order = await purchaseOrderService.approvePurchaseOrder(
+        req.params.orderId as string,
+        context.userId,
+        req.body,
+      );
+
+      res.json({ success: true, data: order });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Rechazar orden de compra
+   * POST /api/v1/modules/purchases/purchase-orders/:orderId/reject
+   */
+  static async rejectPurchaseOrder(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      const context = validateBusinessUnitContext(req, res);
+      if (!context) return;
+
+      if (!context.userId) {
+        res
+          .status(401)
+          .json({ success: false, error: "User context required" });
+        return;
+      }
+
+      if (!req.body.reason) {
+        res
+          .status(400)
+          .json({
+            success: false,
+            error: "El motivo de rechazo es obligatorio",
+          });
+        return;
+      }
+
+      const order = await purchaseOrderService.rejectPurchaseOrder(
+        req.params.orderId as string,
+        context.userId,
+        req.body,
+      );
+
+      res.json({ success: true, data: order });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
    * Cancelar orden de compra
    * POST /api/v1/modules/purchases/purchase-orders/:orderId/cancel
    */

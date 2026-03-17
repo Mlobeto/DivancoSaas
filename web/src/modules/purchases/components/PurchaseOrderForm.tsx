@@ -249,16 +249,20 @@ export function PurchaseOrderForm({
                 disabled={isLoading}
               >
                 <option value={PurchaseOrderStatus.DRAFT}>Borrador</option>
+                <option value={PurchaseOrderStatus.PENDING_APPROVAL}>
+                  Pendiente Aprobación
+                </option>
+                <option value={PurchaseOrderStatus.REJECTED}>Rechazada</option>
+                <option value={PurchaseOrderStatus.APPROVED}>Aprobada</option>
+                <option value={PurchaseOrderStatus.SENT}>Enviada</option>
                 <option value={PurchaseOrderStatus.CONFIRMED}>
                   Confirmada
                 </option>
-                <option value={PurchaseOrderStatus.CANCELLED}>Cancelada</option>
                 <option value={PurchaseOrderStatus.PARTIALLY_RECEIVED}>
                   Parcialmente Recibida
                 </option>
-                <option value={PurchaseOrderStatus.COMPLETED}>
-                  Completada
-                </option>
+                <option value={PurchaseOrderStatus.RECEIVED}>Recibida</option>
+                <option value={PurchaseOrderStatus.CANCELLED}>Cancelada</option>
               </select>
             </div>
           )}
@@ -449,35 +453,126 @@ export function PurchaseOrderForm({
                 </label>
               </div>
 
-              {/* Selector de template (solo si checkbox est\u00e1 marcado) */}
+              {/* Selector de template (solo si checkbox está marcado) */}
               {newItem.createsAsset && (
-                <div className="pl-7">
-                  <label className="form-label">
-                    Plantilla del Activo <span className="text-red-400">*</span>
-                  </label>
-                  <select
-                    value={newItem.assetTemplateId}
-                    onChange={(e) =>
-                      setNewItem((prev) => ({
-                        ...prev,
-                        assetTemplateId: e.target.value,
-                      }))
-                    }
-                    className="form-input"
-                    disabled={isLoading}
-                    required={newItem.createsAsset}
-                  >
-                    <option value="">Seleccionar plantilla...</option>
-                    {templatesData?.data?.map((template: any) => (
-                      <option key={template.id} value={template.id}>
-                        {template.icon} {template.name} ({template.category})
-                      </option>
-                    ))}
-                  </select>
-                  <p className="text-xs text-gray-400 mt-1">
-                    \ud83d\udca1 Se crear\u00e1n {newItem.quantity} activo(s)
-                    usando esta plantilla
-                  </p>
+                <div className="pl-7 space-y-2">
+                  <div>
+                    <label className="form-label">
+                      Plantilla del Activo{" "}
+                      <span className="text-red-400">*</span>
+                    </label>
+                    <select
+                      value={newItem.assetTemplateId}
+                      onChange={(e) =>
+                        setNewItem((prev) => ({
+                          ...prev,
+                          assetTemplateId: e.target.value,
+                        }))
+                      }
+                      className="form-input"
+                      disabled={isLoading}
+                      required={newItem.createsAsset}
+                    >
+                      <option value="">Seleccionar plantilla...</option>
+                      {templatesData?.data?.map((template: any) => (
+                        <option key={template.id} value={template.id}>
+                          {template.icon} {template.name} ({template.category})
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-gray-400 mt-1">
+                      💡 Se crearán {newItem.quantity} activo(s) usando esta
+                      plantilla
+                    </p>
+                  </div>
+
+                  {/* Preview specs del template seleccionado */}
+                  {newItem.assetTemplateId &&
+                    (() => {
+                      const tpl = templatesData?.data?.find(
+                        (t: any) => t.id === newItem.assetTemplateId,
+                      ) as any;
+                      if (!tpl) return null;
+                      const pricing = tpl.rentalRules ?? tpl.rentalPricing;
+                      return (
+                        <div className="bg-gray-900/50 border border-gray-700 rounded p-3 space-y-2 text-xs">
+                          <p className="font-semibold text-gray-300 text-sm">
+                            {tpl.icon} {tpl.name}
+                          </p>
+                          {tpl.requiresPreventiveMaintenance && (
+                            <p className="text-yellow-400">
+                              ⚠ Requiere mantenimiento preventivo
+                            </p>
+                          )}
+                          {tpl.technicalSpecs &&
+                            Object.keys(tpl.technicalSpecs).length > 0 && (
+                              <div>
+                                <p className="text-gray-400 font-medium mb-1">
+                                  Specs técnicas:
+                                </p>
+                                <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
+                                  {Object.entries(
+                                    tpl.technicalSpecs as Record<
+                                      string,
+                                      string
+                                    >,
+                                  ).map(([k, v]) => (
+                                    <span key={k} className="text-gray-300">
+                                      <span className="text-gray-500">
+                                        {k}:
+                                      </span>{" "}
+                                      {String(v)}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          {pricing && (
+                            <div>
+                              <p className="text-gray-400 font-medium mb-1">
+                                Precios de renta:
+                              </p>
+                              <div className="flex flex-wrap gap-3">
+                                {pricing.pricePerHour && (
+                                  <span className="text-teal-400">
+                                    Hora: ${pricing.pricePerHour}
+                                  </span>
+                                )}
+                                {pricing.pricePerDay && (
+                                  <span className="text-teal-400">
+                                    Día: ${pricing.pricePerDay}
+                                  </span>
+                                )}
+                                {pricing.pricePerWeek && (
+                                  <span className="text-teal-400">
+                                    Semana: ${pricing.pricePerWeek}
+                                  </span>
+                                )}
+                                {pricing.pricePerMonth && (
+                                  <span className="text-teal-400">
+                                    Mes: ${pricing.pricePerMonth}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                          {tpl.businessRules && (
+                            <div className="flex flex-wrap gap-2">
+                              {tpl.businessRules.requiresOperator && (
+                                <span className="bg-blue-900/30 text-blue-400 px-2 py-0.5 rounded">
+                                  Requiere operador
+                                </span>
+                              )}
+                              {tpl.businessRules.requiresTransport && (
+                                <span className="bg-purple-900/30 text-purple-400 px-2 py-0.5 rounded">
+                                  Requiere transporte
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                 </div>
               )}
             </div>

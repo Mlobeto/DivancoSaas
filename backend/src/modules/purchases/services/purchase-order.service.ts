@@ -16,6 +16,8 @@ import {
   UpdatePurchaseOrderItemDTO,
   ReceivePurchaseOrderDTO,
   PurchaseOrderFilters,
+  ApprovePurchaseOrderDTO,
+  RejectPurchaseOrderDTO,
 } from "../types/purchases.types";
 import { SupplierService } from "./supplier.service";
 import { AssetService } from "../../assets/services/asset.service";
@@ -212,6 +214,15 @@ export class PurchaseOrderService {
       where: { id: orderId },
       include: {
         supplier: true,
+        requestedBy: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+        approvedBy: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+        rejectedBy: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
         items: {
           include: {
             supply: {
@@ -220,6 +231,17 @@ export class PurchaseOrderService {
                 name: true,
                 unit: true,
                 stock: true,
+              },
+            },
+            assetTemplate: {
+              select: {
+                id: true,
+                name: true,
+                category: true,
+                technicalSpecs: true,
+                rentalPricing: true,
+                businessRules: true,
+                requiresPreventiveMaintenance: true,
               },
             },
           },
@@ -264,9 +286,14 @@ export class PurchaseOrderService {
       throw new Error("Purchase order not found");
     }
 
-    if (order.status !== PurchaseOrderStatus.DRAFT) {
+    const editableStatuses: PurchaseOrderStatus[] = [
+      PurchaseOrderStatus.DRAFT,
+      PurchaseOrderStatus.REJECTED,
+    ];
+
+    if (!editableStatuses.includes(order.status)) {
       throw new Error(
-        "Cannot modify purchase order that is not in draft status",
+        "Solo se pueden agregar ítems a una OC en estado Borrador o Rechazada",
       );
     }
 
@@ -309,9 +336,14 @@ export class PurchaseOrderService {
       throw new Error("Purchase order item not found");
     }
 
-    if (item.purchaseOrder.status !== PurchaseOrderStatus.DRAFT) {
+    const editableStatuses: PurchaseOrderStatus[] = [
+      PurchaseOrderStatus.DRAFT,
+      PurchaseOrderStatus.REJECTED,
+    ];
+
+    if (!editableStatuses.includes(item.purchaseOrder.status)) {
       throw new Error(
-        "Cannot modify purchase order that is not in draft status",
+        "Solo se pueden editar ítems de una OC en estado Borrador o Rechazada",
       );
     }
 
@@ -353,9 +385,14 @@ export class PurchaseOrderService {
       throw new Error("Purchase order item not found");
     }
 
-    if (item.purchaseOrder.status !== PurchaseOrderStatus.DRAFT) {
+    const editableStatuses: PurchaseOrderStatus[] = [
+      PurchaseOrderStatus.DRAFT,
+      PurchaseOrderStatus.REJECTED,
+    ];
+
+    if (!editableStatuses.includes(item.purchaseOrder.status)) {
       throw new Error(
-        "Cannot modify purchase order that is not in draft status",
+        "Solo se pueden eliminar ítems de una OC en estado Borrador o Rechazada",
       );
     }
 
@@ -368,7 +405,149 @@ export class PurchaseOrderService {
   }
 
   /**
+   * Enviar orden de compra a aprobación
+   * DRAFT | REJECTED → PENDING_APPROVAL
+   */
+  async submitForApproval(orderId: string, userId: string) {
+    const order = await this.prisma.purchaseOrder.findUnique({
+      where: { id: orderId },
+      include: { items: true },
+    });
+
+    if (!order) throw new Error("Purchase order not found");
+
+    if (
+      order.status !== PurchaseOrderStatus.DRAFT &&
+      order.status !== PurchaseOrderStatus.REJECTED
+    ) {
+      throw new Error(
+        "Solo se puede enviar a aprobación una OC en estado Borrador o Rechazada",
+      );
+    }
+
+    if (order.items.length === 0) {
+      throw new Error("No se puede enviar a aprobación una OC sin ítems");
+    }
+
+    return await this.prisma.purchaseOrder.update({
+      where: { id: orderId },
+      data: {
+        status: PurchaseOrderStatus.PENDING_APPROVAL,
+        requestedById: userId,
+        // Limpiar datos de rechazo previo si reenvía
+        rejectedById: null,
+        rejectedAt: null,
+        rejectionReason: null,
+      },
+      include: {
+        supplier: true,
+        requestedBy: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+        items: { include: { supply: true } },
+      },
+    });
+  }
+
+  /**
+   * Aprobar orden de compra
+   * PENDING_APPROVAL → APPROVED
+   * El aprobador no puede ser el mismo que envió la OC (segregación de funciones)
+   */
+  async approvePurchaseOrder(
+    orderId: string,
+    userId: string,
+    data: ApprovePurchaseOrderDTO = {},
+  ) {
+    const order = await this.prisma.purchaseOrder.findUnique({
+      where: { id: orderId },
+    });
+
+    if (!order) throw new Error("Purchase order not found");
+
+    if (order.status !== PurchaseOrderStatus.PENDING_APPROVAL) {
+      throw new Error(
+        "Solo se puede aprobar una OC en estado Pendiente de Aprobación",
+      );
+    }
+
+    // Segregación de funciones: el aprobador no puede ser el creador
+    if (order.requestedById && order.requestedById === userId) {
+      throw new Error(
+        "No puede aprobar una OC que usted mismo envió a aprobación",
+      );
+    }
+
+    return await this.prisma.purchaseOrder.update({
+      where: { id: orderId },
+      data: {
+        status: PurchaseOrderStatus.APPROVED,
+        approvedById: userId,
+        approvedAt: new Date(),
+        approvalNotes: data.notes,
+      },
+      include: {
+        supplier: true,
+        requestedBy: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+        approvedBy: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+        items: { include: { supply: true } },
+      },
+    });
+  }
+
+  /**
+   * Rechazar orden de compra
+   * PENDING_APPROVAL → REJECTED
+   */
+  async rejectPurchaseOrder(
+    orderId: string,
+    userId: string,
+    data: RejectPurchaseOrderDTO,
+  ) {
+    if (!data.reason || data.reason.trim().length === 0) {
+      throw new Error("El motivo de rechazo es obligatorio");
+    }
+
+    const order = await this.prisma.purchaseOrder.findUnique({
+      where: { id: orderId },
+    });
+
+    if (!order) throw new Error("Purchase order not found");
+
+    if (order.status !== PurchaseOrderStatus.PENDING_APPROVAL) {
+      throw new Error(
+        "Solo se puede rechazar una OC en estado Pendiente de Aprobación",
+      );
+    }
+
+    return await this.prisma.purchaseOrder.update({
+      where: { id: orderId },
+      data: {
+        status: PurchaseOrderStatus.REJECTED,
+        rejectedById: userId,
+        rejectedAt: new Date(),
+        rejectionReason: data.reason.trim(),
+      },
+      include: {
+        supplier: true,
+        requestedBy: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+        rejectedBy: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+        items: { include: { supply: true } },
+      },
+    });
+  }
+
+  /**
    * Confirmar orden de compra (enviarla al proveedor)
+   * APPROVED → SENT
    */
   async confirmOrder(orderId: string) {
     const order = await this.prisma.purchaseOrder.findUnique({
@@ -382,8 +561,8 @@ export class PurchaseOrderService {
       throw new Error("Purchase order not found");
     }
 
-    if (order.status !== PurchaseOrderStatus.DRAFT) {
-      throw new Error("Can only confirm draft purchase orders");
+    if (order.status !== PurchaseOrderStatus.APPROVED) {
+      throw new Error("Solo se puede enviar al proveedor una OC aprobada");
     }
 
     if (order.items.length === 0) {
@@ -566,7 +745,7 @@ export class PurchaseOrderService {
       data: {
         status: allItemsReceived
           ? PurchaseOrderStatus.RECEIVED
-          : PurchaseOrderStatus.CONFIRMED,
+          : PurchaseOrderStatus.PARTIALLY_RECEIVED,
         receivedDate: allItemsReceived
           ? data.receivedDate || new Date()
           : undefined,
@@ -613,8 +792,13 @@ export class PurchaseOrderService {
       throw new Error("Purchase order not found");
     }
 
-    if (order.status === PurchaseOrderStatus.RECEIVED) {
-      throw new Error("Cannot cancel received purchase order");
+    const nonCancellableStatuses: PurchaseOrderStatus[] = [
+      PurchaseOrderStatus.RECEIVED,
+      PurchaseOrderStatus.CANCELLED,
+    ];
+
+    if (nonCancellableStatuses.includes(order.status)) {
+      throw new Error("No se puede cancelar una OC ya recibida o cancelada");
     }
 
     return await this.prisma.purchaseOrder.update({

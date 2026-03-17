@@ -279,6 +279,15 @@ export interface PurchaseOrderFilters {
   toDate?: Date;
   page?: number;
   limit?: number;
+  pendingApproval?: boolean; // Filtro para bandeja de aprobadores
+}
+
+export interface RejectPurchaseOrderDTO {
+  reason: string; // Motivo obligatorio del rechazo
+}
+
+export interface ApprovePurchaseOrderDTO {
+  notes?: string; // Notas opcionales del aprobador
 }
 
 // ============================================

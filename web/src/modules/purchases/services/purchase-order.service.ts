@@ -124,4 +124,36 @@ export const purchaseOrderService = {
   async deleteItem(itemId: string): Promise<void> {
     await apiClient.delete(`${BASE_URL}/items/${itemId}`);
   },
+
+  // ============================================
+  // FLUJO DE APROBACIÓN
+  // ============================================
+
+  /**
+   * Enviar OC a aprobación (DRAFT | REJECTED → PENDING_APPROVAL)
+   */
+  async submitForApproval(id: string): Promise<PurchaseOrder> {
+    const response = await apiClient.post(`${BASE_URL}/${id}/submit`);
+    return response.data.data;
+  },
+
+  /**
+   * Aprobar OC (PENDING_APPROVAL → APPROVED)
+   */
+  async approve(id: string, notes?: string): Promise<PurchaseOrder> {
+    const response = await apiClient.post(`${BASE_URL}/${id}/approve`, {
+      notes,
+    });
+    return response.data.data;
+  },
+
+  /**
+   * Rechazar OC (PENDING_APPROVAL → REJECTED)
+   */
+  async reject(id: string, reason: string): Promise<PurchaseOrder> {
+    const response = await apiClient.post(`${BASE_URL}/${id}/reject`, {
+      reason,
+    });
+    return response.data.data;
+  },
 };

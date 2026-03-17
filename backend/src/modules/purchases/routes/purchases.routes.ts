@@ -250,6 +250,21 @@ router.put(
 
 // Acciones sobre órdenes
 router.post(
+  "/purchase-orders/:orderId/submit",
+  authorize("purchase-orders:create"),
+  PurchaseOrderController.submitForApproval,
+);
+router.post(
+  "/purchase-orders/:orderId/approve",
+  authorize("purchase-orders:approve"),
+  PurchaseOrderController.approvePurchaseOrder,
+);
+router.post(
+  "/purchase-orders/:orderId/reject",
+  authorize("purchase-orders:approve"),
+  PurchaseOrderController.rejectPurchaseOrder,
+);
+router.post(
   "/purchase-orders/:orderId/confirm",
   authorize("purchase-orders:update"),
   PurchaseOrderController.confirmOrder,
