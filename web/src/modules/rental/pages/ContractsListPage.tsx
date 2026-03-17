@@ -3,10 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { Layout } from "@/core/components/Layout";
 import { useAuthStore } from "@/store/auth.store";
-import {
-  contractService,
-  RentalContract,
-} from "../services/contract.service";
+import { contractService, RentalContract } from "../services/contract.service";
 import {
   FileText,
   Download,
@@ -64,8 +61,7 @@ export function ContractsListPage() {
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["contracts", tenant?.id, businessUnit?.id, statusFilter],
-    queryFn: () =>
-      contractService.list({ status: statusFilter || undefined }),
+    queryFn: () => contractService.list({ status: statusFilter || undefined }),
     enabled: !!tenant?.id && !!businessUnit?.id,
   });
 
@@ -116,15 +112,25 @@ export function ContractsListPage() {
       title="Contratos de Renta"
       subtitle={`Contratos activos y cerrados — ${businessUnit?.name}`}
       actions={
-        <a href="/dashboard" className="btn-ghost">
-          ← Dashboard
-        </a>
+        <div className="flex items-center gap-2">
+          <a href="/dashboard" className="btn-ghost">
+            ← Dashboard
+          </a>
+          <button
+            onClick={() => navigate("/rental/contracts/new")}
+            className="btn-primary flex items-center gap-2"
+          >
+            + Nuevo Contrato
+          </button>
+        </div>
       }
     >
       {/* KPI cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div className="card text-center">
-          <div className="text-2xl font-bold text-green-400">{totals.active}</div>
+          <div className="text-2xl font-bold text-green-400">
+            {totals.active}
+          </div>
           <div className="text-xs text-dark-400 mt-1">Activos</div>
         </div>
         <div className="card text-center">
@@ -181,10 +187,16 @@ export function ContractsListPage() {
           <div className="p-12 text-center">
             <FileText className="w-12 h-12 mx-auto text-dark-600 mb-4" />
             <p className="text-dark-400 mb-2">No hay contratos aún</p>
-            <p className="text-sm text-dark-500">
-              Los contratos se crean automáticamente cuando el cliente aprueba
-              una cotización.
+            <p className="text-sm text-dark-500 mb-4">
+              Puedes crear un contrato manualmente o desde una cotización
+              aprobada.
             </p>
+            <button
+              onClick={() => navigate("/rental/contracts/new")}
+              className="btn-primary"
+            >
+              + Crear primer contrato
+            </button>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -390,4 +402,3 @@ export function ContractsListPage() {
     </Layout>
   );
 }
-
