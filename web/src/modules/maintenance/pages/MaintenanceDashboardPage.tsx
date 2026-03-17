@@ -5,6 +5,7 @@ import {
   maintenanceService,
   MaintenanceAsset,
 } from "../services/maintenance.service";
+import { AssetReturnPanel } from "../components/AssetReturnPanel";
 
 // ─── Asset Card ───────────────────────────────────────────────────────────────
 
@@ -219,6 +220,9 @@ export function MaintenanceDashboardPage() {
           {refreshing ? "Actualizando..." : "Actualizar"}
         </button>
       </div>
+
+      {/* Panel de recepción de activos desde contratos */}
+      <AssetReturnPanel />
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
