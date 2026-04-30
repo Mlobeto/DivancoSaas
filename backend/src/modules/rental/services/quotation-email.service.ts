@@ -5,7 +5,7 @@
 
 import { emailService } from "@core/services/email.service";
 import { quotationService } from "./quotation.service";
-import { azureBlobStorageService } from "@shared/storage/azure-blob-storage.service";
+import { cloudinaryStorageService as azureBlobStorageService } from "@shared/storage/cloudinary-storage.service";
 import { ensureClientReviewToken } from "./quotation-approval.service";
 import prisma from "@config/database";
 import { brandingService } from "@core/services/branding.service";

@@ -42,11 +42,15 @@ services:
       - key: SENDGRID_FROM_NAME
         sync: false
 
-      # --- Azure Blob Storage ---
-      - key: AZURE_STORAGE_CONNECTION_STRING
+      # --- Cloudinary (File Storage) ---
+      - key: CLOUDINARY_CLOUD_NAME
         sync: false
-      - key: AZURE_STORAGE_CONTAINER_NAME
-        value: uploads
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: CLOUDINARY_ROOT_FOLDER
+        value: divancosaas
 
       # --- Azure Communication Services (Email) ---
       - key: AZURE_COMMUNICATION_CONNECTION_STRING

@@ -9,7 +9,7 @@ import { v4 as uuidv4 } from "uuid";
 import { contractService } from "./contract.service";
 import { emailService } from "@core/services/email.service";
 import { notificationService } from "@core/services/notification.service";
-import { azureBlobStorageService } from "@shared/storage/azure-blob-storage.service";
+import { cloudinaryStorageService as azureBlobStorageService } from "@shared/storage/cloudinary-storage.service";
 
 const backendUrl =
   process.env.BACKEND_URL ||

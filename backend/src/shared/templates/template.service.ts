@@ -10,9 +10,12 @@
 import Handlebars from "handlebars";
 import { chromium } from "playwright";
 import prisma from "@config/database";
-import { azureBlobStorageService } from "@shared/storage/azure-blob-storage.service";
+import { cloudinaryStorageService as azureBlobStorageService } from "@shared/storage/cloudinary-storage.service";
 import { brandingService } from "@core/services/branding.service";
-import { pdfGeneratorService, type PDFOptions } from "@core/services/pdf-generator.service";
+import {
+  pdfGeneratorService,
+  type PDFOptions,
+} from "@core/services/pdf-generator.service";
 import {
   buildDocument,
   type BrandingConfig,
@@ -277,9 +280,7 @@ export class TemplateService {
       // Eliminar línea a línea cualquier fragmento que contenga las frases placeholder
       cleanContent = cleanContent
         .split(/\n/)
-        .filter(
-          (line) => !PLACEHOLDER_PHRASES.some((p) => line.includes(p)),
-        )
+        .filter((line) => !PLACEHOLDER_PHRASES.some((p) => line.includes(p)))
         .join("\n");
 
       // Eliminar divs vacíos o con solo espacios que puedan haber quedado huérfanos
@@ -578,9 +579,8 @@ export class TemplateService {
     options?: PDFOptions,
   ): Promise<{ pdfUrl: string; pdfBuffer: Buffer }> {
     // Dinámicamente importar el servicio de cláusulas para evitar dependencia circular
-    const { contractClauseService } = await import(
-      "@modules/rental/services/contract-clause.service"
-    );
+    const { contractClauseService } =
+      await import("@modules/rental/services/contract-clause.service");
 
     // 1. Obtener contrato completo
     const contract = await prisma.rentalContract.findUnique({

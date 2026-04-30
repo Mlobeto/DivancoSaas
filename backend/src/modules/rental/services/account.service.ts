@@ -6,7 +6,7 @@
 import prisma from "@config/database";
 import { Decimal } from "@prisma/client/runtime/library";
 import { nowInBUTimezone } from "@core/utils/timezone-utils";
-import { azureBlobStorageService } from "@shared/storage/azure-blob-storage.service";
+import { cloudinaryStorageService as azureBlobStorageService } from "@shared/storage/cloudinary-storage.service";
 
 export interface CreateAccountParams {
   tenantId: string;

@@ -6,7 +6,7 @@
 import prisma from "@config/database";
 import { templateService } from "@shared/templates/template.service";
 import { digitalSignatureResolver } from "@integrations/adapters/digital-signature/digital-signature.resolver";
-import { azureBlobStorageService } from "@shared/storage/azure-blob-storage.service";
+import { cloudinaryStorageService as azureBlobStorageService } from "@shared/storage/cloudinary-storage.service";
 import {
   SignerInfo,
   SignatureRequest,

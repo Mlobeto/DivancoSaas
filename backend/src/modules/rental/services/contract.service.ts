@@ -828,9 +828,9 @@ export class ContractService {
       );
     }
 
-    // Subir documento firmado a Azure Blob Storage
-    const { azureBlobStorageService } =
-      await import("@shared/storage/azure-blob-storage.service");
+    // Subir documento firmado a Cloudinary
+    const { cloudinaryStorageService: azureBlobStorageService } =
+      await import("@shared/storage/cloudinary-storage.service");
 
     const fileName = `contracts/${contract.code}-signed-${Date.now()}.pdf`;
     const uploadResult = await azureBlobStorageService.uploadFile({
@@ -1184,9 +1184,9 @@ export class ContractService {
     // 1. Generar buffer del PDF (con branding)
     const pdfBuffer = await this.getContractPdf(contractId);
 
-    // 2. Subir a Azure Blob Storage
-    const { azureBlobStorageService } =
-      await import("@shared/storage/azure-blob-storage.service");
+    // 2. Subir a Cloudinary
+    const { cloudinaryStorageService: azureBlobStorageService } =
+      await import("@shared/storage/cloudinary-storage.service");
 
     const uploadResult = await azureBlobStorageService.uploadFile({
       file: pdfBuffer,

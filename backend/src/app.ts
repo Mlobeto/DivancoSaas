@@ -33,7 +33,7 @@ import { MetaWhatsAppAdapter } from "./integrations/adapters/whatsapp/meta-whats
 import { setWhatsAppProviderFactory } from "@core/services/whatsapp.service";
 
 // File storage adapter injection
-import { AzureBlobStorageAdapter } from "./integrations/adapters/storage/azure-blob-storage.adapter";
+import { CloudinaryStorageAdapter } from "./integrations/adapters/storage/cloudinary-storage.adapter";
 import { setFileStorageProviderFactory } from "@core/services/file-storage.service";
 
 // Invoice adapter injection
@@ -160,7 +160,13 @@ export function createApp(): Application {
 
   // Inyectar factory para File Storage
   setFileStorageProviderFactory(
-    (config) => new AzureBlobStorageAdapter(config),
+    (config) =>
+      new CloudinaryStorageAdapter({
+        cloudName: process.env.CLOUDINARY_CLOUD_NAME || "",
+        apiKey: process.env.CLOUDINARY_API_KEY || "",
+        apiSecret: process.env.CLOUDINARY_API_SECRET || "",
+        rootFolder: process.env.CLOUDINARY_ROOT_FOLDER || "divancosaas",
+      }),
   );
 
   // Inyectar factory para Facturación
