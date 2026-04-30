@@ -7,7 +7,7 @@ import { Request, Response } from "express";
 import sharp from "sharp";
 import { brandingService } from "../services/branding.service";
 import { pdfGeneratorService } from "../services/pdf-generator.service";
-import { azureBlobStorageService } from "../../shared/storage/azure-blob-storage.service";
+import { cloudinaryStorageService as azureBlobStorageService } from "../../shared/storage/cloudinary-storage.service";
 import {
   buildDocument,
   buildQuotationContent,
@@ -502,7 +502,6 @@ class BrandingController {
         folder: "branding/logos",
         tenantId: user.tenantId,
         businessUnitId: businessUnitId,
-        containerName: "templates", // Use templates container for branding assets
       });
 
       // Update branding with new logo URL

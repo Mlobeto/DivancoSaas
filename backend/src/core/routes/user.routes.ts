@@ -3,7 +3,7 @@ import { authenticate, authorize } from "@core/middlewares/auth.middleware";
 import { UserService } from "@core/services/user.service";
 import { z } from "zod";
 import multer from "multer";
-import { azureBlobStorageService } from "@shared/storage/azure-blob-storage.service";
+import { cloudinaryStorageService as azureBlobStorageService } from "@shared/storage/cloudinary-storage.service";
 import { prisma } from "@config/database";
 
 const router = Router();
@@ -983,7 +983,6 @@ router.post(
           folder: "avatars",
           tenantId,
           businessUnitId: id,
-          containerName: "avatars", // Public container for avatars
         });
       } catch (uploadError: any) {
         console.error(

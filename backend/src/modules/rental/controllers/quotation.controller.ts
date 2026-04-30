@@ -6,7 +6,7 @@
 import { Request, Response } from "express";
 import { quotationService } from "../services/quotation.service";
 import { quotationEmailService } from "../services/quotation-email.service";
-import { azureBlobStorageService } from "@shared/storage/azure-blob-storage.service";
+import { cloudinaryStorageService as azureBlobStorageService } from "@shared/storage/cloudinary-storage.service";
 import { permissionService } from "@core/services/permission.service";
 import prisma from "@config/database";
 import {

@@ -7,7 +7,7 @@
 import { Request, Response } from "express";
 import multer from "multer";
 import prisma from "@config/database";
-import { azureBlobStorageService } from "@shared/storage/azure-blob-storage.service";
+import { cloudinaryStorageService as azureBlobStorageService } from "@shared/storage/cloudinary-storage.service";
 import { notificationService } from "@core/services/notification.service";
 import {
   approveQuotationAsClient,

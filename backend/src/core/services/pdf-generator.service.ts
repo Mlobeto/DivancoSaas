@@ -195,9 +195,9 @@ class PDFGeneratorService {
   ): Promise<string> {
     const pdfBuffer = await this.generatePDF(html, options);
 
-    // Import Azure service
-    const { azureBlobStorageService } =
-      await import("../../shared/storage/azure-blob-storage.service");
+    // Import Cloudinary service
+    const { cloudinaryStorageService: azureBlobStorageService } =
+      await import("../../shared/storage/cloudinary-storage.service");
 
     const filename = options.filename || `document-${Date.now()}.pdf`;
 

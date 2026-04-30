@@ -12,7 +12,7 @@ import { AttachmentService } from "../services/attachment.service";
 import { DocumentTypeService } from "../services/document-type.service";
 import { AssetImportService } from "../services/asset-import.service";
 import { PrismaClient } from "@prisma/client";
-import { azureBlobStorageService } from "@shared/storage/azure-blob-storage.service";
+import { cloudinaryStorageService as azureBlobStorageService } from "@shared/storage/cloudinary-storage.service";
 import multer from "multer";
 
 const prisma = new PrismaClient();

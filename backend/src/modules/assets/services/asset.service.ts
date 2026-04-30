@@ -14,7 +14,7 @@ import {
   PaginatedResponse,
   DecommissionAssetDTO,
 } from "../types/asset.types";
-import { azureBlobStorageService } from "../../../shared/storage/azure-blob-storage.service";
+import { cloudinaryStorageService as azureBlobStorageService } from "../../../shared/storage/cloudinary-storage.service";
 
 export class AssetService {
   constructor(private readonly prisma: PrismaClient) {}

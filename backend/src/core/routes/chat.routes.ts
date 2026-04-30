@@ -12,7 +12,7 @@ import { Router, Request, Response } from "express";
 import multer from "multer";
 import { authenticate, authorize } from "@core/middlewares/auth.middleware";
 import { chatService } from "@core/services/chat.service";
-import { azureBlobStorageService } from "@shared/storage/azure-blob-storage.service";
+import { cloudinaryStorageService as azureBlobStorageService } from "@shared/storage/cloudinary-storage.service";
 
 const chatUpload = multer({
   storage: multer.memoryStorage(),
