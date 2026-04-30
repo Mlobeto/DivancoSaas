@@ -505,21 +505,17 @@ class BrandingController {
       });
 
       // Update branding with new logo URL
-      // Generate SAS URL with 1 year expiration for logos (they are semi-permanent)
-      const sasUrl = await azureBlobStorageService.generateSasUrl(
-        uploadResult.containerName,
-        uploadResult.blobName,
-        525600, // 1 year in minutes (365 * 24 * 60)
-      );
+      // Cloudinary URLs are public — use the direct secure_url from upload
+      const logoUrl = uploadResult.url;
 
       const branding = await brandingService.update(businessUnitId, {
-        logoUrl: sasUrl,
+        logoUrl,
       });
 
       return res.json({
         success: true,
         data: {
-          logoUrl: sasUrl,
+          logoUrl,
           blobName: uploadResult.blobName,
           size: uploadResult.size,
           originalSize: file.size,

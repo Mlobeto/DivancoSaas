@@ -107,11 +107,20 @@ export class CloudinaryStorageService {
       throw new Error("Cloudinary Storage not configured");
     }
 
-    // Generar URL firmada con tiempo de expiración
+    // Detectar si es PDF/documento (raw) o imagen
+    // El public_id puede contener pistas: pdfs tienen "pdf" en el path
+    const isPdf =
+      blobName.toLowerCase().includes("/pdf") ||
+      blobName.toLowerCase().includes("quotation") ||
+      blobName.toLowerCase().includes("contract") ||
+      blobName.toLowerCase().includes("invoice") ||
+      blobName.toLowerCase().includes("document");
+    const resourceType = isPdf ? "raw" : "image";
+
     const expiresAt = Math.floor(Date.now() / 1000) + expiresInMinutes * 60;
 
     return cloudinary.url(blobName, {
-      resource_type: "auto",
+      resource_type: resourceType,
       sign_url: true,
       expires_at: expiresAt,
       secure: true,
