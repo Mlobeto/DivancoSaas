@@ -188,7 +188,6 @@ export class AccountService {
           folder: "payment-proofs",
           tenantId: params.tenantId || account.tenantId,
           businessUnitId: params.businessUnitId,
-          containerName: "payment-proofs",
         });
         proofUrl = uploadResult.url;
       } catch (error) {

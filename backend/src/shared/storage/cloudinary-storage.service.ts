@@ -78,7 +78,7 @@ export class CloudinaryStorageService {
             resource_type: "auto",
             overwrite: false,
           },
-          (error, result) => {
+          (error: any, result: any) => {
             if (error) reject(error);
             else resolve(result);
           },

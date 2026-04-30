@@ -10,7 +10,12 @@
  *   CLOUDINARY_API_SECRET
  */
 
-import { v2 as cloudinary, UploadApiOptions } from "cloudinary";
+import {
+  v2 as cloudinary,
+  UploadApiOptions,
+  UploadApiErrorResponse,
+  UploadApiResponse,
+} from "cloudinary";
 import sharp from "sharp";
 import { logger } from "../../../core/utils/logger";
 import {
@@ -77,10 +82,16 @@ export class CloudinaryStorageAdapter implements FileStorageProvider {
 
       const result = await new Promise<any>((resolve, reject) => {
         cloudinary.uploader
-          .upload_stream(options, (error, result) => {
-            if (error) reject(error);
-            else resolve(result);
-          })
+          .upload_stream(
+            options,
+            (
+              error: UploadApiErrorResponse | undefined,
+              result: UploadApiResponse | undefined,
+            ) => {
+              if (error) reject(error);
+              else resolve(result);
+            },
+          )
           .end(params.file);
       });
 
