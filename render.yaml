@@ -1,0 +1,69 @@
+services:
+  - type: web
+    name: divancosaas-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    region: oregon
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3000"
+
+      # --- Database (Neon) ---
+      # Configurar en Render dashboard → Environment
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+
+      # --- Auth ---
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_EXPIRES_IN
+        value: "7d"
+
+      # --- CORS: URL del frontend en Vercel ---
+      - key: CORS_ORIGIN
+        sync: false
+
+      # --- Encryption ---
+      - key: ENCRYPTION_MASTER_KEY
+        sync: false
+
+      # --- SendGrid ---
+      - key: SENDGRID_API_KEY
+        sync: false
+      - key: SENDGRID_FROM_EMAIL
+        sync: false
+      - key: SENDGRID_FROM_NAME
+        sync: false
+
+      # --- Azure Blob Storage ---
+      - key: AZURE_STORAGE_CONNECTION_STRING
+        sync: false
+      - key: AZURE_STORAGE_CONTAINER_NAME
+        value: uploads
+
+      # --- Azure Communication Services (Email) ---
+      - key: AZURE_COMMUNICATION_CONNECTION_STRING
+        sync: false
+      - key: AZURE_EMAIL_FROM
+        sync: false
+      - key: AZURE_EMAIL_FROM_NAME
+        sync: false
+
+      # --- Digital Signature (SignNow) ---
+      - key: SIGNOW_API_KEY
+        sync: false
+      - key: SIGNOW_ENVIRONMENT
+        value: production
+
+      # --- Billing (dejar vacíos hasta activar) ---
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
